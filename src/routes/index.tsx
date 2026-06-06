@@ -138,7 +138,7 @@ function Index() {
           className="font-display text-3xl md:text-5xl text-foreground tracking-tight uppercase"
           style={{ textShadow: "0 0 30px oklch(0.55 0.24 278 / 0.6)" }}
         >
-          Familienquiz
+          {meta.title}
         </h1>
         <Button
           onClick={() => setScreen("start")}

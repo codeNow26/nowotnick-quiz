@@ -4,11 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 interface StartScreenProps {
+  title: string;
+  subtitle: string;
   maxCategories: number;
   onStart: (playerNames: string[], categoryCount: number) => void;
 }
 
-export function StartScreen({ maxCategories, onStart }: StartScreenProps) {
+export function StartScreen({ title, subtitle, maxCategories, onStart }: StartScreenProps) {
   const [count, setCount] = useState(2);
   const [names, setNames] = useState<string[]>(["", "", "", ""]);
   const defaultCats = Math.min(6, maxCategories);
