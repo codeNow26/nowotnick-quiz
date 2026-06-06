@@ -37,15 +37,16 @@ export function QuestionModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent
-        className="max-w-3xl bg-jeopardy-blue border-4 border-primary text-foreground p-0 overflow-hidden"
-      >
-        <div className="bg-jeopardy-blue-dark px-6 py-3 flex justify-between items-center">
-          <span className="font-display text-primary text-sm md:text-lg uppercase tracking-wider">
+      <DialogContent className="max-w-3xl glass-strong rounded-3xl text-foreground p-0 overflow-hidden border-white/15 glow-primary">
+        <div className="px-6 py-4 flex justify-between items-center border-b border-white/10">
+          <span className="font-display text-foreground text-sm md:text-base uppercase tracking-[0.2em]">
             {category}
           </span>
-          <span className="font-display text-primary text-shadow-gold text-2xl md:text-3xl">
-            ${value}
+          <span
+            className="font-display text-2xl md:text-3xl text-primary"
+            style={{ textShadow: "0 0 24px oklch(0.55 0.24 278 / 0.8)" }}
+          >
+            {value}
           </span>
         </div>
 
@@ -55,20 +56,20 @@ export function QuestionModal({
           </p>
         </div>
 
-        <div className="bg-jeopardy-blue-dark p-4 md:p-6 space-y-4">
+        <div className="p-4 md:p-6 space-y-4 border-t border-white/10 bg-white/5">
           {!revealed ? (
             <Button
               onClick={() => setRevealed(true)}
               size="lg"
-              className="w-full font-display text-xl py-6 bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider"
+              className="w-full font-display text-lg md:text-xl py-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider uppercase glow-primary border-0"
             >
-              ANTWORT ZEIGEN
+              Antwort zeigen
             </Button>
           ) : (
             <>
               {players.length > 1 && (
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2 text-center">
+                  <p className="text-xs text-muted-foreground mb-3 text-center uppercase tracking-[0.2em]">
                     Wer hat geantwortet?
                   </p>
                   <div className="flex flex-wrap gap-2 justify-center">
@@ -76,10 +77,10 @@ export function QuestionModal({
                       <button
                         key={i}
                         onClick={() => setSelectedPlayer(i)}
-                        className={`px-4 py-2 rounded-md font-semibold transition-all ${
+                        className={`px-4 py-2 rounded-xl font-semibold transition-all border ${
                           selectedPlayer === i
-                            ? "bg-primary text-primary-foreground scale-105"
-                            : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
+                            ? "bg-primary text-primary-foreground border-transparent scale-105 shadow-[0_0_24px_-6px_var(--indigo-glow)]"
+                            : "glass text-foreground/80 hover:text-foreground hover:bg-white/10"
                         }`}
                       >
                         {p.name}
@@ -93,24 +94,23 @@ export function QuestionModal({
                 <Button
                   onClick={() => onResolve(selectedPlayer, false)}
                   disabled={players.length > 1 && selectedPlayer === null}
-                  variant="destructive"
                   size="lg"
-                  className="font-display text-lg py-6"
+                  className="font-display text-base md:text-lg py-6 rounded-2xl uppercase tracking-wider border-0 bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  <X className="mr-2" /> FALSCH
+                  <X className="mr-2" /> Falsch
                 </Button>
                 <Button
                   onClick={() => onResolve(selectedPlayer, true)}
                   disabled={players.length > 1 && selectedPlayer === null}
                   size="lg"
-                  className="font-display text-lg py-6 bg-green-600 hover:bg-green-700 text-white"
+                  className="font-display text-base md:text-lg py-6 rounded-2xl uppercase tracking-wider border-0 bg-emerald-500 hover:bg-emerald-400 text-emerald-950"
                 >
-                  <Check className="mr-2" /> RICHTIG
+                  <Check className="mr-2" /> Richtig
                 </Button>
               </div>
               <button
                 onClick={() => onResolve(null, false)}
-                className="w-full text-xs text-muted-foreground hover:text-foreground py-1"
+                className="w-full text-xs text-muted-foreground hover:text-foreground py-1 uppercase tracking-[0.2em]"
               >
                 Überspringen (keine Punkte)
               </button>

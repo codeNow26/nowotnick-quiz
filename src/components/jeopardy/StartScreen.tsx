@@ -27,27 +27,37 @@ export function StartScreen({ maxCategories, onStart }: StartScreenProps) {
 
   const catOptions = Array.from({ length: maxCategories }, (_, i) => i + 1);
 
+  const pillBase =
+    "rounded-xl font-display transition-all duration-200 border";
+  const pillIdle =
+    "glass text-foreground/80 hover:text-foreground hover:bg-white/10";
+  const pillActive =
+    "bg-primary text-primary-foreground border-transparent scale-105 shadow-[0_0_30px_-5px_var(--indigo-glow)]";
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-2xl text-center">
-        <h1 className="font-display text-6xl md:text-8xl text-primary text-shadow-gold tracking-wider mb-3">
+        <h1
+          className="font-display text-5xl md:text-7xl text-foreground tracking-tight mb-3 uppercase"
+          style={{ textShadow: "0 0 40px oklch(0.55 0.24 278 / 0.6)" }}
+        >
           Familienquiz
         </h1>
-        <p className="text-muted-foreground text-lg mb-10">Das klassische Quizspiel – ganz nach euch.</p>
+        <p className="text-muted-foreground text-base md:text-lg mb-8 tracking-wide">
+          Das klassische Quizspiel – ganz nach euch.
+        </p>
 
-        <div className="bg-card/80 backdrop-blur rounded-2xl p-6 md:p-8 border-2 border-primary/40 shadow-2xl">
+        <div className="glass-strong rounded-3xl p-6 md:p-8 glow-primary">
           <div className="mb-6">
-            <Label className="text-foreground text-base mb-3 block">Anzahl der Spieler</Label>
+            <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-3 block">
+              Anzahl der Spieler
+            </Label>
             <div className="flex gap-2 justify-center">
               {[1, 2, 3, 4].map((n) => (
                 <button
                   key={n}
                   onClick={() => setCount(n)}
-                  className={`w-14 h-14 rounded-lg font-display text-2xl transition-all ${
-                    count === n
-                      ? "bg-primary text-primary-foreground scale-110"
-                      : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
-                  }`}
+                  className={`${pillBase} w-14 h-14 text-2xl ${count === n ? pillActive : pillIdle}`}
                 >
                   {n}
                 </button>
@@ -56,7 +66,7 @@ export function StartScreen({ maxCategories, onStart }: StartScreenProps) {
           </div>
 
           <div className="mb-6">
-            <Label className="text-foreground text-base mb-3 block">
+            <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-3 block">
               Anzahl der Kategorien
             </Label>
             <div className="flex flex-wrap gap-2 justify-center">
@@ -64,11 +74,7 @@ export function StartScreen({ maxCategories, onStart }: StartScreenProps) {
                 <button
                   key={n}
                   onClick={() => setCatCount(n)}
-                  className={`w-11 h-11 rounded-lg font-display text-lg transition-all ${
-                    catCount === n
-                      ? "bg-primary text-primary-foreground scale-110"
-                      : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
-                  }`}
+                  className={`${pillBase} w-11 h-11 text-base ${catCount === n ? pillActive : pillIdle}`}
                 >
                   {n}
                 </button>
@@ -79,7 +85,10 @@ export function StartScreen({ maxCategories, onStart }: StartScreenProps) {
           <div className="space-y-3 mb-8">
             {Array.from({ length: count }).map((_, i) => (
               <div key={i} className="text-left">
-                <Label htmlFor={`p${i}`} className="text-sm text-muted-foreground">
+                <Label
+                  htmlFor={`p${i}`}
+                  className="text-xs text-muted-foreground uppercase tracking-[0.18em]"
+                >
                   Spieler {i + 1}
                 </Label>
                 <Input
@@ -87,7 +96,7 @@ export function StartScreen({ maxCategories, onStart }: StartScreenProps) {
                   value={names[i]}
                   onChange={(e) => updateName(i, e.target.value)}
                   placeholder={`Spieler ${i + 1}`}
-                  className="bg-input border-border text-foreground"
+                  className="glass border-white/10 text-foreground placeholder:text-muted-foreground/60 mt-1 h-11 rounded-xl"
                 />
               </div>
             ))}
@@ -96,9 +105,9 @@ export function StartScreen({ maxCategories, onStart }: StartScreenProps) {
           <Button
             onClick={handleStart}
             size="lg"
-            className="w-full font-display text-2xl py-6 bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider"
+            className="w-full font-display text-xl md:text-2xl py-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider uppercase glow-primary border-0"
           >
-            SPIEL STARTEN
+            Spiel starten
           </Button>
         </div>
       </div>
