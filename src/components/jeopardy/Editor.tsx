@@ -9,15 +9,26 @@ import { POINT_VALUES } from "@/lib/jeopardy-data";
 
 interface EditorProps {
   initial: Category[];
+  initialMeta: { title: string; subtitle: string };
   onSave: (categories: Category[]) => void;
+  onSaveMeta: (meta: { title: string; subtitle: string }) => void;
   onReset: () => void;
   onBack: () => void;
 }
 
-export function Editor({ initial, onSave, onReset, onBack }: EditorProps) {
+export function Editor({
+  initial,
+  initialMeta,
+  onSave,
+  onSaveMeta,
+  onReset,
+  onBack,
+}: EditorProps) {
   const [draft, setDraft] = useState<Category[]>(() =>
     initial.map((c) => ({ name: c.name, questions: c.questions.map((q) => ({ ...q })) }))
   );
+  const [titleDraft, setTitleDraft] = useState(initialMeta.title);
+  const [subtitleDraft, setSubtitleDraft] = useState(initialMeta.subtitle);
   const [activeCat, setActiveCat] = useState(0);
 
   const updateCatName = (name: string) => {
@@ -41,11 +52,15 @@ export function Editor({ initial, onSave, onReset, onBack }: EditorProps) {
 
   const handleSave = () => {
     onSave(draft);
+    onSaveMeta({
+      title: titleDraft.trim() || initialMeta.title,
+      subtitle: subtitleDraft.trim(),
+    });
     onBack();
   };
 
   const handleReset = () => {
-    if (confirm("Alle Kategorien und Fragen auf Standard zurücksetzen?")) {
+    if (confirm("Alle Kategorien, Titel und Fragen auf Standard zurücksetzen?")) {
       onReset();
       onBack();
     }
