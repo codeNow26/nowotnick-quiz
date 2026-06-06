@@ -43,11 +43,13 @@ export function StartScreen({ title, subtitle, maxCategories, onStart }: StartSc
           className="font-display text-5xl md:text-7xl text-foreground tracking-tight mb-3 uppercase"
           style={{ textShadow: "0 0 40px oklch(0.55 0.24 278 / 0.6)" }}
         >
-          Familienquiz
+          {title}
         </h1>
-        <p className="text-muted-foreground text-base md:text-lg mb-8 tracking-wide">
-          Das klassische Quizspiel – ganz nach euch.
-        </p>
+        {subtitle && (
+          <p className="text-muted-foreground text-base md:text-lg mb-8 tracking-wide">
+            {subtitle}
+          </p>
+        )}
 
         <div className="glass-strong rounded-3xl p-6 md:p-8 glow-primary">
           <div className="mb-6">
