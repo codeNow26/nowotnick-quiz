@@ -2,9 +2,20 @@ import { useEffect, useState } from "react";
 import type { Category } from "@/lib/jeopardy-data";
 import { CATEGORIES as DEFAULT_CATEGORIES, POINT_VALUES } from "@/lib/jeopardy-data";
 
-const STORAGE_KEY = "jeopardy-categories-v1";
+const CAT_KEY = "jeopardy-categories-v1";
+const META_KEY = "jeopardy-meta-v1";
 
-function isValid(data: unknown): data is Category[] {
+export const DEFAULT_TITLE = "Familienquiz";
+export const DEFAULT_SUBTITLE = "Das klassische Quizspiel – ganz nach euch.";
+
+type Question = { question: string; answer: string };
+
+interface Meta {
+  title: string;
+  subtitle: string;
+}
+
+function isValidCategories(data: unknown): data is Category[] {
   if (!Array.isArray(data) || data.length < 1 || data.length > 10) return false;
   return data.every(
     (c) =>
@@ -21,17 +32,36 @@ function isValid(data: unknown): data is Category[] {
   );
 }
 
-type Question = { question: string; answer: string };
+function isValidMeta(data: unknown): data is Meta {
+  return (
+    !!data &&
+    typeof (data as Meta).title === "string" &&
+    typeof (data as Meta).subtitle === "string"
+  );
+}
 
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+  const [meta, setMeta] = useState<Meta>({
+    title: DEFAULT_TITLE,
+    subtitle: DEFAULT_SUBTITLE,
+  });
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(CAT_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (isValid(parsed)) setCategories(parsed);
+        if (isValidCategories(parsed)) setCategories(parsed);
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      const raw = localStorage.getItem(META_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (isValidMeta(parsed)) setMeta(parsed);
       }
     } catch {
       /* ignore */
@@ -41,7 +71,16 @@ export function useCategories() {
   const save = (next: Category[]) => {
     setCategories(next);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(CAT_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const saveMeta = (next: Meta) => {
+    setMeta(next);
+    try {
+      localStorage.setItem(META_KEY, JSON.stringify(next));
     } catch {
       /* ignore */
     }
@@ -49,12 +88,14 @@ export function useCategories() {
 
   const reset = () => {
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(CAT_KEY);
+      localStorage.removeItem(META_KEY);
     } catch {
       /* ignore */
     }
     setCategories(DEFAULT_CATEGORIES);
+    setMeta({ title: DEFAULT_TITLE, subtitle: DEFAULT_SUBTITLE });
   };
 
-  return { categories, save, reset, pointValues: POINT_VALUES };
+  return { categories, save, meta, saveMeta, reset, pointValues: POINT_VALUES };
 }
