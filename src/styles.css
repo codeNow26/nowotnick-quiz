@@ -28,41 +28,42 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-jeopardy-blue: var(--jeopardy-blue);
-  --color-jeopardy-blue-dark: var(--jeopardy-blue-dark);
-  --color-jeopardy-gold: var(--jeopardy-gold);
-  --color-jeopardy-gold-dark: var(--jeopardy-gold-dark);
-  --font-display: "Bungee", "Impact", sans-serif;
-  --font-serif: "Georgia", serif;
+  --color-ink: var(--ink);
+  --color-ink-deep: var(--ink-deep);
+  --color-indigo: var(--indigo);
+  --color-indigo-glow: var(--indigo-glow);
+  --font-display: "Archivo Black", "Impact", sans-serif;
+  --font-sans: "Hind", system-ui, sans-serif;
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 1rem;
 
-  --jeopardy-blue: oklch(0.32 0.18 265);
-  --jeopardy-blue-dark: oklch(0.22 0.16 265);
-  --jeopardy-gold: oklch(0.85 0.17 85);
-  --jeopardy-gold-dark: oklch(0.7 0.18 70);
+  /* Midnight Indigo palette */
+  --ink-deep: oklch(0.13 0.05 280);     /* #0a0a1a */
+  --ink: oklch(0.18 0.08 280);          /* #141432 */
+  --indigo: oklch(0.28 0.14 278);       /* #1e1e5a */
+  --indigo-glow: oklch(0.55 0.24 278);  /* #4f46e5 */
 
-  --background: oklch(0.16 0.1 265);
-  --foreground: oklch(0.98 0.01 90);
-  --card: oklch(0.32 0.18 265);
-  --card-foreground: oklch(0.98 0.01 90);
-  --popover: oklch(0.22 0.16 265);
-  --popover-foreground: oklch(0.98 0.01 90);
-  --primary: oklch(0.85 0.17 85);
-  --primary-foreground: oklch(0.18 0.12 265);
-  --secondary: oklch(0.3 0.15 265);
-  --secondary-foreground: oklch(0.98 0.01 90);
-  --muted: oklch(0.28 0.1 265);
-  --muted-foreground: oklch(0.78 0.04 90);
-  --accent: oklch(0.85 0.17 85);
-  --accent-foreground: oklch(0.18 0.12 265);
-  --destructive: oklch(0.6 0.24 25);
-  --destructive-foreground: oklch(0.98 0.01 90);
-  --border: oklch(0.4 0.15 265);
-  --input: oklch(0.3 0.12 265);
-  --ring: oklch(0.85 0.17 85);
+  --background: var(--ink-deep);
+  --foreground: oklch(0.97 0.01 280);
+  --card: oklch(1 0 0 / 0.06);
+  --card-foreground: oklch(0.97 0.01 280);
+  --popover: oklch(0.2 0.08 280 / 0.92);
+  --popover-foreground: oklch(0.97 0.01 280);
+  --primary: var(--indigo-glow);
+  --primary-foreground: oklch(0.98 0.01 280);
+  --secondary: oklch(1 0 0 / 0.08);
+  --secondary-foreground: oklch(0.97 0.01 280);
+  --muted: oklch(1 0 0 / 0.05);
+  --muted-foreground: oklch(0.75 0.04 280);
+  --accent: var(--indigo-glow);
+  --accent-foreground: oklch(0.98 0.01 280);
+  --destructive: oklch(0.65 0.24 18);
+  --destructive-foreground: oklch(0.98 0.01 280);
+  --border: oklch(1 0 0 / 0.12);
+  --input: oklch(1 0 0 / 0.08);
+  --ring: var(--indigo-glow);
 }
 
 @layer base {
@@ -70,16 +71,30 @@
     border-color: var(--color-border);
   }
   body {
-    background: radial-gradient(ellipse at top, oklch(0.22 0.16 265), oklch(0.12 0.08 265));
+    background-color: var(--ink-deep);
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% 0%, oklch(0.4 0.22 278 / 0.55), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 100% 100%, oklch(0.5 0.25 300 / 0.4), transparent 60%),
+      radial-gradient(ellipse 40% 40% at 50% 50%, oklch(0.45 0.2 220 / 0.25), transparent 70%);
+    background-attachment: fixed;
     color: var(--color-foreground);
     min-height: 100vh;
+    font-family: var(--font-sans);
   }
 }
 
-@utility tile-shadow {
-  box-shadow: inset 0 0 0 4px var(--jeopardy-blue-dark), 0 6px 0 0 oklch(0.1 0.05 265), 0 8px 20px oklch(0 0 0 / 0.4);
+@utility glass {
+  background: oklch(1 0 0 / 0.06);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid oklch(1 0 0 / 0.12);
 }
 
-@utility text-shadow-gold {
-  text-shadow: 0 2px 0 oklch(0.4 0.15 70), 0 4px 12px oklch(0.85 0.17 85 / 0.4);
+@utility glass-strong {
+  background: oklch(0.18 0.08 280 / 0.7);
+  backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid oklch(1 0 0 / 0.14);
+}
+
+@utility glow-primary {
+  box-shadow: 0 0 0 1px oklch(1 0 0 / 0.08), 0 10px 40px -10px oklch(0.55 0.24 278 / 0.55);
 }
