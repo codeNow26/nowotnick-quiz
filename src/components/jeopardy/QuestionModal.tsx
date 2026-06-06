@@ -62,14 +62,14 @@ export function QuestionModal({
               size="lg"
               className="w-full font-display text-xl py-6 bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider"
             >
-              SHOW ANSWER
+              ANTWORT ZEIGEN
             </Button>
           ) : (
             <>
               {players.length > 1 && (
                 <div>
                   <p className="text-sm text-muted-foreground mb-2 text-center">
-                    Who answered?
+                    Wer hat geantwortet?
                   </p>
                   <div className="flex flex-wrap gap-2 justify-center">
                     {players.map((p, i) => (
@@ -97,7 +97,7 @@ export function QuestionModal({
                   size="lg"
                   className="font-display text-lg py-6"
                 >
-                  <X className="mr-2" /> WRONG
+                  <X className="mr-2" /> FALSCH
                 </Button>
                 <Button
                   onClick={() => onResolve(selectedPlayer, true)}
@@ -105,14 +105,14 @@ export function QuestionModal({
                   size="lg"
                   className="font-display text-lg py-6 bg-green-600 hover:bg-green-700 text-white"
                 >
-                  <Check className="mr-2" /> CORRECT
+                  <Check className="mr-2" /> RICHTIG
                 </Button>
               </div>
               <button
                 onClick={() => onResolve(null, false)}
                 className="w-full text-xs text-muted-foreground hover:text-foreground py-1"
               >
-                Skip (no points)
+                Überspringen (keine Punkte)
               </button>
             </>
           )}

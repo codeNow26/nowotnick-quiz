@@ -45,7 +45,7 @@ export function Editor({ initial, onSave, onReset, onBack }: EditorProps) {
   };
 
   const handleReset = () => {
-    if (confirm("Reset all categories and questions to defaults?")) {
+    if (confirm("Alle Kategorien und Fragen auf Standard zurücksetzen?")) {
       onReset();
       onBack();
     }
@@ -59,17 +59,17 @@ export function Editor({ initial, onSave, onReset, onBack }: EditorProps) {
           onClick={onBack}
           className="border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          <ArrowLeft className="mr-2 h-4 w-4" /> Zurück
         </Button>
         <h1 className="font-display text-2xl md:text-4xl text-primary text-shadow-gold tracking-wider">
-          EDIT GAME
+          SPIEL BEARBEITEN
         </h1>
         <Button
           variant="outline"
           onClick={handleReset}
           className="border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
         >
-          <RotateCcw className="mr-2 h-4 w-4" /> Reset
+          <RotateCcw className="mr-2 h-4 w-4" /> Zurücksetzen
         </Button>
       </header>
 
@@ -85,14 +85,14 @@ export function Editor({ initial, onSave, onReset, onBack }: EditorProps) {
             }`}
             title={c.name}
           >
-            {c.name || `Cat ${i + 1}`}
+            {c.name || `Kat. ${i + 1}`}
           </button>
         ))}
       </div>
 
       <div className="bg-card/80 backdrop-blur rounded-2xl p-4 md:p-6 border-2 border-primary/40 shadow-2xl space-y-6">
         <div>
-          <Label className="text-muted-foreground text-sm mb-2 block">Category name</Label>
+          <Label className="text-muted-foreground text-sm mb-2 block">Kategoriename</Label>
           <Input
             value={draft[activeCat].name}
             onChange={(e) => updateCatName(e.target.value)}
@@ -111,7 +111,7 @@ export function Editor({ initial, onSave, onReset, onBack }: EditorProps) {
                 ${POINT_VALUES[qIdx]}
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Question</Label>
+                <Label className="text-xs text-muted-foreground">Frage</Label>
                 <Textarea
                   value={q.question}
                   onChange={(e) => updateQ(qIdx, "question", e.target.value)}
@@ -120,7 +120,7 @@ export function Editor({ initial, onSave, onReset, onBack }: EditorProps) {
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Answer</Label>
+                <Label className="text-xs text-muted-foreground">Antwort</Label>
                 <Input
                   value={q.answer}
                   onChange={(e) => updateQ(qIdx, "answer", e.target.value)}
@@ -136,7 +136,7 @@ export function Editor({ initial, onSave, onReset, onBack }: EditorProps) {
           size="lg"
           className="w-full font-display text-xl py-6 bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider"
         >
-          SAVE CHANGES
+          ÄNDERUNGEN SPEICHERN
         </Button>
       </div>
     </div>
