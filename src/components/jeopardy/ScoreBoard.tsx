@@ -9,17 +9,18 @@ export function ScoreBoard({ players }: { players: Player[] }) {
       {players.map((p, i) => (
         <div
           key={i}
-          className="bg-card border-2 border-primary/40 rounded-xl px-3 py-2 md:px-4 md:py-3 text-center shadow-lg"
+          className="glass rounded-2xl px-3 py-3 md:px-4 md:py-4 text-center"
         >
-          <div className="text-xs md:text-sm text-muted-foreground truncate uppercase tracking-wider">
+          <div className="text-[10px] md:text-xs text-muted-foreground truncate uppercase tracking-[0.2em] mb-1">
             {p.name}
           </div>
           <div
-            className={`font-display text-xl md:text-3xl text-shadow-gold ${
-              p.score < 0 ? "text-destructive" : "text-primary"
+            className={`font-display text-2xl md:text-3xl ${
+              p.score < 0 ? "text-destructive" : "text-foreground"
             }`}
+            style={p.score > 0 ? { textShadow: "0 0 24px oklch(0.55 0.24 278 / 0.7)" } : undefined}
           >
-            ${p.score}
+            {p.score}
           </div>
         </div>
       ))}

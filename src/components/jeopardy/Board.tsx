@@ -2,7 +2,7 @@ import { POINT_VALUES, type Category } from "@/lib/jeopardy-data";
 
 interface BoardProps {
   categories: Category[];
-  answered: boolean[][]; // [category][questionIndex]
+  answered: boolean[][];
   onSelect: (categoryIndex: number, questionIndex: number) => void;
 }
 
@@ -10,13 +10,13 @@ export function Board({ categories, answered, onSelect }: BoardProps) {
   const cols = categories.length;
   return (
     <div
-      className="grid gap-1.5 md:gap-2"
+      className="grid gap-2 md:gap-3"
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
     >
       {categories.map((cat) => (
         <div
           key={cat.name}
-          className="bg-jeopardy-blue-dark text-primary font-display text-center text-xs sm:text-sm md:text-lg p-2 md:p-4 rounded-md tile-shadow flex items-center justify-center min-h-16 md:min-h-24 uppercase tracking-wide"
+          className="glass-strong rounded-2xl font-display text-center text-[10px] sm:text-xs md:text-base p-2 md:p-4 flex items-center justify-center min-h-16 md:min-h-24 uppercase tracking-wider text-foreground"
         >
           {cat.name}
         </div>
@@ -29,13 +29,13 @@ export function Board({ categories, answered, onSelect }: BoardProps) {
               key={`${cIdx}-${qIdx}`}
               onClick={() => !done && onSelect(cIdx, qIdx)}
               disabled={done}
-              className={`min-h-16 md:min-h-24 rounded-md font-display text-xl sm:text-2xl md:text-4xl transition-all tile-shadow ${
+              className={`min-h-16 md:min-h-24 rounded-2xl font-display text-lg sm:text-2xl md:text-3xl transition-all duration-200 ${
                 done
-                  ? "bg-jeopardy-blue-dark/40 text-transparent cursor-not-allowed"
-                  : "bg-jeopardy-blue text-primary text-shadow-gold hover:scale-105 hover:bg-jeopardy-blue/80 active:scale-95"
+                  ? "glass opacity-30 cursor-not-allowed text-transparent"
+                  : "glass text-foreground hover:scale-[1.04] hover:bg-white/15 hover:shadow-[0_0_30px_-5px_var(--indigo-glow)] active:scale-95"
               }`}
             >
-              ${value}
+              {value}
             </button>
           );
         })
