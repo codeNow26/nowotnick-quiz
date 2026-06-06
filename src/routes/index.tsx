@@ -13,10 +13,10 @@ import { useCategories } from "@/lib/use-categories";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Jeopardy! — Quiz Game" },
-      { name: "description", content: "Play a Jeopardy-style quiz with 1–4 players across 6 categories." },
-      { property: "og:title", content: "Jeopardy! — Quiz Game" },
-      { property: "og:description", content: "Play a Jeopardy-style quiz with 1–4 players across 6 categories." },
+      { title: "Familienquiz — Quizspiel" },
+      { name: "description", content: "Spielt ein Quiz im Jeopardy-Stil mit 1–4 Spielern und bis zu 10 Kategorien." },
+      { property: "og:title", content: "Familienquiz — Quizspiel" },
+      { property: "og:description", content: "Spielt ein Quiz im Jeopardy-Stil mit 1–4 Spielern und bis zu 10 Kategorien." },
     ],
   }),
   component: Index,
@@ -91,7 +91,7 @@ function Index() {
             onClick={() => setScreen("editor")}
             className="border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
           >
-            <Pencil className="mr-2 h-4 w-4" /> Edit Questions
+            <Pencil className="mr-2 h-4 w-4" /> Fragen bearbeiten
           </Button>
         </div>
       </div>
@@ -130,14 +130,14 @@ function Index() {
     <div className="min-h-screen p-3 md:p-6 max-w-7xl mx-auto">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6">
         <h1 className="font-display text-3xl md:text-5xl text-primary text-shadow-gold tracking-wider">
-          JEOPARDY!
+          Familienquiz
         </h1>
         <Button
           variant="outline"
           onClick={() => setScreen("start")}
           className="border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
         >
-          New Game
+          Neues Spiel
         </Button>
       </header>
 
@@ -148,7 +148,7 @@ function Index() {
       {winner && (
         <div className="mb-4 md:mb-6 bg-primary text-primary-foreground rounded-xl p-4 md:p-6 text-center shadow-2xl animate-in fade-in zoom-in">
           <p className="font-display text-2xl md:text-4xl">
-            🏆 {winner.name} WINS WITH ${winner.score}!
+            🏆 {winner.name} GEWINNT MIT ${winner.score}!
           </p>
         </div>
       )}
