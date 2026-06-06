@@ -5,7 +5,7 @@ import { CATEGORIES as DEFAULT_CATEGORIES, POINT_VALUES } from "@/lib/jeopardy-d
 const STORAGE_KEY = "jeopardy-categories-v1";
 
 function isValid(data: unknown): data is Category[] {
-  if (!Array.isArray(data) || data.length !== 6) return false;
+  if (!Array.isArray(data) || data.length < 1 || data.length > 10) return false;
   return data.every(
     (c) =>
       c &&

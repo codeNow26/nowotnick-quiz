@@ -4,12 +4,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 interface StartScreenProps {
-  onStart: (playerNames: string[]) => void;
+  maxCategories: number;
+  onStart: (playerNames: string[], categoryCount: number) => void;
 }
 
-export function StartScreen({ onStart }: StartScreenProps) {
+export function StartScreen({ maxCategories, onStart }: StartScreenProps) {
   const [count, setCount] = useState(2);
   const [names, setNames] = useState<string[]>(["", "", "", ""]);
+  const defaultCats = Math.min(6, maxCategories);
+  const [catCount, setCatCount] = useState(defaultCats);
 
   const updateName = (i: number, v: string) => {
     const next = [...names];
@@ -19,8 +22,10 @@ export function StartScreen({ onStart }: StartScreenProps) {
 
   const handleStart = () => {
     const final = names.slice(0, count).map((n, i) => n.trim() || `Player ${i + 1}`);
-    onStart(final);
+    onStart(final, Math.min(catCount, maxCategories));
   };
+
+  const catOptions = Array.from({ length: maxCategories }, (_, i) => i + 1);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -40,6 +45,27 @@ export function StartScreen({ onStart }: StartScreenProps) {
                   onClick={() => setCount(n)}
                   className={`w-14 h-14 rounded-lg font-display text-2xl transition-all ${
                     count === n
+                      ? "bg-primary text-primary-foreground scale-110"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <Label className="text-foreground text-base mb-3 block">
+              Number of categories
+            </Label>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {catOptions.map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setCatCount(n)}
+                  className={`w-11 h-11 rounded-lg font-display text-lg transition-all ${
+                    catCount === n
                       ? "bg-primary text-primary-foreground scale-110"
                       : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
                   }`}

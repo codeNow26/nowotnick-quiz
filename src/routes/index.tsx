@@ -41,11 +41,18 @@ function makeAnswered(categoryCount: number, questionCount: number) {
 }
 
 function Index() {
-  const { categories, save, reset } = useCategories();
+  const { categories: allCategories, save, reset } = useCategories();
   const [screen, setScreen] = useState<Screen>("start");
   const [players, setPlayers] = useState<Player[]>([]);
+  const [activeCategoryCount, setActiveCategoryCount] = useState(
+    Math.min(6, allCategories.length)
+  );
+  const categories = useMemo(
+    () => allCategories.slice(0, activeCategoryCount),
+    [allCategories, activeCategoryCount]
+  );
   const [answered, setAnswered] = useState<boolean[][]>(() =>
-    makeAnswered(categories.length, POINT_VALUES.length)
+    makeAnswered(activeCategoryCount, POINT_VALUES.length)
   );
   const [active, setActive] = useState<Active | null>(null);
 
@@ -57,7 +64,7 @@ function Index() {
   if (screen === "editor") {
     return (
       <Editor
-        initial={categories}
+        initial={allCategories}
         onSave={save}
         onReset={reset}
         onBack={() => setScreen("start")}
@@ -69,12 +76,15 @@ function Index() {
     return (
       <div className="relative">
         <StartScreen
-          onStart={(names) => {
+          maxCategories={allCategories.length}
+          onStart={(names, catCount) => {
             setPlayers(names.map((name) => ({ name, score: 0 })));
-            setAnswered(makeAnswered(categories.length, POINT_VALUES.length));
+            setActiveCategoryCount(catCount);
+            setAnswered(makeAnswered(catCount, POINT_VALUES.length));
             setScreen("game");
           }}
         />
+
         <div className="fixed top-4 right-4">
           <Button
             variant="outline"

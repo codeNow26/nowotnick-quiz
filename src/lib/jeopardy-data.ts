@@ -71,4 +71,47 @@ export const CATEGORIES: Category[] = [
       { question: "Singer of 'Rolling in the Deep'", answer: "Adele" },
     ],
   },
+  {
+    name: "Food & Drink",
+    questions: [
+      { question: "Main ingredient in guacamole", answer: "Avocado" },
+      { question: "Country where sushi originated", answer: "Japan" },
+      { question: "Spice derived from the Crocus flower", answer: "Saffron" },
+      { question: "Cheese traditionally used on a Margherita pizza", answer: "Mozzarella" },
+      { question: "Liquor that is the base of a Negroni", answer: "Gin" },
+    ],
+  },
+  {
+    name: "Technology",
+    questions: [
+      { question: "Founder of Microsoft", answer: "Bill Gates" },
+      { question: "Language used to style web pages", answer: "CSS" },
+      { question: "Year the iPhone was first released", answer: "2007" },
+      { question: "Company that makes the GeForce GPU line", answer: "Nvidia" },
+      { question: "Protocol that powers the web", answer: "HTTP" },
+    ],
+  },
+  {
+    name: "Literature",
+    questions: [
+      { question: "Author of '1984'", answer: "George Orwell" },
+      { question: "Boy wizard created by J.K. Rowling", answer: "Harry Potter" },
+      { question: "Playwright behind 'Hamlet'", answer: "Shakespeare" },
+      { question: "Russian author of 'War and Peace'", answer: "Leo Tolstoy" },
+      { question: "Novel that opens 'Call me Ishmael'", answer: "Moby-Dick" },
+    ],
+  },
+  {
+    name: "Geography",
+    questions: [
+      { question: "Longest river in the world", answer: "The Nile" },
+      { question: "Continent containing the Sahara", answer: "Africa" },
+      { question: "Largest country by area", answer: "Russia" },
+      { question: "Mountain range separating Europe and Asia", answer: "The Urals" },
+      { question: "Deepest ocean trench", answer: "Mariana Trench" },
+    ],
+  },
 ];
+
+export const MIN_CATEGORIES = 1;
+export const MAX_CATEGORIES = 10;
