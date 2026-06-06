@@ -7,8 +7,12 @@ interface BoardProps {
 }
 
 export function Board({ categories, answered, onSelect }: BoardProps) {
+  const cols = categories.length;
   return (
-    <div className="grid grid-cols-6 gap-1.5 md:gap-2">
+    <div
+      className="grid gap-1.5 md:gap-2"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
       {categories.map((cat) => (
         <div
           key={cat.name}
