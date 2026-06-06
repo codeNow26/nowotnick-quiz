@@ -41,7 +41,7 @@ function makeAnswered(categoryCount: number, questionCount: number) {
 }
 
 function Index() {
-  const { categories: allCategories, save, reset } = useCategories();
+  const { categories: allCategories, save, meta, saveMeta, reset } = useCategories();
   const [screen, setScreen] = useState<Screen>("start");
   const [players, setPlayers] = useState<Player[]>([]);
   const [activeCategoryCount, setActiveCategoryCount] = useState(
@@ -65,7 +65,9 @@ function Index() {
     return (
       <Editor
         initial={allCategories}
+        initialMeta={meta}
         onSave={save}
+        onSaveMeta={saveMeta}
         onReset={reset}
         onBack={() => setScreen("start")}
       />
@@ -76,6 +78,8 @@ function Index() {
     return (
       <div className="relative">
         <StartScreen
+          title={meta.title}
+          subtitle={meta.subtitle}
           maxCategories={allCategories.length}
           onStart={(names, catCount) => {
             setPlayers(names.map((name) => ({ name, score: 0 })));
@@ -84,6 +88,7 @@ function Index() {
             setScreen("game");
           }}
         />
+
 
         <div className="fixed top-4 right-4">
           <Button
@@ -133,7 +138,7 @@ function Index() {
           className="font-display text-3xl md:text-5xl text-foreground tracking-tight uppercase"
           style={{ textShadow: "0 0 30px oklch(0.55 0.24 278 / 0.6)" }}
         >
-          Familienquiz
+          {meta.title}
         </h1>
         <Button
           onClick={() => setScreen("start")}
