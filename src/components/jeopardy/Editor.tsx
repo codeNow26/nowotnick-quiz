@@ -55,33 +55,34 @@ export function Editor({ initial, onSave, onReset, onBack }: EditorProps) {
     <div className="min-h-screen p-3 md:p-6 max-w-5xl mx-auto">
       <header className="flex items-center justify-between gap-2 mb-6">
         <Button
-          variant="outline"
           onClick={onBack}
-          className="border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
+          className="glass text-foreground hover:bg-white/15 border-white/15 rounded-xl"
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Zurück
         </Button>
-        <h1 className="font-display text-2xl md:text-4xl text-primary text-shadow-gold tracking-wider">
-          SPIEL BEARBEITEN
+        <h1
+          className="font-display text-xl md:text-3xl text-foreground tracking-tight uppercase"
+          style={{ textShadow: "0 0 30px oklch(0.55 0.24 278 / 0.6)" }}
+        >
+          Bearbeiten
         </h1>
         <Button
-          variant="outline"
           onClick={handleReset}
-          className="border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          className="glass text-destructive hover:bg-destructive/20 border-destructive/30 rounded-xl"
         >
-          <RotateCcw className="mr-2 h-4 w-4" /> Zurücksetzen
+          <RotateCcw className="mr-2 h-4 w-4" /> Reset
         </Button>
       </header>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-6">
         {draft.map((c, i) => (
           <button
             key={i}
             onClick={() => setActiveCat(i)}
-            className={`px-2 py-3 rounded-md font-display text-xs md:text-sm uppercase tracking-wide transition-all truncate ${
+            className={`px-2 py-3 rounded-xl font-display text-xs md:text-sm uppercase tracking-wider transition-all truncate border ${
               activeCat === i
-                ? "bg-primary text-primary-foreground scale-105"
-                : "bg-jeopardy-blue-dark text-primary hover:bg-jeopardy-blue"
+                ? "bg-primary text-primary-foreground border-transparent scale-105 shadow-[0_0_24px_-6px_var(--indigo-glow)]"
+                : "glass text-foreground/80 hover:text-foreground hover:bg-white/10"
             }`}
             title={c.name}
           >
@@ -90,13 +91,15 @@ export function Editor({ initial, onSave, onReset, onBack }: EditorProps) {
         ))}
       </div>
 
-      <div className="bg-card/80 backdrop-blur rounded-2xl p-4 md:p-6 border-2 border-primary/40 shadow-2xl space-y-6">
+      <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-6 glow-primary">
         <div>
-          <Label className="text-muted-foreground text-sm mb-2 block">Kategoriename</Label>
+          <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-2 block">
+            Kategoriename
+          </Label>
           <Input
             value={draft[activeCat].name}
             onChange={(e) => updateCatName(e.target.value)}
-            className="bg-input border-border text-foreground font-display text-lg"
+            className="glass border-white/10 text-foreground font-display text-lg h-12 rounded-xl"
             maxLength={40}
           />
         </div>
@@ -105,26 +108,29 @@ export function Editor({ initial, onSave, onReset, onBack }: EditorProps) {
           {draft[activeCat].questions.map((q, qIdx) => (
             <div
               key={qIdx}
-              className="border-l-4 border-primary pl-4 py-1 space-y-2"
+              className="glass rounded-2xl p-4 space-y-3"
             >
-              <div className="font-display text-primary text-shadow-gold text-xl">
-                ${POINT_VALUES[qIdx]}
+              <div
+                className="font-display text-primary text-xl"
+                style={{ textShadow: "0 0 18px oklch(0.55 0.24 278 / 0.7)" }}
+              >
+                {POINT_VALUES[qIdx]}
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Frage</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">Frage</Label>
                 <Textarea
                   value={q.question}
                   onChange={(e) => updateQ(qIdx, "question", e.target.value)}
                   rows={2}
-                  className="bg-input border-border text-foreground"
+                  className="glass border-white/10 text-foreground rounded-xl mt-1"
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Antwort</Label>
+                <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">Antwort</Label>
                 <Input
                   value={q.answer}
                   onChange={(e) => updateQ(qIdx, "answer", e.target.value)}
-                  className="bg-input border-border text-foreground"
+                  className="glass border-white/10 text-foreground rounded-xl mt-1 h-11"
                 />
               </div>
             </div>
@@ -134,9 +140,9 @@ export function Editor({ initial, onSave, onReset, onBack }: EditorProps) {
         <Button
           onClick={handleSave}
           size="lg"
-          className="w-full font-display text-xl py-6 bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider"
+          className="w-full font-display text-lg md:text-xl py-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider uppercase glow-primary border-0"
         >
-          ÄNDERUNGEN SPEICHERN
+          Änderungen speichern
         </Button>
       </div>
     </div>
