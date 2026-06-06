@@ -149,6 +149,10 @@ function Index() {
         onSelect={(category, question) => setActive({ category, question })}
       />
 
+      <div className="mt-4 md:mt-6">
+        <ScoreBoard players={players} />
+      </div>
+
       <QuestionModal
         open={active !== null}
         question={activeQuestion}
