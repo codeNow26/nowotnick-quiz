@@ -80,7 +80,7 @@ export function StartScreen({ maxCategories, onStart }: StartScreenProps) {
             {Array.from({ length: count }).map((_, i) => (
               <div key={i} className="text-left">
                 <Label htmlFor={`p${i}`} className="text-sm text-muted-foreground">
-                  Player {i + 1}
+                  Spieler {i + 1}
                 </Label>
                 <Input
                   id={`p${i}`}
