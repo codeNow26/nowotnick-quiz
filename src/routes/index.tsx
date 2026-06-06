@@ -129,13 +129,15 @@ function Index() {
   return (
     <div className="min-h-screen p-3 md:p-6 max-w-7xl mx-auto">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6">
-        <h1 className="font-display text-3xl md:text-5xl text-primary text-shadow-gold tracking-wider">
+        <h1
+          className="font-display text-3xl md:text-5xl text-foreground tracking-tight uppercase"
+          style={{ textShadow: "0 0 30px oklch(0.55 0.24 278 / 0.6)" }}
+        >
           Familienquiz
         </h1>
         <Button
-          variant="outline"
           onClick={() => setScreen("start")}
-          className="border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
+          className="glass text-foreground hover:bg-white/15 border-white/15 rounded-xl"
         >
           Neues Spiel
         </Button>
@@ -146,9 +148,9 @@ function Index() {
       </div>
 
       {winner && (
-        <div className="mb-4 md:mb-6 bg-primary text-primary-foreground rounded-xl p-4 md:p-6 text-center shadow-2xl animate-in fade-in zoom-in">
-          <p className="font-display text-2xl md:text-4xl">
-            🏆 {winner.name} GEWINNT MIT ${winner.score}!
+        <div className="mb-4 md:mb-6 glass-strong rounded-3xl p-4 md:p-6 text-center glow-primary animate-in fade-in zoom-in">
+          <p className="font-display text-2xl md:text-4xl uppercase text-foreground tracking-wide">
+            🏆 {winner.name} gewinnt mit {winner.score}!
           </p>
         </div>
       )}
