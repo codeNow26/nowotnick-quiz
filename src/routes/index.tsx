@@ -4,8 +4,11 @@ import { StartScreen } from "@/components/jeopardy/StartScreen";
 import { Board } from "@/components/jeopardy/Board";
 import { QuestionModal } from "@/components/jeopardy/QuestionModal";
 import { ScoreBoard } from "@/components/jeopardy/ScoreBoard";
+import { Editor } from "@/components/jeopardy/Editor";
 import { Button } from "@/components/ui/button";
-import { CATEGORIES, POINT_VALUES } from "@/lib/jeopardy-data";
+import { Pencil } from "lucide-react";
+import { POINT_VALUES } from "@/lib/jeopardy-data";
+import { useCategories } from "@/lib/use-categories";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,14 +32,21 @@ interface Active {
   question: number;
 }
 
-function makeAnswered() {
-  return CATEGORIES.map(() => POINT_VALUES.map(() => false));
+type Screen = "start" | "game" | "editor";
+
+function makeAnswered(categoryCount: number, questionCount: number) {
+  return Array.from({ length: categoryCount }, () =>
+    Array.from({ length: questionCount }, () => false)
+  );
 }
 
 function Index() {
-  const [started, setStarted] = useState(false);
+  const { categories, save, reset } = useCategories();
+  const [screen, setScreen] = useState<Screen>("start");
   const [players, setPlayers] = useState<Player[]>([]);
-  const [answered, setAnswered] = useState<boolean[][]>(makeAnswered());
+  const [answered, setAnswered] = useState<boolean[][]>(() =>
+    makeAnswered(categories.length, POINT_VALUES.length)
+  );
   const [active, setActive] = useState<Active | null>(null);
 
   const allAnswered = useMemo(
@@ -44,22 +54,44 @@ function Index() {
     [answered]
   );
 
-  if (!started) {
+  if (screen === "editor") {
     return (
-      <StartScreen
-        onStart={(names) => {
-          setPlayers(names.map((name) => ({ name, score: 0 })));
-          setAnswered(makeAnswered());
-          setStarted(true);
-        }}
+      <Editor
+        initial={categories}
+        onSave={save}
+        onReset={reset}
+        onBack={() => setScreen("start")}
       />
     );
   }
 
+  if (screen === "start") {
+    return (
+      <div className="relative">
+        <StartScreen
+          onStart={(names) => {
+            setPlayers(names.map((name) => ({ name, score: 0 })));
+            setAnswered(makeAnswered(categories.length, POINT_VALUES.length));
+            setScreen("game");
+          }}
+        />
+        <div className="fixed top-4 right-4">
+          <Button
+            variant="outline"
+            onClick={() => setScreen("editor")}
+            className="border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            <Pencil className="mr-2 h-4 w-4" /> Edit Questions
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const activeQuestion =
-    active !== null ? CATEGORIES[active.category].questions[active.question] : null;
+    active !== null ? categories[active.category].questions[active.question] : null;
   const activeValue = active !== null ? POINT_VALUES[active.question] : 0;
-  const activeCategory = active !== null ? CATEGORIES[active.category].name : "";
+  const activeCategory = active !== null ? categories[active.category].name : "";
 
   const handleResolve = (playerIndex: number | null, correct: boolean) => {
     if (!active) return;
@@ -92,7 +124,7 @@ function Index() {
         </h1>
         <Button
           variant="outline"
-          onClick={() => setStarted(false)}
+          onClick={() => setScreen("start")}
           className="border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
         >
           New Game
@@ -112,6 +144,7 @@ function Index() {
       )}
 
       <Board
+        categories={categories}
         answered={answered}
         onSelect={(category, question) => setActive({ category, question })}
       />

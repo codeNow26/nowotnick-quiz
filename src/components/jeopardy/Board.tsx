@@ -1,14 +1,15 @@
-import { CATEGORIES, POINT_VALUES } from "@/lib/jeopardy-data";
+import { POINT_VALUES, type Category } from "@/lib/jeopardy-data";
 
 interface BoardProps {
+  categories: Category[];
   answered: boolean[][]; // [category][questionIndex]
   onSelect: (categoryIndex: number, questionIndex: number) => void;
 }
 
-export function Board({ answered, onSelect }: BoardProps) {
+export function Board({ categories, answered, onSelect }: BoardProps) {
   return (
     <div className="grid grid-cols-6 gap-1.5 md:gap-2">
-      {CATEGORIES.map((cat) => (
+      {categories.map((cat) => (
         <div
           key={cat.name}
           className="bg-jeopardy-blue-dark text-primary font-display text-center text-xs sm:text-sm md:text-lg p-2 md:p-4 rounded-md tile-shadow flex items-center justify-center min-h-16 md:min-h-24 uppercase tracking-wide"
@@ -17,7 +18,7 @@ export function Board({ answered, onSelect }: BoardProps) {
         </div>
       ))}
       {POINT_VALUES.map((value, qIdx) =>
-        CATEGORIES.map((_, cIdx) => {
+        categories.map((_, cIdx) => {
           const done = answered[cIdx][qIdx];
           return (
             <button
