@@ -106,6 +106,36 @@ export function Editor({
         ))}
       </div>
 
+      <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-4 glow-primary mb-4">
+        <div className="text-xs text-muted-foreground uppercase tracking-[0.2em]">
+          Spiel-Kopfzeile
+        </div>
+        <div>
+          <Label className="text-muted-foreground text-xs uppercase tracking-[0.18em] mb-1 block">
+            Titel
+          </Label>
+          <Input
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            className="glass border-white/10 text-foreground font-display text-lg h-12 rounded-xl"
+            maxLength={40}
+            placeholder="Familienquiz"
+          />
+        </div>
+        <div>
+          <Label className="text-muted-foreground text-xs uppercase tracking-[0.18em] mb-1 block">
+            Untertitel
+          </Label>
+          <Input
+            value={subtitleDraft}
+            onChange={(e) => setSubtitleDraft(e.target.value)}
+            className="glass border-white/10 text-foreground h-11 rounded-xl"
+            maxLength={120}
+            placeholder="Das klassische Quizspiel – ganz nach euch."
+          />
+        </div>
+      </div>
+
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-6 glow-primary">
         <div>
           <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-2 block">
