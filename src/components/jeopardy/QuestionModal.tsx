@@ -38,7 +38,6 @@ export function QuestionModal({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        showCloseButton={false}
         className="max-w-3xl bg-jeopardy-blue border-4 border-primary text-foreground p-0 overflow-hidden"
       >
         <div className="bg-jeopardy-blue-dark px-6 py-3 flex justify-between items-center">
