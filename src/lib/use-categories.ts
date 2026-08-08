@@ -1,22 +1,31 @@
 import { useEffect, useState } from "react";
 import type { Category } from "@/lib/jeopardy-data";
 import { CATEGORIES as DEFAULT_CATEGORIES, POINT_VALUES } from "@/lib/jeopardy-data";
-
-const CAT_KEY = "jeopardy-categories-v1";
-const META_KEY = "jeopardy-meta-v1";
+import { supabase } from "@/lib/supabase";
 
 export const DEFAULT_TITLE = "Familienquiz";
 export const DEFAULT_SUBTITLE = "Das klassische Quizspiel – ganz nach euch.";
 
-type Question = { question: string; answer: string };
+type Question = {
+  question: string;
+  answer: string;
+};
 
 interface Meta {
   title: string;
   subtitle: string;
 }
 
+interface QuizData {
+  categories: Category[];
+  meta: Meta;
+}
+
+const QUIZ_ID = "2f167918-a027-44f0-a012-422e802a7bef";
+
 function isValidCategories(data: unknown): data is Category[] {
   if (!Array.isArray(data) || data.length < 1 || data.length > 10) return false;
+
   return data.every(
     (c) =>
       c &&
@@ -42,60 +51,85 @@ function isValidMeta(data: unknown): data is Meta {
 
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+
   const [meta, setMeta] = useState<Meta>({
     title: DEFAULT_TITLE,
     subtitle: DEFAULT_SUBTITLE,
   });
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CAT_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (isValidCategories(parsed)) setCategories(parsed);
+    async function loadData() {
+      const { data, error } = await supabase
+        .from("quiz_data")
+        .select("data")
+        .eq("id", QUIZ_ID)
+        .single();
+
+      if (error) {
+        console.error("Fehler beim Laden:", error);
+        return;
       }
-    } catch {
-      /* ignore */
-    }
-    try {
-      const raw = localStorage.getItem(META_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (isValidMeta(parsed)) setMeta(parsed);
+
+      const quizData = data.data as QuizData;
+
+      if (quizData?.categories && isValidCategories(quizData.categories)) {
+        setCategories(quizData.categories);
       }
-    } catch {
-      /* ignore */
+
+      if (quizData?.meta && isValidMeta(quizData.meta)) {
+        setMeta(quizData.meta);
+      }
     }
+
+    loadData();
   }, []);
 
-  const save = (next: Category[]) => {
-    setCategories(next);
-    try {
-      localStorage.setItem(CAT_KEY, JSON.stringify(next));
-    } catch {
-      /* ignore */
+  const saveAll = async (nextCategories: Category[], nextMeta: Meta) => {
+    setCategories(nextCategories);
+    setMeta(nextMeta);
+
+  const { data, error } = await supabase
+  .from("quiz_data")
+  .update({
+    data: {
+      categories: nextCategories,
+      meta: nextMeta,
+    },
+    updated_at: new Date().toISOString(),
+  })
+  .eq("id", QUIZ_ID)
+  .select();
+
+console.log("SUPABASE UPDATE:", { data, error });
+
+    if (error) {
+      console.error("Fehler beim Speichern:", error);
     }
   };
 
-  const saveMeta = (next: Meta) => {
-    setMeta(next);
-    try {
-      localStorage.setItem(META_KEY, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
+  const save = async (next: Category[]) => {
+    await saveAll(next, meta);
   };
 
-  const reset = () => {
-    try {
-      localStorage.removeItem(CAT_KEY);
-      localStorage.removeItem(META_KEY);
-    } catch {
-      /* ignore */
-    }
-    setCategories(DEFAULT_CATEGORIES);
-    setMeta({ title: DEFAULT_TITLE, subtitle: DEFAULT_SUBTITLE });
+  const saveMeta = async (next: Meta) => {
+    await saveAll(categories, next);
   };
 
-  return { categories, save, meta, saveMeta, reset, pointValues: POINT_VALUES };
+  const reset = async () => {
+    const defaultMeta = {
+      title: DEFAULT_TITLE,
+      subtitle: DEFAULT_SUBTITLE,
+    };
+
+    await saveAll(DEFAULT_CATEGORIES, defaultMeta);
+  };
+
+  return {
+    categories,
+    save,
+    meta,
+    saveMeta,
+    reset,
+    pointValues: POINT_VALUES,
+  };
 }
