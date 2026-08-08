@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Category } from "@/lib/jeopardy-data";
 import { CATEGORIES as DEFAULT_CATEGORIES, POINT_VALUES } from "@/lib/jeopardy-data";
 import { supabase } from "@/lib/supabase";
@@ -57,6 +57,9 @@ export function useCategories() {
     subtitle: DEFAULT_SUBTITLE,
   });
 
+  const categoriesRef = useRef(categories);
+  const metaRef = useRef(meta);
+
   useEffect(() => {
     async function loadData() {
       const { data, error } = await supabase
@@ -85,22 +88,20 @@ export function useCategories() {
   }, []);
 
   const saveAll = async (nextCategories: Category[], nextMeta: Meta) => {
-    setCategories(nextCategories);
-    setMeta(nextMeta);
+  
+    const { data, error } = await supabase
+      .from("quiz_data")
+      .update({
+        data: {
+          categories: nextCategories,
+          meta: nextMeta,
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", QUIZ_ID)
+      .select();
 
-  const { data, error } = await supabase
-  .from("quiz_data")
-  .update({
-    data: {
-      categories: nextCategories,
-      meta: nextMeta,
-    },
-    updated_at: new Date().toISOString(),
-  })
-  .eq("id", QUIZ_ID)
-  .select();
-
-console.log("SUPABASE UPDATE:", { data, error });
+    console.log("SUPABASE UPDATE:", { data, error });
 
     if (error) {
       console.error("Fehler beim Speichern:", error);
@@ -108,11 +109,17 @@ console.log("SUPABASE UPDATE:", { data, error });
   };
 
   const save = async (next: Category[]) => {
-    await saveAll(next, meta);
+    categoriesRef.current = next;
+    setCategories(next);
+
+    await saveAll(next, metaRef.current);
   };
 
   const saveMeta = async (next: Meta) => {
-    await saveAll(categories, next);
+    metaRef.current = next;
+    setMeta(next);
+
+    await saveAll(categoriesRef.current, next);
   };
 
   const reset = async () => {
