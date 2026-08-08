@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { StartScreen } from "@/components/jeopardy/StartScreen";
 import { Board } from "@/components/jeopardy/Board";
@@ -6,7 +6,7 @@ import { QuestionModal } from "@/components/jeopardy/QuestionModal";
 import { ScoreBoard } from "@/components/jeopardy/ScoreBoard";
 import { Editor } from "@/components/jeopardy/Editor";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Music, VolumeX, Pencil } from "lucide-react";
 import { POINT_VALUES } from "@/lib/jeopardy-data";
 import { useCategories } from "@/lib/use-categories";
 
@@ -42,6 +42,24 @@ function makeAnswered(categoryCount: number, questionCount: number) {
 
 function Index() {
   const { categories: allCategories, save, meta, saveMeta, reset } = useCategories();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+const [musicPlaying, setMusicPlaying] = useState(false);
+
+const toggleMusic = () => {
+  if (!audioRef.current) {
+    audioRef.current = new Audio("/music/background.mp3");
+    audioRef.current.loop = true;
+  }
+
+  if (musicPlaying) {
+    audioRef.current.pause();
+    setMusicPlaying(false);
+  } else {
+    audioRef.current.play();
+    setMusicPlaying(true);
+  }
+};
+
   const [screen, setScreen] = useState<Screen>("start");
   const [players, setPlayers] = useState<Player[]>([]);
   const [activeCategoryCount, setActiveCategoryCount] = useState(
@@ -74,34 +92,52 @@ function Index() {
     );
   }
 
-  if (screen === "start") {
-    return (
-      <div className="relative">
-        <StartScreen
-          title={meta.title}
-          subtitle={meta.subtitle}
-          maxCategories={allCategories.length}
-          onStart={(names, catCount) => {
-            setPlayers(names.map((name) => ({ name, score: 0 })));
-            setActiveCategoryCount(catCount);
-            setAnswered(makeAnswered(catCount, POINT_VALUES.length));
-            setScreen("game");
-          }}
-        />
+ if (screen === "start") {
+  return (
+    <div className="relative">
+      <StartScreen
+        title={meta.title}
+        subtitle={meta.subtitle}
+        maxCategories={allCategories.length}
+        onStart={(names, catCount) => {
+          setPlayers(names.map((name) => ({ name, score: 0 })));
+          setActiveCategoryCount(catCount);
+          setAnswered(makeAnswered(catCount, POINT_VALUES.length));
+          setScreen("game");
+        }}
+      />
 
+      <div className="fixed top-4 right-4 flex gap-2">
+       <Button
+  variant="outline"
+  size="icon"
+  onClick={toggleMusic}
+  className={`h-11 w-11 rounded-full border-primary/50 backdrop-blur-md transition-all duration-300 ${
+    musicPlaying
+      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:bg-primary/90"
+      : "bg-background/70 text-primary hover:bg-primary hover:text-primary-foreground"
+  }`}
+  title={musicPlaying ? "Musik ausschalten" : "Musik einschalten"}
+>
+  {musicPlaying ? (
+    <VolumeX className="h-5 w-5" />
+  ) : (
+    <Music className="h-5 w-5" />
+  )}
+</Button>
 
-        <div className="fixed top-4 right-4">
-          <Button
-            variant="outline"
-            onClick={() => setScreen("editor")}
-            className="border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
-          >
-            <Pencil className="mr-2 h-4 w-4" /> Fragen bearbeiten
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          onClick={() => setScreen("editor")}
+          className="border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
+        >
+          <Pencil className="mr-2 h-4 w-4" />
+          Fragen bearbeiten
+        </Button>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   const activeQuestion =
     active !== null ? categories[active.category].questions[active.question] : null;
@@ -133,6 +169,28 @@ function Index() {
 
   return (
     <div className="min-h-screen p-3 md:p-6 max-w-7xl mx-auto">
+
+<div className="fixed top-4 right-4 z-50">
+  <Button
+    variant="outline"
+    size="icon"
+    onClick={toggleMusic}
+    className={`h-11 w-11 rounded-full border-primary/50 backdrop-blur-md transition-all duration-300 ${
+      musicPlaying
+        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:bg-primary/90"
+        : "bg-background/70 text-primary hover:bg-primary hover:text-primary-foreground"
+    }`}
+    title={musicPlaying ? "Musik ausschalten" : "Musik einschalten"}
+  >
+    {musicPlaying ? (
+      <VolumeX className="h-5 w-5" />
+    ) : (
+      <Music className="h-5 w-5" />
+    )}
+  </Button>
+</div>
+
+
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6">
         <h1
           className="font-display text-3xl md:text-5xl text-foreground tracking-tight uppercase"
