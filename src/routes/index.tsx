@@ -159,7 +159,7 @@ sound.play();
       setPlayers((prev) =>
         prev.map((p, i) =>
           i === playerIndex
-            ? { ...p, score: p.score + (correct ? activeValue : -activeValue) }
+            ? { ...p, score: p.score + (correct ? activeValue : -Math.round(activeValue / 2)) }
             : p
         )
       );
