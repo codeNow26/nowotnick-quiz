@@ -51,9 +51,11 @@ export function QuestionModal({
         </div>
 
         <div className="p-6 md:p-12 min-h-64 flex items-center justify-center text-center">
-          <p className="font-display text-2xl md:text-4xl text-foreground uppercase leading-tight">
-            {revealed ? question.answer : question.question}
-          </p>
+         <p className="font-display text-2xl md:text-4xl text-foreground uppercase leading-tight whitespace-pre-line">
+  {revealed
+    ? question.answer
+    : question.question.replace(/\s+(?=[A-D]:)/g, "\n")}
+</p>
         </div>
 
         <div className="p-4 md:p-6 space-y-4 border-t border-white/10 bg-white/5">
