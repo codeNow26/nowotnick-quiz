@@ -1,6 +1,7 @@
 export interface Question {
   question: string;
   answer: string;
+  value?: number;
 }
 
 export interface Category {

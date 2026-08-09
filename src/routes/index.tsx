@@ -141,7 +141,11 @@ const toggleMusic = () => {
 
   const activeQuestion =
     active !== null ? categories[active.category].questions[active.question] : null;
-  const activeValue = active !== null ? POINT_VALUES[active.question] : 0;
+  const activeValue =
+  active !== null
+    ? categories[active.category].questions[active.question].value ??
+      POINT_VALUES[active.question]
+    : 0;
   const activeCategory = active !== null ? categories[active.category].name : "";
 
   const handleResolve = (playerIndex: number | null, correct: boolean) => {

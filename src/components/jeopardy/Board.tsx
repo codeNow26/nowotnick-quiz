@@ -22,7 +22,7 @@ export function Board({ categories, answered, onSelect }: BoardProps) {
         </div>
       ))}
       {POINT_VALUES.map((value, qIdx) =>
-        categories.map((_, cIdx) => {
+        categories.map((cat, cIdx) => {
           const done = answered[cIdx][qIdx];
           return (
             <button
@@ -35,7 +35,7 @@ export function Board({ categories, answered, onSelect }: BoardProps) {
                   : "glass text-foreground hover:scale-[1.04] hover:bg-white/15 hover:shadow-[0_0_30px_-5px_var(--indigo-glow)] active:scale-95"
               }`}
             >
-              {value}
+             {cat.questions[qIdx]?.value ?? value}
             </button>
           );
         })

@@ -50,6 +50,21 @@ export function Editor({
     );
   };
 
+  const updateQValue = (qIdx: number, value: number | undefined) => {
+  setDraft((prev) =>
+    prev.map((c, i) =>
+      i === activeCat
+        ? {
+            ...c,
+            questions: c.questions.map((q, j) =>
+              j === qIdx ? { ...q, value } : q
+            ),
+          }
+        : c
+    )
+  );
+};
+
   const handleSave = () => {
     onSave(draft);
     onSaveMeta({
@@ -155,12 +170,24 @@ export function Editor({
               key={qIdx}
               className="glass rounded-2xl p-4 space-y-3"
             >
-              <div
-                className="font-display text-primary text-xl"
-                style={{ textShadow: "0 0 18px oklch(0.55 0.24 278 / 0.7)" }}
-              >
-                {POINT_VALUES[qIdx]}
-              </div>
+             <div className="flex items-center gap-3">
+  <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
+    Punkte
+  </Label>
+
+  <Input
+    type="number"
+    min={0}
+    value={q.value ?? POINT_VALUES[qIdx]}
+    onChange={(e) =>
+      updateQValue(
+        qIdx,
+        e.target.value === "" ? undefined : Number(e.target.value)
+      )
+    }
+    className="glass border-white/10 text-foreground font-display text-lg h-11 rounded-xl w-28"
+  />
+</div>
               <div>
                 <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">Frage</Label>
                 <Textarea
