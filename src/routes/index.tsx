@@ -146,6 +146,11 @@ const toggleMusic = () => {
 
   const handleResolve = (playerIndex: number | null, correct: boolean) => {
     if (!active) return;
+    const sound = new Audio(
+  correct ? "/sounds/correct.mp3" : "/sounds/wrong.mp3"
+);
+sound.volume = 0.50;
+sound.play();
     if (playerIndex !== null) {
       setPlayers((prev) =>
         prev.map((p, i) =>
