@@ -150,11 +150,32 @@ const toggleMusic = () => {
 
   const handleResolve = (playerIndex: number | null, correct: boolean) => {
     if (!active) return;
-    const sound = new Audio(
-  correct ? "/sounds/correct.mp3" : "/sounds/wrong.mp3"
-);
+
+   const wrongSounds = [
+  "/sounds/Wrong/Dummkopf.WAV",
+  "/sounds/Wrong/HAHA.WAV",
+  "/sounds/Wrong/Homer Simpson Langweilig.mp3",
+  "/sounds/Wrong/Homer Simpson Nein!.mp3",
+  "/sounds/Wrong/Nein, Nein, Nein, Nein! (Hitler Meme) - Sound Effect for editing.mp3",
+  "/sounds/Wrong/zonk.mp3",
+];
+
+const correctSounds = [
+  "/sounds/Correct/Ja sound effect Hitler.mp3",
+  "/sounds/Correct/Who Wants to Be a Millionaire - £100 – £500 Correct Answer [SOUND EFFECT].mp3",
+  "/sounds/Correct/Zelda Receive Item - Sound Effect for editing.mp3",
+  "/sounds/Correct/Zeldariddle.mp3",
+  "/sounds/Correct/Yeah Baby Yea.WAV",
+];
+
+const soundPath = correct
+  ? correctSounds[Math.floor(Math.random() * correctSounds.length)]
+  : wrongSounds[Math.floor(Math.random() * wrongSounds.length)];
+
+const sound = new Audio(soundPath);
 sound.volume = 0.50;
 sound.play();
+
     if (playerIndex !== null) {
       setPlayers((prev) =>
         prev.map((p, i) =>
