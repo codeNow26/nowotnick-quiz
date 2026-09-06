@@ -6,7 +6,12 @@ import { QuestionModal } from "@/components/jeopardy/QuestionModal";
 import { ScoreBoard } from "@/components/jeopardy/ScoreBoard";
 import { Editor } from "@/components/jeopardy/Editor";
 import { Button } from "@/components/ui/button";
-import { Music, VolumeX, Pencil } from "lucide-react";
+import {
+  Music,
+  VolumeX,
+  Pencil,
+  SlidersHorizontal,
+} from "lucide-react";
 import { POINT_VALUES } from "@/lib/jeopardy-data";
 import { useCategories } from "@/lib/use-categories";
 
@@ -14,9 +19,17 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Familienquiz — Quizspiel" },
-      { name: "description", content: "Spielt ein Quiz im Jeopardy-Stil mit 1–4 Spielern und bis zu 10 Kategorien." },
+      {
+        name: "description",
+        content:
+          "Spielt ein Quiz im Jeopardy-Stil mit 1–4 Spielern und bis zu 10 Kategorien.",
+      },
       { property: "og:title", content: "Familienquiz — Quizspiel" },
-      { property: "og:description", content: "Spielt ein Quiz im Jeopardy-Stil mit 1–4 Spielern und bis zu 10 Kategorien." },
+      {
+        property: "og:description",
+        content:
+          "Spielt ein Quiz im Jeopardy-Stil mit 1–4 Spielern und bis zu 10 Kategorien.",
+      },
     ],
   }),
   component: Index,
@@ -41,42 +54,124 @@ function makeAnswered(categoryCount: number, questionCount: number) {
 }
 
 function Index() {
-  const { categories: allCategories, save, meta, saveMeta, reset } = useCategories();
+  const {
+    categories: allCategories,
+    save,
+    meta,
+    saveMeta,
+    reset,
+  } = useCategories();
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
-const [musicPlaying, setMusicPlaying] = useState(false);
 
-const toggleMusic = () => {
-  if (!audioRef.current) {
-    audioRef.current = new Audio("/music/background.mp3");
-    audioRef.current.loop = true;
-  }
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const [musicVolume, setMusicVolume] = useState(0.3);
+  const [showVolume, setShowVolume] = useState(false);
 
-  if (musicPlaying) {
-    audioRef.current.pause();
-    setMusicPlaying(false);
-  } else {
-    audioRef.current.play();
-    setMusicPlaying(true);
-  }
-};
+  const toggleMusic = () => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio("/music/background.mp3");
+      audioRef.current.loop = true;
+      audioRef.current.volume = musicVolume;
+    }
+
+    if (musicPlaying) {
+      audioRef.current.pause();
+      setMusicPlaying(false);
+    } else {
+      audioRef.current.play();
+      setMusicPlaying(true);
+    }
+  };
+
+  const changeMusicVolume = (volume: number) => {
+    setMusicVolume(volume);
+
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  };
 
   const [screen, setScreen] = useState<Screen>("start");
   const [players, setPlayers] = useState<Player[]>([]);
+
   const [activeCategoryCount, setActiveCategoryCount] = useState(
     Math.min(6, allCategories.length)
   );
+
   const categories = useMemo(
     () => allCategories.slice(0, activeCategoryCount),
     [allCategories, activeCategoryCount]
   );
+
   const [answered, setAnswered] = useState<boolean[][]>(() =>
     makeAnswered(activeCategoryCount, POINT_VALUES.length)
   );
+
   const [active, setActive] = useState<Active | null>(null);
 
   const allAnswered = useMemo(
     () => answered.every((row) => row.every(Boolean)),
     [answered]
+  );
+
+  const MusicControls = () => (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={toggleMusic}
+        className={`h-11 w-11 rounded-full border-primary/50 backdrop-blur-md transition-all duration-300 ${
+          musicPlaying
+            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:bg-primary/90"
+            : "bg-background/70 text-primary hover:bg-primary hover:text-primary-foreground"
+        }`}
+        title={musicPlaying ? "Musik ausschalten" : "Musik einschalten"}
+      >
+        {musicPlaying ? (
+          <VolumeX className="h-5 w-5" />
+        ) : (
+          <Music className="h-5 w-5" />
+        )}
+      </Button>
+
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => setShowVolume((prev) => !prev)}
+        className={`h-11 w-11 rounded-full border-primary/50 backdrop-blur-md transition-all duration-300 ${
+          showVolume
+            ? "bg-primary text-primary-foreground"
+            : "bg-background/70 text-primary hover:bg-primary hover:text-primary-foreground"
+        }`}
+        title="Lautstärke"
+      >
+        <SlidersHorizontal className="h-5 w-5" />
+      </Button>
+
+      {showVolume && (
+        <div className="flex items-center gap-2 glass px-3 py-2 rounded-2xl border border-white/10 backdrop-blur-md">
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={musicVolume}
+            onChange={(e) =>
+              changeMusicVolume(Number(e.target.value))
+            }
+            className="w-24 md:w-32 cursor-pointer"
+            title={`Musiklautstärke: ${Math.round(
+              musicVolume * 100
+            )}%`}
+          />
+
+          <span className="text-xs text-muted-foreground w-9 text-right">
+            {Math.round(musicVolume * 100)}%
+          </span>
+        </div>
+      )}
+    </div>
   );
 
   if (screen === "editor") {
@@ -92,142 +187,172 @@ const toggleMusic = () => {
     );
   }
 
- if (screen === "start") {
-  return (
-    <div className="relative">
-      <StartScreen
-        title={meta.title}
-        subtitle={meta.subtitle}
-        maxCategories={allCategories.length}
-        onStart={(names, catCount) => {
-          setPlayers(names.map((name) => ({ name, score: 0 })));
-          setActiveCategoryCount(catCount);
-          setAnswered(makeAnswered(catCount, POINT_VALUES.length));
-          setScreen("game");
-        }}
-      />
+  if (screen === "start") {
+    return (
+      <div className="relative">
+        <StartScreen
+          title={meta.title}
+          subtitle={meta.subtitle}
+          maxCategories={allCategories.length}
+          onStart={(names, catCount) => {
+            setPlayers(
+              names.map((name) => ({
+                name,
+                score: 0,
+              }))
+            );
 
-      <div className="fixed top-4 right-4 flex gap-2">
-       <Button
-  variant="outline"
-  size="icon"
-  onClick={toggleMusic}
-  className={`h-11 w-11 rounded-full border-primary/50 backdrop-blur-md transition-all duration-300 ${
-    musicPlaying
-      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:bg-primary/90"
-      : "bg-background/70 text-primary hover:bg-primary hover:text-primary-foreground"
-  }`}
-  title={musicPlaying ? "Musik ausschalten" : "Musik einschalten"}
->
-  {musicPlaying ? (
-    <VolumeX className="h-5 w-5" />
-  ) : (
-    <Music className="h-5 w-5" />
-  )}
-</Button>
+            setActiveCategoryCount(catCount);
+            setAnswered(
+              makeAnswered(
+                catCount,
+                POINT_VALUES.length
+              )
+            );
 
-        <Button
-          variant="outline"
-          onClick={() => setScreen("editor")}
-          className="border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
-        >
-          <Pencil className="mr-2 h-4 w-4" />
-          Fragen bearbeiten
-        </Button>
+            setScreen("game");
+          }}
+        />
+
+        <div className="fixed top-4 right-4 flex items-center gap-2 z-50">
+          <MusicControls />
+
+          <Button
+            variant="outline"
+            onClick={() => setScreen("editor")}
+            className="border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Fragen bearbeiten
+          </Button>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   const activeQuestion =
-    active !== null ? categories[active.category].questions[active.question] : null;
-  const activeValue =
-  active !== null
-    ? categories[active.category].questions[active.question].value ??
-      POINT_VALUES[active.question]
-    : 0;
-  const activeCategory = active !== null ? categories[active.category].name : "";
+    active !== null
+      ? categories[active.category].questions[
+          active.question
+        ]
+      : null;
 
-  const handleResolve = (playerIndex: number | null, correct: boolean) => {
+  const activeValue =
+    active !== null
+      ? categories[active.category].questions[
+          active.question
+        ].value ?? POINT_VALUES[active.question]
+      : 0;
+
+  const activeCategory =
+    active !== null
+      ? categories[active.category].name
+      : "";
+
+  const handleResolve = (
+    playerIndex: number | null,
+    correct: boolean
+  ) => {
     if (!active) return;
 
-   const wrongSounds = [
-  "/sounds/Wrong/Dummkopf.WAV",
-  "/sounds/Wrong/HAHA.WAV",
-  "/sounds/Wrong/Homer Simpson Langweilig.mp3",
-  "/sounds/Wrong/Homer Simpson Nein!.mp3",
-  "/sounds/Wrong/Nein, Nein, Nein, Nein! (Hitler Meme) - Sound Effect for editing.mp3",
-  "/sounds/Wrong/zonk.mp3",
-];
+    const wrongSounds = [
+      "/sounds/Wrong/Dummkopf.WAV",
+      "/sounds/Wrong/HAHA.WAV",
+      "/sounds/Wrong/Homer Simpson Langweilig.mp3",
+      "/sounds/Wrong/Homer Simpson Nein!.mp3",
+      "/sounds/Wrong/Nein, Nein, Nein, Nein! (Hitler Meme) - Sound Effect for editing.mp3",
+      "/sounds/Wrong/zonk.mp3",
+    ];
 
-const correctSounds = [
-  "/sounds/Correct/Ja sound effect Hitler.mp3",
-  "/sounds/Correct/Who Wants to Be a Millionaire - £100 – £500 Correct Answer [SOUND EFFECT].mp3",
-  "/sounds/Correct/Zelda Receive Item - Sound Effect for editing.mp3",
-  "/sounds/Correct/Zeldariddle.mp3",
-  "/sounds/Correct/Yeah Baby Yea.WAV",
-];
+    const correctSounds = [
+      "/sounds/Correct/Ja sound effect Hitler.mp3",
+      "/sounds/Correct/Who Wants to Be a Millionaire - £100 – £500 Correct Answer [SOUND EFFECT].mp3",
+      "/sounds/Correct/Zelda Receive Item - Sound Effect for editing.mp3",
+      "/sounds/Correct/Zeldariddle.mp3",
+      "/sounds/Correct/Yeah Baby Yea.WAV",
+      "/sounds/Correct/Al.WAV",
+    ];
 
-const soundPath = correct
-  ? correctSounds[Math.floor(Math.random() * correctSounds.length)]
-  : wrongSounds[Math.floor(Math.random() * wrongSounds.length)];
+    const soundPath = correct
+      ? correctSounds[
+          Math.floor(
+            Math.random() * correctSounds.length
+          )
+        ]
+      : wrongSounds[
+          Math.floor(
+            Math.random() * wrongSounds.length
+          )
+        ];
 
-const sound = new Audio(soundPath);
-sound.volume = 0.50;
-sound.play();
+    const sound = new Audio(soundPath);
+    sound.volume = 0.5;
+
+    sound.play().catch((error) => {
+      console.error(
+        "Sound konnte nicht abgespielt werden:",
+        soundPath,
+        error
+      );
+    });
 
     if (playerIndex !== null) {
       setPlayers((prev) =>
         prev.map((p, i) =>
           i === playerIndex
-            ? { ...p, score: p.score + (correct ? activeValue : -Math.round(activeValue / 2)) }
+            ? {
+                ...p,
+                score:
+                  p.score +
+                  (correct
+                    ? activeValue
+                    : -Math.round(
+                        activeValue / 2
+                      )),
+              }
             : p
         )
       );
     }
+
     setAnswered((prev) => {
-      const next = prev.map((row) => [...row]);
-      next[active.category][active.question] = true;
+      const next = prev.map((row) => [
+        ...row,
+      ]);
+
+      next[active.category][
+        active.question
+      ] = true;
+
       return next;
     });
+
     setActive(null);
   };
 
   const winner = allAnswered
-    ? [...players].sort((a, b) => b.score - a.score)[0]
+    ? [...players].sort(
+        (a, b) => b.score - a.score
+      )[0]
     : null;
 
   return (
     <div className="min-h-screen p-3 md:p-6 max-w-7xl mx-auto">
-
-<div className="fixed top-4 right-4 z-50">
-  <Button
-    variant="outline"
-    size="icon"
-    onClick={toggleMusic}
-    className={`h-11 w-11 rounded-full border-primary/50 backdrop-blur-md transition-all duration-300 ${
-      musicPlaying
-        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:bg-primary/90"
-        : "bg-background/70 text-primary hover:bg-primary hover:text-primary-foreground"
-    }`}
-    title={musicPlaying ? "Musik ausschalten" : "Musik einschalten"}
-  >
-    {musicPlaying ? (
-      <VolumeX className="h-5 w-5" />
-    ) : (
-      <Music className="h-5 w-5" />
-    )}
-  </Button>
-</div>
-
+      <div className="fixed top-4 right-4 z-50">
+        <MusicControls />
+      </div>
 
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6">
         <h1
           className="font-display text-3xl md:text-5xl text-foreground tracking-tight uppercase"
-          style={{ textShadow: "0 0 30px oklch(0.55 0.24 278 / 0.6)" }}
+          style={{
+            textShadow:
+              "0 0 30px oklch(0.55 0.24 278 / 0.6)",
+          }}
         >
           {meta.title}
         </h1>
+
         <Button
           onClick={() => setScreen("start")}
           className="glass text-foreground hover:bg-white/15 border-white/15 rounded-xl"
@@ -243,7 +368,8 @@ sound.play();
       {winner && (
         <div className="mb-4 md:mb-6 glass-strong rounded-3xl p-4 md:p-6 text-center glow-primary animate-in fade-in zoom-in">
           <p className="font-display text-2xl md:text-4xl uppercase text-foreground tracking-wide">
-            🏆 {winner.name} gewinnt mit {winner.score}!
+            🏆 {winner.name} gewinnt mit{" "}
+            {winner.score}!
           </p>
         </div>
       )}
@@ -251,7 +377,12 @@ sound.play();
       <Board
         categories={categories}
         answered={answered}
-        onSelect={(category, question) => setActive({ category, question })}
+        onSelect={(category, question) =>
+          setActive({
+            category,
+            question,
+          })
+        }
       />
 
       <div className="mt-4 md:mt-6">
