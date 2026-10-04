@@ -6,7 +6,7 @@ import { t as twMerge } from "../_libs/tailwind-merge.mjs";
 import { R as Root$1 } from "../_libs/radix-ui__react-label.mjs";
 import { R as Root, P as Portal, C as Content, a as Close, O as Overlay, T as Title, D as Description } from "../_libs/radix-ui__react-dialog.mjs";
 import { c as createClient } from "../_libs/supabase__supabase-js.mjs";
-import { P as Pencil, C as Crown, D as Dices, a as ChartColumn, A as ArrowLeft, R as RotateCcw, V as VolumeX, M as Music, S as SlidersHorizontal, T as Trophy, b as Target, H as Hand, c as TrendingUp, d as TrendingDown, e as Check, X, f as Timer, E as Eye } from "../_libs/lucide-react.mjs";
+import { P as Pencil, C as Crown, D as Dices, a as ChartColumn, A as ArrowLeft, R as RotateCcw, b as ArrowUp, c as ArrowDown, T as Trash2, d as Plus, V as VolumeX, M as Music, S as SlidersHorizontal, e as Trophy, f as Target, H as Hand, g as TrendingUp, h as TrendingDown, i as Check, X, G as GripVertical, j as ArrowRight, k as Timer, E as Eye } from "../_libs/lucide-react.mjs";
 import "../_libs/radix-ui__react-compose-refs.mjs";
 import "../_libs/radix-ui__react-primitive.mjs";
 import "../_libs/react-dom.mjs";
@@ -550,6 +550,17 @@ const DialogDescription = reactExports.forwardRef(({ className, ...props }, ref)
   }
 ));
 DialogDescription.displayName = Description.displayName;
+function shuffleOrder(items) {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  if (shuffled.length > 1 && shuffled.every((item, i) => item === items[i])) {
+    shuffled.push(shuffled.shift());
+  }
+  return shuffled;
+}
 function QuestionModal({
   open,
   question,
@@ -567,6 +578,12 @@ function QuestionModal({
     correctCoGuessers,
     setCorrectCoGuessers
   ] = reactExports.useState([]);
+  const [orderedItems, setOrderedItems] = reactExports.useState([]);
+  const [draggedItem, setDraggedItem] = reactExports.useState(null);
+  const isOrderQuestion = question?.type === "order";
+  const solutionItems = question?.orderItems ?? [];
+  const orderIsValid = solutionItems.length >= 2 && solutionItems.every((item) => item.trim().length > 0) && new Set(solutionItems.map((item) => item.trim().toLocaleLowerCase("de"))).size === solutionItems.length;
+  const orderIsCorrect = orderIsValid && orderedItems.length === solutionItems.length && orderedItems.every((item, index) => item === solutionItems[index]);
   reactExports.useEffect(() => {
     if (open) {
       setRevealed(false);
@@ -576,10 +593,12 @@ function QuestionModal({
       setTimeLeft(null);
       setCoGuessers([]);
       setCorrectCoGuessers([]);
+      setOrderedItems(question?.type === "order" ? shuffleOrder(question.orderItems ?? []) : []);
+      setDraggedItem(null);
     }
-  }, [open, players.length]);
+  }, [open, players.length, question]);
   reactExports.useEffect(() => {
-    if (timeLeft === null || timeLeft <= 0) {
+    if (!open || revealed || timeLeft === null || timeLeft <= 0) {
       return;
     }
     const timer = setTimeout(() => {
@@ -591,10 +610,21 @@ function QuestionModal({
       });
     }, 1e3);
     return () => clearTimeout(timer);
-  }, [timeLeft]);
+  }, [timeLeft, open, revealed]);
   if (!question) {
     return null;
   }
+  const moveOrderItem = (item, targetIndex) => {
+    if (revealed) return;
+    setOrderedItems((previous) => {
+      const fromIndex = previous.indexOf(item);
+      if (fromIndex < 0 || targetIndex < 0 || targetIndex >= previous.length) return previous;
+      const next = [...previous];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  };
   const toggleCoGuesser = (playerIndex) => {
     setCoGuessers(
       (prev) => prev.includes(playerIndex) ? prev.filter(
@@ -627,7 +657,11 @@ function QuestionModal({
       children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
         DialogContent,
         {
-          className: "\r\n          max-w-3xl\r\n          p-0\r\n          overflow-hidden\r\n          rounded-[1.75rem]\r\n          border border-white/[0.12]\r\n          bg-background/95\r\n          text-foreground\r\n          backdrop-blur-2xl\r\n          shadow-[0_25px_100px_-20px_rgba(0,0,0,0.8),0_0_60px_-20px_var(--indigo-glow)]\r\n        ",
+          style: isOrderQuestion ? {
+            width: "calc(100vw - 2rem)",
+            maxWidth: "1200px"
+          } : void 0,
+          className: "\r\n          max-w-3xl\r\n          p-0\r\n          max-h-[90dvh]\r\n          overflow-y-auto\r\n          rounded-[1.75rem]\r\n          border border-white/[0.12]\r\n          bg-background/95\r\n          text-foreground\r\n          backdrop-blur-2xl\r\n          shadow-[0_25px_100px_-20px_rgba(0,0,0,0.8),0_0_60px_-20px_var(--indigo-glow)]\r\n        ",
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs(
               "div",
@@ -677,6 +711,11 @@ function QuestionModal({
             /* @__PURE__ */ jsxRuntimeExports.jsxs(
               "div",
               {
+                style: isOrderQuestion ? {
+                  minHeight: "auto",
+                  paddingTop: "2.5rem",
+                  paddingBottom: "2rem"
+                } : void 0,
                 className: "\r\n            relative\r\n            min-h-64\r\n            md:min-h-[310px]\r\n            px-7 py-10\r\n            md:px-12 md:py-14\r\n            flex\r\n            items-center\r\n            justify-center\r\n            text-center\r\n            overflow-hidden\r\n          ",
                 children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -728,7 +767,7 @@ function QuestionModal({
                       style: {
                         textShadow: "0 3px 30px rgba(0,0,0,0.35)"
                       },
-                      children: revealed ? question.answer : question.question.replace(
+                      children: revealed ? isOrderQuestion ? orderIsValid ? "Die richtige Reihenfolge" : "Reihenfolge nicht eingerichtet" : question.answer : question.question.replace(
                         /\s+(?=[A-D]:)/g,
                         "\n"
                       )
@@ -738,6 +777,94 @@ function QuestionModal({
                 ]
               }
             ),
+            isOrderQuestion && /* @__PURE__ */ jsxRuntimeExports.jsx("section", { className: "relative px-4 pb-6 md:px-8 space-y-4", "aria-label": "Reihenfolge", children: !orderIsValid ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { role: "alert", className: "text-center text-destructive", children: "Für diese Frage fehlen mindestens zwei unterschiedliche, ausgefüllte Begriffe. Bitte im Editor ergänzen." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-center text-sm text-muted-foreground", children: revealed ? "Abgegebene Reihenfolge:" : "Ordne von links nach rechts." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "ol",
+                {
+                  className: "grid gap-3 overflow-x-auto pb-3",
+                  style: { gridTemplateColumns: `repeat(${Math.max(orderedItems.length, 1)}, minmax(150px, 1fr))` },
+                  "aria-label": "Eure Reihenfolge",
+                  tabIndex: 0,
+                  children: orderedItems.map((item, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "li",
+                    {
+                      draggable: !revealed,
+                      onDragStart: (event) => {
+                        setDraggedItem(item);
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", item);
+                      },
+                      onDragEnd: () => setDraggedItem(null),
+                      onDragOver: (event) => {
+                        if (!revealed && draggedItem !== null) {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                        }
+                      },
+                      onDrop: (event) => {
+                        event.preventDefault();
+                        if (!revealed && draggedItem !== null) moveOrderItem(draggedItem, index);
+                        setDraggedItem(null);
+                      },
+                      className: `min-w-0 flex flex-col rounded-2xl border p-3 gap-3 transition-colors ${revealed ? item === solutionItems[index] ? "border-emerald-400/50 bg-emerald-500/10" : "border-destructive/50 bg-destructive/10" : "border-primary/30 bg-primary/10 cursor-grab active:cursor-grabbing"} ${draggedItem === item ? "opacity-50" : ""}`,
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between text-xs text-muted-foreground", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                            "Position ",
+                            index + 1
+                          ] }),
+                          !revealed && /* @__PURE__ */ jsxRuntimeExports.jsx(GripVertical, { className: "h-4 w-4", "aria-hidden": "true" }),
+                          revealed && (item === solutionItems[index] ? /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { className: "h-4 w-4 text-emerald-400", "aria-label": "Richtige Position" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "h-4 w-4 text-destructive", "aria-label": "Falsche Position" }))
+                        ] }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "flex-1 flex items-center justify-center min-h-12 font-semibold text-center break-words whitespace-pre-wrap [overflow-wrap:anywhere]", children: item }),
+                        !revealed && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between gap-2", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            Button,
+                            {
+                              type: "button",
+                              variant: "outline",
+                              size: "sm",
+                              disabled: index === 0,
+                              "aria-label": `${item} nach links verschieben`,
+                              onClick: () => moveOrderItem(item, index - 1),
+                              className: "rounded-lg border-white/15 bg-white/5",
+                              children: /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowLeft, { className: "h-4 w-4" })
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            Button,
+                            {
+                              type: "button",
+                              variant: "outline",
+                              size: "sm",
+                              disabled: index === orderedItems.length - 1,
+                              "aria-label": `${item} nach rechts verschieben`,
+                              onClick: () => moveOrderItem(item, index + 1),
+                              className: "rounded-lg border-white/15 bg-white/5",
+                              children: /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowRight, { className: "h-4 w-4" })
+                            }
+                          )
+                        ] })
+                      ]
+                    },
+                    item
+                  ))
+                }
+              ),
+              revealed && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl border border-emerald-400/25 bg-emerald-500/5 p-4 space-y-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { role: "status", className: `text-center font-semibold ${orderIsCorrect ? "text-emerald-400" : "text-destructive"}`, children: orderIsCorrect ? "Alles richtig sortiert!" : "Die Reihenfolge stimmt noch nicht." }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground text-center", children: "Richtige Reihenfolge:" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: "space-y-2", children: solutionItems.map((item, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex gap-3 break-words", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "font-bold text-emerald-400", children: [
+                    index + 1,
+                    "."
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 break-words", children: item })
+                ] }, item)) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground text-center", children: "Punkte und Mitrater unten wie gewohnt auswerten." })
+              ] })
+            ] }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs(
               "div",
               {
@@ -897,7 +1024,7 @@ function QuestionModal({
                           }
                         ),
                         /* @__PURE__ */ jsxRuntimeExports.jsx(Eye, { className: "relative z-10 mr-2 h-5 w-5" }),
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "relative z-10", children: "Antwort zeigen" })
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "relative z-10", children: isOrderQuestion ? "Reihenfolge prüfen" : "Antwort zeigen" })
                       ]
                     }
                   ) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
@@ -1685,40 +1812,89 @@ function Editor({
   onBack
 }) {
   const [draft, setDraft] = reactExports.useState(
-    () => initial.map((c) => ({ name: c.name, questions: c.questions.map((q) => ({ ...q })) }))
+    () => initial.map((c) => ({
+      ...c,
+      questions: c.questions.map((q) => ({
+        ...q,
+        ...q.orderItems ? { orderItems: [...q.orderItems] } : {}
+      }))
+    }))
   );
   const [titleDraft, setTitleDraft] = reactExports.useState(initialMeta.title);
   const [subtitleDraft, setSubtitleDraft] = reactExports.useState(initialMeta.subtitle);
   const [activeCat, setActiveCat] = reactExports.useState(0);
+  const [validationError, setValidationError] = reactExports.useState("");
   const updateCatName = (name) => {
     setDraft((prev) => prev.map((c, i) => i === activeCat ? { ...c, name } : c));
   };
+  const patchQuestion = (qIdx, update) => {
+    setValidationError("");
+    setDraft((prev) => prev.map(
+      (c, i) => i === activeCat ? { ...c, questions: c.questions.map((q, j) => j === qIdx ? update(q) : q) } : c
+    ));
+  };
   const updateQ = (qIdx, field, value) => {
-    setDraft(
-      (prev) => prev.map(
-        (c, i) => i === activeCat ? {
-          ...c,
-          questions: c.questions.map(
-            (q, j) => j === qIdx ? { ...q, [field]: value } : q
-          )
-        } : c
-      )
-    );
+    patchQuestion(qIdx, (q) => ({ ...q, [field]: value }));
   };
   const updateQValue = (qIdx, value) => {
-    setDraft(
-      (prev) => prev.map(
-        (c, i) => i === activeCat ? {
-          ...c,
-          questions: c.questions.map(
-            (q, j) => j === qIdx ? { ...q, value } : q
-          )
-        } : c
-      )
-    );
+    patchQuestion(qIdx, (q) => ({ ...q, value }));
+  };
+  const updateQuestionType = (qIdx, type) => {
+    patchQuestion(qIdx, (q) => ({
+      ...q,
+      type,
+      ...type === "order" && !q.orderItems?.length ? { orderItems: ["", ""] } : {}
+    }));
+  };
+  const updateOrderItem = (qIdx, itemIndex, text) => {
+    patchQuestion(qIdx, (q) => ({
+      ...q,
+      orderItems: (q.orderItems ?? []).map((item, i) => i === itemIndex ? text : item)
+    }));
+  };
+  const moveOrderItem = (qIdx, itemIndex, direction) => {
+    patchQuestion(qIdx, (q) => {
+      const items = [...q.orderItems ?? []];
+      const target = itemIndex + direction;
+      if (target < 0 || target >= items.length) return q;
+      [items[itemIndex], items[target]] = [items[target], items[itemIndex]];
+      return { ...q, orderItems: items };
+    });
   };
   const handleSave = () => {
-    onSave(draft);
+    for (let cIdx = 0; cIdx < draft.length; cIdx++) {
+      for (let qIdx = 0; qIdx < draft[cIdx].questions.length; qIdx++) {
+        const q = draft[cIdx].questions[qIdx];
+        if (q.type !== "order") continue;
+        const items = (q.orderItems ?? []).map((item) => item.trim());
+        const location = `${draft[cIdx].name || `Kategorie ${cIdx + 1}`}, Frage ${qIdx + 1}`;
+        let error = "";
+        if (items.length < 2 || items.some((item) => !item)) {
+          error = `${location}: Bitte mindestens zwei Begriffe eintragen und leere Felder ausfüllen oder entfernen.`;
+        } else if (new Set(items.map((item) => item.toLocaleLowerCase("de"))).size !== items.length) {
+          error = `${location}: Bitte unterschiedliche Begriffe verwenden, damit die Reihenfolge eindeutig ist.`;
+        }
+        if (error) {
+          setActiveCat(cIdx);
+          setValidationError(error);
+          return;
+        }
+      }
+    }
+    const categories = draft.map((c) => ({
+      ...c,
+      questions: c.questions.map((q) => {
+        if (q.type !== "order") return { ...q };
+        const orderItems = (q.orderItems ?? []).map((item) => item.trim());
+        return {
+          ...q,
+          orderItems,
+          // Antwort bleibt auch für vorhandene Export- und Anzeigewege verfügbar.
+          answer: orderItems.map((item, index) => `${index + 1}. ${item}`).join("\n")
+        };
+      })
+    }));
+    onSave(categories);
     onSaveMeta({
       title: titleDraft.trim() || initialMeta.title,
       subtitle: subtitleDraft.trim()
@@ -1733,17 +1909,10 @@ function Editor({
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-h-screen p-3 md:p-6 max-w-5xl mx-auto", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "flex items-center justify-between gap-2 mb-6", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        Button,
-        {
-          onClick: onBack,
-          className: "glass text-foreground hover:bg-white/15 border-white/15 rounded-xl",
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowLeft, { className: "mr-2 h-4 w-4" }),
-            " Zurück"
-          ]
-        }
-      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(Button, { onClick: onBack, className: "glass text-foreground hover:bg-white/15 border-white/15 rounded-xl", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowLeft, { className: "mr-2 h-4 w-4" }),
+        " Zurück"
+      ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "h1",
         {
@@ -1752,17 +1921,10 @@ function Editor({
           children: "Bearbeiten"
         }
       ),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        Button,
-        {
-          onClick: handleReset,
-          className: "glass text-destructive hover:bg-destructive/20 border-destructive/30 rounded-xl",
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { className: "mr-2 h-4 w-4" }),
-            " Reset"
-          ]
-        }
-      )
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(Button, { onClick: handleReset, className: "glass text-destructive hover:bg-destructive/20 border-destructive/30 rounded-xl", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { className: "mr-2 h-4 w-4" }),
+        " Reset"
+      ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-6", children: draft.map((c, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
       "button",
@@ -1804,66 +1966,150 @@ function Editor({
       ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "glass-strong rounded-3xl p-4 md:p-6 space-y-6 glow-primary", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "text-muted-foreground text-xs uppercase tracking-[0.2em] mb-2 block", children: "Kategoriename" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Input,
-          {
-            value: draft[activeCat].name,
-            onChange: (e) => updateCatName(e.target.value),
-            className: "glass border-white/10 text-foreground font-display text-lg h-12 rounded-xl",
-            maxLength: 40
-          }
-        )
+      draft[activeCat] && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "text-muted-foreground text-xs uppercase tracking-[0.2em] mb-2 block", children: "Kategoriename" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            Input,
+            {
+              value: draft[activeCat].name,
+              onChange: (e) => updateCatName(e.target.value),
+              className: "glass border-white/10 text-foreground font-display text-lg h-12 rounded-xl",
+              maxLength: 40
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-5", children: draft[activeCat].questions.map((q, qIdx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "glass rounded-2xl p-4 space-y-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "text-xs text-muted-foreground uppercase tracking-[0.18em]", children: "Punkte" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              Input,
+              {
+                type: "number",
+                min: 0,
+                value: q.value ?? POINT_VALUES[qIdx],
+                onChange: (e) => updateQValue(qIdx, e.target.value === "" ? void 0 : Number(e.target.value)),
+                className: "glass border-white/10 text-foreground font-display text-lg h-11 rounded-xl w-28"
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", role: "group", "aria-label": `Fragetyp für Frage ${qIdx + 1}`, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-muted-foreground uppercase tracking-[0.18em] mr-1", children: "Fragetyp" }),
+            ["normal", "order"].map((type) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+              Button,
+              {
+                type: "button",
+                onClick: () => updateQuestionType(qIdx, type),
+                "aria-pressed": (q.type ?? "normal") === type,
+                className: `rounded-xl border ${(q.type ?? "normal") === type ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90" : "glass text-foreground border-white/10 hover:bg-white/10"}`,
+                children: type === "normal" ? "Normal" : "Reihenfolge"
+              },
+              type
+            ))
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "text-xs text-muted-foreground uppercase tracking-[0.18em]", children: "Frage" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              Textarea,
+              {
+                value: q.question,
+                onChange: (e) => updateQ(qIdx, "question", e.target.value),
+                rows: 2,
+                className: "glass border-white/10 text-foreground rounded-xl mt-1"
+              }
+            )
+          ] }),
+          q.type === "order" ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground uppercase tracking-[0.18em]", children: "Richtige Reihenfolge" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground", children: "Oben steht der erste Begriff, unten der letzte. Im Spiel werden die Begriffe gemischt. Gib in der Frage die Richtung an, zum Beispiel „vom ältesten zum neuesten“." }),
+            (q.orderItems ?? []).map((item, itemIndex) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap sm:flex-nowrap items-center gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "w-6 shrink-0 text-primary font-bold", children: [
+                itemIndex + 1,
+                "."
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                Input,
+                {
+                  value: item,
+                  onChange: (e) => updateOrderItem(qIdx, itemIndex, e.target.value),
+                  "aria-label": `Begriff ${itemIndex + 1} für Frage ${qIdx + 1}`,
+                  placeholder: `Begriff ${itemIndex + 1}`,
+                  className: "glass border-white/10 text-foreground rounded-xl h-11 min-w-0 flex-1"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-1 ml-auto", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  Button,
+                  {
+                    type: "button",
+                    variant: "ghost",
+                    size: "icon",
+                    disabled: itemIndex === 0,
+                    "aria-label": `Begriff ${itemIndex + 1} nach oben`,
+                    onClick: () => moveOrderItem(qIdx, itemIndex, -1),
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowUp, { className: "h-4 w-4" })
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  Button,
+                  {
+                    type: "button",
+                    variant: "ghost",
+                    size: "icon",
+                    disabled: itemIndex === (q.orderItems?.length ?? 0) - 1,
+                    "aria-label": `Begriff ${itemIndex + 1} nach unten`,
+                    onClick: () => moveOrderItem(qIdx, itemIndex, 1),
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowDown, { className: "h-4 w-4" })
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  Button,
+                  {
+                    type: "button",
+                    variant: "ghost",
+                    size: "icon",
+                    "aria-label": `Begriff ${itemIndex + 1} entfernen`,
+                    className: "text-destructive hover:bg-destructive/15",
+                    onClick: () => patchQuestion(qIdx, (current) => ({
+                      ...current,
+                      orderItems: (current.orderItems ?? []).filter((_, i) => i !== itemIndex)
+                    })),
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "h-4 w-4" })
+                  }
+                )
+              ] })
+            ] }, itemIndex)),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              Button,
+              {
+                type: "button",
+                variant: "outline",
+                className: "glass border-white/10 rounded-xl",
+                onClick: () => patchQuestion(qIdx, (current) => ({
+                  ...current,
+                  orderItems: [...current.orderItems ?? [], ""]
+                })),
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: "mr-2 h-4 w-4" }),
+                  " Begriff hinzufügen"
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground", children: "Die Antwort wird beim Speichern aus dieser Reihenfolge erstellt." })
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "text-xs text-muted-foreground uppercase tracking-[0.18em]", children: "Antwort" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              Input,
+              {
+                value: q.answer,
+                onChange: (e) => updateQ(qIdx, "answer", e.target.value),
+                className: "glass border-white/10 text-foreground rounded-xl mt-1 h-11"
+              }
+            )
+          ] })
+        ] }, `${activeCat}-${qIdx}`)) })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-5", children: draft[activeCat].questions.map((q, qIdx) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "div",
-        {
-          className: "glass rounded-2xl p-4 space-y-3",
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "text-xs text-muted-foreground uppercase tracking-[0.18em]", children: "Punkte" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                Input,
-                {
-                  type: "number",
-                  min: 0,
-                  value: q.value ?? POINT_VALUES[qIdx],
-                  onChange: (e) => updateQValue(
-                    qIdx,
-                    e.target.value === "" ? void 0 : Number(e.target.value)
-                  ),
-                  className: "glass border-white/10 text-foreground font-display text-lg h-11 rounded-xl w-28"
-                }
-              )
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "text-xs text-muted-foreground uppercase tracking-[0.18em]", children: "Frage" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                Textarea,
-                {
-                  value: q.question,
-                  onChange: (e) => updateQ(qIdx, "question", e.target.value),
-                  rows: 2,
-                  className: "glass border-white/10 text-foreground rounded-xl mt-1"
-                }
-              )
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "text-xs text-muted-foreground uppercase tracking-[0.18em]", children: "Antwort" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                Input,
-                {
-                  value: q.answer,
-                  onChange: (e) => updateQ(qIdx, "answer", e.target.value),
-                  className: "glass border-white/10 text-foreground rounded-xl mt-1 h-11"
-                }
-              )
-            ] })
-          ]
-        },
-        qIdx
-      )) }),
+      validationError && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { role: "alert", className: "rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive", children: validationError }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         Button,
         {

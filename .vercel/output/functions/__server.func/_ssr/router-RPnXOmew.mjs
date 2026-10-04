@@ -14,7 +14,7 @@ import "async_hooks";
 import "stream";
 import "node:stream";
 import "../_libs/isbot.mjs";
-const appCss = "/assets/styles-DxtnYllB.css";
+const appCss = "/assets/styles-B8r1bLEB.css";
 function reportLovableError(error, context = {}) {
   if (typeof window === "undefined") return;
   window.__lovableEvents?.captureException?.(
@@ -121,7 +121,7 @@ function RootComponent() {
   const { queryClient } = Route$1.useRouteContext();
   return /* @__PURE__ */ jsxRuntimeExports.jsx(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Outlet, {}) });
 }
-const $$splitComponentImporter = () => import("./index-C45sQTla.mjs");
+const $$splitComponentImporter = () => import("./index-QkU38NR-.mjs");
 const Route = createFileRoute()({
   head: () => ({
     meta: [{
