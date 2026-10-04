@@ -2,6 +2,10 @@ export interface Question {
   question: string;
   answer: string;
   value?: number;
+  // Ohne type bleiben bereits gespeicherte Fragen normale Fragen.
+  type?: "normal" | "order";
+  // Begriffe in der korrekten Reihenfolge. Gemischt wird nur im Modal.
+  orderItems?: string[];
 }
 
 export interface Category {

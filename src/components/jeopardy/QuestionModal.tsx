@@ -8,6 +8,9 @@ import {
   Hand,
   Eye,
   Trophy,
+  ArrowLeft,
+  ArrowRight,
+  GripVertical,
 } from "lucide-react";
 import type { Question } from "@/lib/jeopardy-data";
 
@@ -24,6 +27,20 @@ interface QuestionModalProps {
     correctCoGuessers: number[]
   ) => void;
   onClose: () => void;
+}
+
+// Fisher-Yates auf einer Kopie: Die gespeicherte Lösung bleibt unverändert.
+function shuffleOrder(items: string[]): string[] {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  // Nicht bereits mit der fertigen Lösung starten.
+  if (shuffled.length > 1 && shuffled.every((item, i) => item === items[i])) {
+    shuffled.push(shuffled.shift()!);
+  }
+  return shuffled;
 }
 
 export function QuestionModal({
@@ -51,6 +68,16 @@ export function QuestionModal({
     setCorrectCoGuessers,
   ] = useState<number[]>([]);
 
+  const [orderedItems, setOrderedItems] = useState<string[]>([]);
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
+  const isOrderQuestion = question?.type === "order";
+  const solutionItems = question?.orderItems ?? [];
+  const orderIsValid = solutionItems.length >= 2 &&
+    solutionItems.every((item) => item.trim().length > 0) &&
+    new Set(solutionItems.map((item) => item.trim().toLocaleLowerCase("de"))).size === solutionItems.length;
+  const orderIsCorrect = orderIsValid && orderedItems.length === solutionItems.length &&
+    orderedItems.every((item, index) => item === solutionItems[index]);
+
   useEffect(() => {
     if (open) {
       setRevealed(false);
@@ -62,11 +89,14 @@ export function QuestionModal({
       setTimeLeft(null);
       setCoGuessers([]);
       setCorrectCoGuessers([]);
+      setOrderedItems(question?.type === "order" ? shuffleOrder(question.orderItems ?? []) : []);
+      setDraggedItem(null);
     }
-  }, [open, players.length]);
+  }, [open, players.length, question]);
 
   useEffect(() => {
     if (
+      !open || revealed ||
       timeLeft === null ||
       timeLeft <= 0
     ) {
@@ -84,11 +114,23 @@ export function QuestionModal({
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [timeLeft]);
+  }, [timeLeft, open, revealed]);
 
   if (!question) {
     return null;
   }
+
+  const moveOrderItem = (item: string, targetIndex: number) => {
+    if (revealed) return;
+    setOrderedItems((previous) => {
+      const fromIndex = previous.indexOf(item);
+      if (fromIndex < 0 || targetIndex < 0 || targetIndex >= previous.length) return previous;
+      const next = [...previous];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  };
 
   const toggleCoGuesser = (
     playerIndex: number
@@ -148,10 +190,15 @@ export function QuestionModal({
       }
     >
       <DialogContent
+        style={isOrderQuestion ? {
+          width: "calc(100vw - 2rem)",
+          maxWidth: "1200px",
+        } : undefined}
         className="
           max-w-3xl
           p-0
-          overflow-hidden
+          max-h-[90dvh]
+          overflow-y-auto
           rounded-[1.75rem]
           border border-white/[0.12]
           bg-background/95
@@ -246,6 +293,11 @@ export function QuestionModal({
 
         {/* FRAGE / ANTWORT */}
         <div
+          style={isOrderQuestion ? {
+            minHeight: "auto",
+            paddingTop: "2.5rem",
+            paddingBottom: "2rem",
+          } : undefined}
           className="
             relative
             min-h-64
@@ -334,13 +386,122 @@ export function QuestionModal({
             }}
           >
             {revealed
-              ? question.answer
+              ? (isOrderQuestion
+                  ? (orderIsValid ? "Die richtige Reihenfolge" : "Reihenfolge nicht eingerichtet")
+                  : question.answer)
               : question.question.replace(
                   /\s+(?=[A-D]:)/g,
                   "\n"
                 )}
           </p>
         </div>
+
+        {/* REIHENFOLGE: eigener Bereich, normale Fragen nutzen weiter das Original. */}
+        {isOrderQuestion && (
+          <section className="relative px-4 pb-6 md:px-8 space-y-4" aria-label="Reihenfolge">
+            {!orderIsValid ? (
+              <p role="alert" className="text-center text-destructive">
+                Für diese Frage fehlen mindestens zwei unterschiedliche, ausgefüllte Begriffe.
+                Bitte im Editor ergänzen.
+              </p>
+            ) : (
+              <>
+                <p className="text-center text-sm text-muted-foreground">
+                  {revealed
+                    ? "Abgegebene Reihenfolge:"
+                    : "Ordne von links nach rechts."}
+                </p>
+                <ol
+                  className="grid gap-3 overflow-x-auto pb-3"
+                  style={{ gridTemplateColumns: `repeat(${Math.max(orderedItems.length, 1)}, minmax(150px, 1fr))` }}
+                  aria-label="Eure Reihenfolge"
+                  tabIndex={0}
+                >
+                  {orderedItems.map((item, index) => (
+                    <li
+                      key={item}
+                      draggable={!revealed}
+                      onDragStart={(event) => {
+                        setDraggedItem(item);
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", item);
+                      }}
+                      onDragEnd={() => setDraggedItem(null)}
+                      onDragOver={(event) => {
+                        if (!revealed && draggedItem !== null) {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                        }
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        if (!revealed && draggedItem !== null) moveOrderItem(draggedItem, index);
+                        setDraggedItem(null);
+                      }}
+                      className={`min-w-0 flex flex-col rounded-2xl border p-3 gap-3 transition-colors ${
+                        revealed
+                          ? item === solutionItems[index]
+                            ? "border-emerald-400/50 bg-emerald-500/10"
+                            : "border-destructive/50 bg-destructive/10"
+                          : "border-primary/30 bg-primary/10 cursor-grab active:cursor-grabbing"
+                      } ${draggedItem === item ? "opacity-50" : ""}`}
+                    >
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Position {index + 1}</span>
+                        {!revealed && <GripVertical className="h-4 w-4" aria-hidden="true" />}
+                        {revealed && (item === solutionItems[index]
+                          ? <Check className="h-4 w-4 text-emerald-400" aria-label="Richtige Position" />
+                          : <X className="h-4 w-4 text-destructive" aria-label="Falsche Position" />)}
+                      </div>
+                      <p className="flex-1 flex items-center justify-center min-h-12 font-semibold text-center break-words whitespace-pre-wrap [overflow-wrap:anywhere]">{item}</p>
+                      {!revealed && (
+                        <div className="flex justify-between gap-2">
+                          <Button
+                            type="button" variant="outline" size="sm"
+                            disabled={index === 0}
+                            aria-label={`${item} nach links verschieben`}
+                            onClick={() => moveOrderItem(item, index - 1)}
+                            className="rounded-lg border-white/15 bg-white/5"
+                          >
+                            <ArrowLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button" variant="outline" size="sm"
+                            disabled={index === orderedItems.length - 1}
+                            aria-label={`${item} nach rechts verschieben`}
+                            onClick={() => moveOrderItem(item, index + 1)}
+                            className="rounded-lg border-white/15 bg-white/5"
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+                {revealed && (
+                  <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/5 p-4 space-y-3">
+                    <p role="status" className={`text-center font-semibold ${orderIsCorrect ? "text-emerald-400" : "text-destructive"}`}>
+                      {orderIsCorrect ? "Alles richtig sortiert!" : "Die Reihenfolge stimmt noch nicht."}
+                    </p>
+                    <p className="text-sm text-muted-foreground text-center">Richtige Reihenfolge:</p>
+                    <ol className="space-y-2">
+                      {solutionItems.map((item, index) => (
+                        <li key={item} className="flex gap-3 break-words">
+                          <span className="font-bold text-emerald-400">{index + 1}.</span>
+                          <span className="min-w-0 break-words">{item}</span>
+                        </li>
+                      ))}
+                    </ol>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Punkte und Mitrater unten wie gewohnt auswerten.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        )}
 
         {/* CONTROLS */}
         <div
@@ -602,7 +763,7 @@ export function QuestionModal({
               <Eye className="relative z-10 mr-2 h-5 w-5" />
 
               <span className="relative z-10">
-                Antwort zeigen
+                {isOrderQuestion ? "Reihenfolge prüfen" : "Antwort zeigen"}
               </span>
             </Button>
           ) : (
