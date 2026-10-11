@@ -25,9 +25,16 @@ export function Board({
 }: BoardProps) {
   const cols = categories.length;
 
+  const manyCategories = cols >= 8;
+  const veryManyCategories = cols >= 10;
+
   return (
     <div
-      className="grid gap-2 md:gap-3"
+      className={
+        veryManyCategories
+          ? "grid gap-1.5 md:gap-2"
+          : "grid gap-2 md:gap-3"
+      }
       style={{
         gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
       }}
@@ -36,11 +43,21 @@ export function Board({
       {categories.map((cat, categoryIndex) => (
         <div
           key={`${cat.name}-${categoryIndex}`}
-          className="
+          className={`
             relative overflow-hidden
             rounded-2xl
-            min-h-16 md:min-h-24
-            px-2 md:px-4
+            ${
+              manyCategories
+                ? "min-h-20 md:min-h-28"
+                : "min-h-16 md:min-h-24"
+            }
+            ${
+              veryManyCategories
+                ? "px-1 md:px-2"
+                : manyCategories
+                  ? "px-1.5 md:px-3"
+                  : "px-2 md:px-4"
+            }
             flex items-center justify-center
             text-center
             border border-primary/20
@@ -49,7 +66,7 @@ export function Board({
             via-primary/[0.06]
             to-black/10
             shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]
-          "
+          `}
         >
           {/* dezenter Lichtschein */}
           <div
@@ -77,16 +94,47 @@ export function Board({
           />
 
           <span
-            className="
+            className={`
               relative z-10
+              block
+              w-full
+              min-w-0
               font-display
-              text-[10px] sm:text-xs md:text-base
               uppercase
-              tracking-[0.08em] md:tracking-[0.12em]
-              leading-tight
               text-foreground
               drop-shadow-sm
-            "
+              text-center
+              whitespace-normal
+              break-words
+              [overflow-wrap:anywhere]
+
+              ${
+                veryManyCategories
+                  ? `
+                    text-[9px]
+                    sm:text-[10px]
+                    md:text-[11px]
+                    tracking-[0.035em]
+                    leading-[1.15]
+                  `
+                  : manyCategories
+                    ? `
+                      text-[10px]
+                      sm:text-[11px]
+                      md:text-xs
+                      tracking-[0.05em]
+                      leading-[1.15]
+                    `
+                    : `
+                      text-[10px]
+                      sm:text-xs
+                      md:text-base
+                      tracking-[0.08em]
+                      md:tracking-[0.12em]
+                      leading-tight
+                    `
+              }
+            `}
           >
             {cat.name}
           </span>
