@@ -2,15 +2,14 @@ export interface Question {
   question: string;
   answer: string;
   value?: number;
-  // Ohne type bleiben bereits gespeicherte Fragen normale Fragen.
   type?: "normal" | "order";
-  // Begriffe in der korrekten Reihenfolge. Gemischt wird nur im Modal.
   orderItems?: string[];
+  imageUrl?: string;
 }
 
 export interface Category {
   name: string;
-  questions: Question[]; // länge 5, sortiert nach Punktwerten 100..1000
+  questions: Question[]; // Länge 5, sortiert nach Punktwerten 100..1000
 }
 
 export const POINT_VALUES = [100, 200, 400, 600, 1000] as const;
