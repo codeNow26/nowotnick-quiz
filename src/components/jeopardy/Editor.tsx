@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, GripVertical, ImagePlus, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import type { Category, Question } from "@/lib/jeopardy-data";
 import { POINT_VALUES } from "@/lib/jeopardy-data";
 
@@ -30,6 +30,7 @@ export function Editor({
       questions: c.questions.map((q) => ({
         ...q,
         orderItems: q.orderItems ? [...q.orderItems] : undefined,
+        hints: q.hints ? [...q.hints] : undefined,
       })),
     }))
   );
@@ -160,7 +161,7 @@ export function Editor({
     updateQuestion(qIdx, (q) => ({ ...q, value }));
   };
 
-  const setQuestionType = (qIdx: number, type: "normal" | "order") => {
+  const setQuestionType = (qIdx: number, type: "normal" | "order" | "hint") => {
     updateQuestion(qIdx, (q) => {
       if (type === "order") {
         const existing = q.orderItems?.length ? q.orderItems : ["", "", "", ""];
@@ -168,7 +169,17 @@ export function Editor({
           ...q,
           type: "order",
           orderItems: existing,
+          hints: undefined,
           answer: existing.filter(Boolean).join(" → "),
+        };
+      }
+
+      if (type === "hint") {
+        return {
+          ...q,
+          type: "hint",
+          orderItems: undefined,
+          hints: q.hints?.length ? q.hints : ["", "", ""],
         };
       }
 
@@ -176,6 +187,20 @@ export function Editor({
         ...q,
         type: "normal",
         orderItems: undefined,
+        hints: undefined,
+      };
+    });
+  };
+
+  const updateHint = (qIdx: number, hintIdx: number, value: string) => {
+    updateQuestion(qIdx, (q) => {
+      const hints = [...(q.hints ?? ["", "", ""] )];
+      hints[hintIdx] = value;
+      return {
+        ...q,
+        type: "hint",
+        orderItems: undefined,
+        hints,
       };
     });
   };
@@ -238,21 +263,34 @@ export function Editor({
     const cleaned = draft.map((category) => ({
       ...category,
       questions: category.questions.map((q) => {
-        if (q.type !== "order") {
+        if (q.type === "order") {
+          const orderItems = (q.orderItems ?? []).map((item) => item.trim()).filter(Boolean);
           return {
             ...q,
-            type: "normal" as const,
-            orderItems: undefined,
+            type: "order" as const,
+            orderItems,
+            hints: undefined,
+            answer: orderItems.join(" → "),
             imageUrl: q.imageUrl?.trim() || undefined,
           };
         }
 
-        const orderItems = (q.orderItems ?? []).map((item) => item.trim()).filter(Boolean);
+        if (q.type === "hint") {
+          const hints = (q.hints ?? []).map((hint) => hint.trim()).filter(Boolean);
+          return {
+            ...q,
+            type: "hint" as const,
+            orderItems: undefined,
+            hints,
+            imageUrl: q.imageUrl?.trim() || undefined,
+          };
+        }
+
         return {
           ...q,
-          type: "order" as const,
-          orderItems,
-          answer: orderItems.join(" → "),
+          type: "normal" as const,
+          orderItems: undefined,
+          hints: undefined,
           imageUrl: q.imageUrl?.trim() || undefined,
         };
       }),
@@ -363,6 +401,7 @@ export function Editor({
         <div className="space-y-5">
           {draft[activeCat].questions.map((q, qIdx) => {
             const isOrder = q.type === "order";
+            const isHint = q.type === "hint";
             const imageEditorKey = `${activeCat}-${qIdx}`;
             const imageEditorOpen = Boolean(openImageEditors[imageEditorKey]);
             const hasImage = Boolean(q.imageUrl?.trim());
@@ -394,7 +433,7 @@ export function Editor({
                       type="button"
                       onClick={() => setQuestionType(qIdx, "normal")}
                       className={`px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${
-                        !isOrder
+                        !isOrder && !isHint
                           ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
@@ -411,6 +450,18 @@ export function Editor({
                       }`}
                     >
                       Reihenfolge
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuestionType(qIdx, "hint")}
+                      className={`px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+                        isHint
+                          ? "bg-amber-500 text-amber-950"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Lightbulb className="h-3.5 w-3.5" />
+                      Hinweis
                     </button>
                   </div>
                 </div>
@@ -569,15 +620,46 @@ export function Editor({
                 </div>
 
                 {!isOrder ? (
-                  <div>
-                    <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
-                      Antwort
-                    </Label>
-                    <Input
-                      value={q.answer}
-                      onChange={(e) => updateQ(qIdx, "answer", e.target.value)}
-                      className="glass border-white/10 text-foreground rounded-xl mt-1 h-11"
-                    />
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
+                        Antwort
+                      </Label>
+                      <Input
+                        value={q.answer}
+                        onChange={(e) => updateQ(qIdx, "answer", e.target.value)}
+                        className="glass border-white/10 text-foreground rounded-xl mt-1 h-11"
+                      />
+                    </div>
+
+                    {isHint && (
+                      <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[0.035] p-3 space-y-3">
+                        <div className="flex items-center gap-2 text-amber-300/90">
+                          <Lightbulb className="h-4 w-4" />
+                          <span className="text-xs font-semibold uppercase tracking-[0.18em]">
+                            Hinweise
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground/70">
+                          Jeder verwendete Hinweis zieht 20 % vom ursprünglichen Punktwert ab.
+                        </p>
+
+                        {(q.hints ?? ["", "", ""]).slice(0, 3).map((hint, hintIdx) => (
+                          <div key={hintIdx}>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
+                              Hinweis {hintIdx + 1}
+                            </Label>
+                            <Textarea
+                              value={hint}
+                              onChange={(e) => updateHint(qIdx, hintIdx, e.target.value)}
+                              rows={2}
+                              className="glass border-white/10 text-foreground rounded-xl mt-1"
+                              placeholder={`Optionaler Hinweis ${hintIdx + 1}`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">

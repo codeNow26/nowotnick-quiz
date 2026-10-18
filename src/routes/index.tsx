@@ -791,7 +791,8 @@ function Index() {
     playerIndex: number | null,
     correct: boolean,
     coGuessers: number[] = [],
-    correctCoGuessers: number[] = []
+    correctCoGuessers: number[] = [],
+    resolvedValue: number = activeValue
   ) => {
     if (!active) return;
 
@@ -825,6 +826,18 @@ function Index() {
       },
       {
         path: "/sounds/Wrong/Mario Fail.mp3",
+        volume: 0.6,
+      },
+        {
+        path: "/sounds/Wrong/son looser.mp3",
+        volume: 0.6,
+      },
+       {
+        path: "/sounds/Wrong/Scheisse.mp3",
+        volume: 0.6,
+      },
+       {
+        path: "/sounds/Wrong/NeinDochOh.mp3",
         volume: 0.6,
       },
     ];
@@ -890,7 +903,7 @@ function Index() {
 
     const coGuesserPoints =
       Math.round(
-        activeValue * 0.25
+        resolvedValue * 0.25
       );
 
     setPlayers((prev) => {
@@ -907,9 +920,9 @@ function Index() {
               playerIndex
             ) {
               scoreChange += correct
-                ? activeValue
+                ? resolvedValue
                 : -Math.round(
-                    activeValue / 2
+                    resolvedValue / 2
                   );
             }
 

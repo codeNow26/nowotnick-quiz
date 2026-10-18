@@ -2,8 +2,9 @@ export interface Question {
   question: string;
   answer: string;
   value?: number;
-  type?: "normal" | "order";
+  type?: "normal" | "order" | "hint";
   orderItems?: string[];
+  hints?: string[];
   imageUrl?: string;
 }
 

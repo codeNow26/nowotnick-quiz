@@ -25,6 +25,8 @@ import {
 
   Maximize2,
 
+  Lightbulb,
+
   Trophy,
 
 } from "lucide-react";
@@ -53,7 +55,9 @@ interface QuestionModalProps {
 
     coGuessers: number[],
 
-    correctCoGuessers: number[]
+    correctCoGuessers: number[],
+
+    resolvedValue: number
 
   ) => void;
 
@@ -165,6 +169,12 @@ export function QuestionModal({
 
 
 
+  const [revealedHintCount, setRevealedHintCount] =
+
+    useState(0);
+
+
+
   useEffect(() => {
 
     if (open) {
@@ -190,6 +200,8 @@ export function QuestionModal({
       setDraggedIndex(null);
 
       setImageExpanded(false);
+
+      setRevealedHintCount(0);
 
 
 
@@ -321,6 +333,32 @@ export function QuestionModal({
       (item, index) => item === correctOrder[index]
 
     );
+
+
+
+  const availableHints =
+
+    question.type === "hint"
+
+      ? (question.hints ?? []).filter((hint) => hint.trim())
+
+      : [];
+
+
+
+  const isHintQuestion =
+
+    question.type === "hint" && availableHints.length > 0;
+
+
+
+  const currentValue = Math.max(
+
+    0,
+
+    Math.round(value * (1 - revealedHintCount * 0.2))
+
+  );
 
 
 
@@ -995,7 +1033,7 @@ export function QuestionModal({
 
             >
 
-              {value}
+              {currentValue}
 
             </span>
 
@@ -1531,6 +1569,36 @@ export function QuestionModal({
 
               </p>
 
+              {!revealed && isHintQuestion && revealedHintCount > 0 && (
+
+                <div className="mt-6 space-y-2">
+
+                  {availableHints.slice(0, revealedHintCount).map((hint, index) => (
+
+                    <div
+
+                      key={`${hint}-${index}`}
+
+                      className="mx-auto max-w-xl rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm md:text-base text-foreground/90"
+
+                    >
+
+                      <span className="mr-2 text-amber-300 font-semibold">
+
+                        Hinweis {index + 1}:
+
+                      </span>
+
+                      {hint}
+
+                    </div>
+
+                  ))}
+
+                </div>
+
+              )}
+
             </div>
 
           )}
@@ -1954,6 +2022,48 @@ export function QuestionModal({
               )}
 
             </>
+
+          )}
+
+
+
+          {!revealed && isHintQuestion && (
+
+            <div className="flex justify-center">
+
+              <Button
+
+                type="button"
+
+                variant="outline"
+
+                disabled={revealedHintCount >= availableHints.length}
+
+                onClick={() =>
+
+                  setRevealedHintCount((count) =>
+
+                    Math.min(count + 1, availableHints.length)
+
+                  )
+
+                }
+
+                className="rounded-xl border-amber-400/20 bg-amber-400/[0.035] text-amber-200/90 hover:bg-amber-400/[0.08] hover:text-amber-100 disabled:opacity-45"
+
+              >
+
+                <Lightbulb className="mr-2 h-4 w-4" />
+
+                {revealedHintCount < availableHints.length
+
+                  ? "Nächster Hinweis (−20 %)"
+
+                  : "Alle Hinweise verwendet"}
+
+              </Button>
+
+            </div>
 
           )}
 
@@ -2421,7 +2531,7 @@ export function QuestionModal({
 
                               ? ` +${Math.round(
 
-                                  value *
+                                  currentValue *
 
                                     0.25
 
@@ -2429,7 +2539,7 @@ export function QuestionModal({
 
                               : ` −${Math.round(
 
-                                  value *
+                                  currentValue *
 
                                     0.25
 
@@ -2475,7 +2585,9 @@ export function QuestionModal({
 
                       coGuessers,
 
-                      correctCoGuessers
+                      correctCoGuessers,
+
+                      currentValue
 
                     )
 
@@ -2549,7 +2661,9 @@ export function QuestionModal({
 
                       coGuessers,
 
-                      correctCoGuessers
+                      correctCoGuessers,
+
+                      currentValue
 
                     )
 
@@ -2625,7 +2739,9 @@ export function QuestionModal({
 
                     coGuessers,
 
-                    correctCoGuessers
+                    correctCoGuessers,
+
+                    currentValue
 
                   )
 
