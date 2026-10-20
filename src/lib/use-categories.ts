@@ -6,9 +6,9 @@ import {
 } from "@/lib/jeopardy-data";
 import { supabase } from "@/lib/supabase";
 
-export const DEFAULT_TITLE = "Familienquiz";
+export const DEFAULT_TITLE = "Nowotnick Quiz";
 export const DEFAULT_SUBTITLE =
-  "Das klassische Quizspiel – ganz nach euch.";
+  "Quiz halt.";
 
 type Question = {
   question: string;
