@@ -367,7 +367,7 @@ export function Editor({
             onChange={(e) => setTitleDraft(e.target.value)}
             className="glass border-white/10 text-foreground font-display text-lg h-12 rounded-xl"
             maxLength={40}
-            placeholder="Familienquiz"
+            placeholder="Nowotnick Quiz"
           />
         </div>
 
@@ -380,7 +380,7 @@ export function Editor({
             onChange={(e) => setSubtitleDraft(e.target.value)}
             className="glass border-white/10 text-foreground h-11 rounded-xl"
             maxLength={120}
-            placeholder="Das klassische Quizspiel – ganz nach euch."
+            placeholder="Quiz halt"
           />
         </div>
       </div>
