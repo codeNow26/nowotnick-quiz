@@ -593,7 +593,7 @@ export function Editor({
                             onChange={() => updateQuestion(qIdx, question => ({ ...question, correctOption: optionIndex }))} />
                           {letter}
                         </label>
-                        <Input aria-label={`Antwort ${letter}`} value={q.options?.[optionIndex] ?? ""}
+                        <Textarea rows={2} aria-label={`Antwort ${letter}`} value={q.options?.[optionIndex] ?? ""}
                           className="glass border-white/10 rounded-xl"
                           onChange={event => updateQuestion(qIdx, question => {
                             const options = [...(question.options ?? ["", "", "", ""])];
@@ -609,10 +609,11 @@ export function Editor({
                       <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
                         Antwort
                       </Label>
-                      <Input
+                      <Textarea
+                        rows={4}
                         value={q.answer}
                         onChange={(e) => updateQ(qIdx, "answer", e.target.value)}
-                        className="glass border-white/10 text-foreground rounded-xl mt-1 h-11"
+                        className="glass border-white/10 text-foreground rounded-xl mt-1 min-h-28 resize-y"
                       />
                     </div>
                     {isHint && (

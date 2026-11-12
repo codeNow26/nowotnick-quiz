@@ -130,3 +130,14 @@ export function hasValidChoices(question: Question): boolean {
     Number.isInteger(question.correctOption) &&
     question.correctOption! >= 0 && question.correctOption! < 4;
 }
+
+export const PLAYER_COLORS = ["#60a5fa", "#fb7185", "#34d399", "#fbbf24"] as const;
+export function playerColor(index: number) { return PLAYER_COLORS[index % PLAYER_COLORS.length]; }
+export interface QuestionResult {
+  question: Question;
+  category: string;
+  value: number;
+  playerIndex: number | null;
+  correct: boolean;
+  selectedChoice?: number | null;
+}

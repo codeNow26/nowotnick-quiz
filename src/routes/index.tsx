@@ -22,7 +22,7 @@ import {
   Dices,
   BarChart3,
 } from "lucide-react";
-import { POINT_VALUES } from "@/lib/jeopardy-data";
+import { POINT_VALUES, type QuestionResult } from "@/lib/jeopardy-data";
 import { useCategories } from "@/lib/use-categories";
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -322,6 +322,7 @@ function Index() {
         POINT_VALUES.length
       )
     );
+  const [results, setResults] = useState<Record<string, QuestionResult>>({});
   const [active, setActive] =
     useState<Active | null>(null);
   const allAnswered = useMemo(
@@ -440,6 +441,7 @@ function Index() {
             setActiveCategoryCount(
               catCount
             );
+            setResults({});
             setAnswered(
               makeAnswered(
                 catCount,
@@ -498,14 +500,15 @@ function Index() {
       </div>
     );
   }
+  const activeResult = active ? results[`${active.category}:${active.question}`] : undefined;
   const activeQuestion =
-    active !== null
+    activeResult?.question ?? (active !== null
       ? categories[
           active.category
         ].questions[
           active.question
         ]
-      : null;
+      : null);
   const activeValue =
     active !== null
       ? categories[
@@ -535,7 +538,7 @@ function Index() {
     const isFinalQuestion =
       questionToOpen.question ===
       lastQuestionIndex;
-    if (isFinalQuestion) {
+    if (isFinalQuestion && !answered[questionToOpen.category]?.[questionToOpen.question]) {
       playFinalQuestionAudio();
     } else {
       stopFinalQuestionAudio();
@@ -668,9 +671,10 @@ function Index() {
   const handleResolve = (
     playerIndex: number | null,
     correct: boolean,
-    resolvedValue: number = activeValue
+    resolvedValue: number = activeValue,
+    selectedChoice: number | null = null
   ) => {
-    if (!active) return;
+    if (!active || answered[active.category]?.[active.question]) return;
     // Bossmusik beenden und normale Hintergrundmusik fortsetzen.
     stopFinalQuestionAudio();
     const wrongSounds = [
@@ -953,6 +957,10 @@ function Index() {
         newLeader;
       return nextPlayers;
     });
+    setResults(prev => ({ ...prev, [`${active.category}:${active.question}`]: {
+      question: structuredClone(activeQuestion!), category: activeCategory,
+      value: resolvedValue, playerIndex, correct, selectedChoice,
+    } }));
     setAnswered((prev) => {
       const next =
         prev.map((row) => [
@@ -1124,6 +1132,8 @@ function Index() {
       <Board
         categories={categories}
         answered={answered}
+        results={results}
+        players={players}
         highlightedQuestion={
           highlightedQuestion
         }
@@ -1145,10 +1155,9 @@ function Index() {
         question={
           activeQuestion
         }
-        value={activeValue}
-        category={
-          activeCategory
-        }
+        value={activeResult?.value ?? activeValue}
+        review={activeResult}
+        category={activeResult?.category ?? activeCategory}
         players={players}
         onResolve={
           handleResolve

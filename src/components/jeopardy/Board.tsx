@@ -1,4 +1,4 @@
-import { POINT_VALUES, type Category } from "@/lib/jeopardy-data";
+import { POINT_VALUES, playerColor, type QuestionResult, type Category } from "@/lib/jeopardy-data";
 
 interface HighlightedQuestion {
   category: number;
@@ -8,6 +8,8 @@ interface HighlightedQuestion {
 interface BoardProps {
   categories: Category[];
   answered: boolean[][];
+  results: Record<string, QuestionResult>;
+  players: { name: string }[];
   onSelect: (
     categoryIndex: number,
     questionIndex: number
@@ -19,6 +21,8 @@ interface BoardProps {
 export function Board({
   categories,
   answered,
+  results,
+  players,
   onSelect,
   highlightedQuestion = null,
   isRandomizing = false,
@@ -118,6 +122,10 @@ export function Board({
       {POINT_VALUES.map((value, qIdx) =>
         categories.map((cat, cIdx) => {
           const done = answered[cIdx][qIdx];
+          const result = results[`${cIdx}:${qIdx}`];
+          const winner = result?.correct && result.playerIndex !== null ? result.playerIndex : undefined;
+          const winnerColor = winner !== undefined ? playerColor(winner) : undefined;
+          const description = done ? `${cat.name}, ${cat.questions[qIdx]?.value ?? value} Punkte: ${winner !== undefined ? `${players[winner]?.name} richtig` : "bereits gespielt"}. Zum Nachlesen öffnen.` : `${cat.name}, ${cat.questions[qIdx]?.value ?? value} Punkte`;
 
           const highlighted =
             highlightedQuestion?.category === cIdx &&
@@ -131,11 +139,13 @@ export function Board({
               key={`${cIdx}-${qIdx}`}
               type="button"
               onClick={() =>
-                !done &&
                 !isRandomizing &&
                 onSelect(cIdx, qIdx)
               }
-              disabled={done || isRandomizing}
+              disabled={isRandomizing}
+              title={description}
+              aria-label={description}
+              style={winnerColor ? { borderColor: `${winnerColor}55`, boxShadow: `inset 0 -3px 0 ${winnerColor}80`, backgroundImage: `linear-gradient(${winnerColor}10, ${winnerColor}10)` } : undefined}
               className={`
                 quiz-question-card group
                 relative
@@ -153,8 +163,7 @@ export function Board({
                     ? `
                       border-white/[0.03]
                       bg-white/[0.025]
-                      brightness-50
-                      cursor-not-allowed
+                      cursor-pointer hover:border-white/25
                     `
                     : highlighted
                       ? `
@@ -284,7 +293,7 @@ export function Board({
                         drop-shadow-[0_0_12px_rgba(255,255,255,0.45)]
                       `
                       : done
-                        ? "text-transparent"
+                        ? "text-foreground/30 group-hover:text-foreground/65"
                         : `
                           text-foreground
                           drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]
