@@ -14,9 +14,10 @@ import {
   Lightbulb,
   Trophy,
 } from "lucide-react";
-import { hasValidChoices, type Question } from "@/lib/jeopardy-data";
+import { hasValidChoices, playerColor, type QuestionResult, type Question } from "@/lib/jeopardy-data";
 interface QuestionModalProps {
   open: boolean;
+  review?: QuestionResult;
   question: Question | null;
   value: number;
   category: string;
@@ -24,7 +25,8 @@ interface QuestionModalProps {
   onResolve: (
     playerIndex: number | null,
     correct: boolean,
-    resolvedValue: number
+    resolvedValue: number,
+    selectedChoice?: number | null
   ) => void;
   onClose: () => void;
 }
@@ -44,6 +46,7 @@ function shuffleItems(items: string[]) {
 }
 export function QuestionModal({
   open,
+  review,
   question,
   value,
   category,
@@ -76,7 +79,7 @@ export function QuestionModal({
     useState(0);
   useEffect(() => {
     if (open) {
-      setRevealed(false);
+      setRevealed(Boolean(review));
       setSelectedPlayer(
         players.length === 1 ? 0 : null
       );
@@ -98,7 +101,7 @@ export function QuestionModal({
         setOrderedItems([]);
       }
     }
-  }, [open, players.length, question]);
+  }, [open, players.length, question, review]);
   useEffect(() => {
     if (
       timeLeft === null ||
@@ -154,9 +157,9 @@ export function QuestionModal({
   const isChoiceQuestion = question.type === "choice";
   const validChoices = hasValidChoices(question);
   const commitResult = (player: number | null, correct: boolean) => {
-    if (resolvedRef.current) return;
+    if (review || resolvedRef.current) return;
     resolvedRef.current = true;
-    onResolve(player, correct, currentValue);
+    onResolve(player, correct, currentValue, selectedChoice);
   };
   const moveOrderItem = (
     from: number,
@@ -483,7 +486,7 @@ export function QuestionModal({
             `}
           />
           {/* kleine Bezeichnung nach Reveal */}
-          {revealed && (
+          {revealed && !review && (
             <div
               className="
                 absolute
@@ -508,7 +511,30 @@ export function QuestionModal({
               Antwort
             </div>
           )}
-          {isChoiceQuestion ? (
+          {review ? (
+            <div className="relative z-10 w-full max-w-2xl space-y-6 text-left">
+              <p className="text-sm text-muted-foreground">Nachlesen · {review.playerIndex === null ? "Übersprungen" : `${players[review.playerIndex]?.name}: ${review.correct ? "richtig beantwortet" : "falsch beantwortet"}`}</p>
+              {renderQuestionImage()}
+              <section><h3 className="mb-2 text-sm font-semibold text-muted-foreground">Frage</h3>
+                <p className="whitespace-pre-wrap break-words text-xl md:text-3xl font-bold">{question.question}</p>
+              </section>
+              {isChoiceQuestion && validChoices ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {question.options!.map((option, index) => (
+                    <div key={index} className={`rounded-xl border p-4 whitespace-pre-wrap break-words ${index === question.correctOption ? "border-emerald-400/50 bg-emerald-500/10" : "border-white/10"}`}>
+                      <b>{"ABCD"[index]}: </b>{option}
+                      {index === question.correctOption && <span className="block mt-2 text-sm text-emerald-300">✓ Richtige Antwort</span>}
+                      {index === review.selectedChoice && <span className="block mt-2 text-sm text-amber-300">Eingeloggt</span>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <section><h3 className="mb-2 text-sm font-semibold text-emerald-300">Antwort</h3>
+                  <p className="whitespace-pre-wrap break-words text-xl md:text-3xl">{question.type === "order" ? question.orderItems?.join(" → ") : question.answer}</p>
+                </section>
+              )}
+            </div>
+          ) : isChoiceQuestion ? (
             <div className="relative z-10 w-full max-w-2xl space-y-6">
               {renderQuestionImage()}
               <p className="font-sans font-bold text-2xl md:text-4xl leading-snug whitespace-pre-line">
@@ -539,7 +565,7 @@ export function QuestionModal({
                           : chosen ? "border-amber-300 bg-amber-500 text-slate-950"
                           : "border-indigo-400/50 bg-gradient-to-b from-indigo-950 to-slate-950 text-white enabled:hover:border-amber-300"}`}>
                         <span className="shrink-0 font-display text-lg">{"ABCD"[index]}:</span>
-                        <span className="min-w-0 break-words">{option}</span>
+                        <span className="min-w-0 break-words whitespace-pre-wrap">{option}</span>
                         {correct && <Check className="ml-auto h-5 w-5 shrink-0" />}
                         {wrong && <X className="ml-auto h-5 w-5 shrink-0" />}
                       </button>
@@ -774,6 +800,9 @@ export function QuestionModal({
           "
         >
 
+          {review ? (
+            <Button onClick={onClose} className="w-full rounded-xl">Zurück zum Spielfeld</Button>
+          ) : <>
           {players.length > 1 && (
             <div>
               <p className="mb-2 text-center text-sm text-muted-foreground">Wer beantwortet die Frage?</p>
@@ -784,6 +813,7 @@ export function QuestionModal({
                     aria-pressed={selectedPlayer === index}
                     onClick={() => setSelectedPlayer(index)}
                     className={`rounded-xl border px-4 py-2 font-semibold transition-colors ${selectedPlayer === index ? "border-primary bg-primary text-primary-foreground" : "border-white/15 bg-white/5 text-foreground"}`}>
+                    <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: playerColor(index) }} />
                     {player.name}
                   </button>
                 ))}
@@ -938,6 +968,7 @@ export function QuestionModal({
             className="w-full py-1 text-xs text-muted-foreground hover:text-foreground">
             Überspringen (keine Punkte)
           </button>
+          </>}
         </div>
       </DialogContent>
     </Dialog>

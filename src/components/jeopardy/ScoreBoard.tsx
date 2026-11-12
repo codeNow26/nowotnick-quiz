@@ -1,3 +1,4 @@
+import { playerColor } from "@/lib/jeopardy-data";
 import { useEffect, useState } from "react";
 import { Check, Crown, Pencil, X } from "lucide-react";
 interface Player {
@@ -213,6 +214,7 @@ export function ScoreBoard({
                 }
               `}
             >
+              <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: playerColor(i) }} />
               {p.name}
             </div>
             {/* Punktestand / Bearbeitung */}
