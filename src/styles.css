@@ -112,18 +112,19 @@ body::before, body::after {
 }
 body::before {
   background:
-    radial-gradient(ellipse at 20% 30%, rgba(106, 67, 255, .23), transparent 45%),
-    radial-gradient(ellipse at 80% 65%, rgba(36, 155, 216, .13), transparent 40%);
-  animation: quiz-aurora 24s ease-in-out infinite alternate;
+    radial-gradient(ellipse at 20% 30%, rgba(106, 67, 255, .36), transparent 45%),
+    radial-gradient(ellipse at 80% 65%, rgba(36, 155, 216, .24), transparent 40%);
+  animation: quiz-aurora 18s ease-in-out infinite alternate;
 }
 body::after {
   background-image:
-    radial-gradient(circle at 12% 28%, rgba(196,181,253,.5) 1px, transparent 2px),
-    radial-gradient(circle at 76% 18%, rgba(165,220,255,.4) 1px, transparent 2px),
-    radial-gradient(circle at 88% 72%, rgba(196,181,253,.45) 1.5px, transparent 3px),
-    radial-gradient(circle at 28% 82%, rgba(165,220,255,.35) 1px, transparent 2px),
-    radial-gradient(circle at 62% 48%, rgba(196,181,253,.35) 1px, transparent 2px);
-  animation: quiz-particles 32s ease-in-out infinite alternate;
+    radial-gradient(circle at 32px 48px, rgba(224,211,255,.95) 1.5px, rgba(153,114,255,.35) 3px, transparent 7px),
+    radial-gradient(circle at 190px 170px, rgba(174,225,255,.85) 1.5px, rgba(90,177,255,.25) 3px, transparent 6px),
+    radial-gradient(circle at 330px 85px, rgba(220,195,255,.8) 2px, rgba(169,112,255,.2) 4px, transparent 9px),
+    radial-gradient(circle at 100px 285px, rgba(185,209,255,.8) 1px, transparent 4px);
+  background-size: 420px 360px;
+  background-repeat: repeat;
+  animation: quiz-particles 16s ease-in-out infinite alternate;
 }
 body:has([role="dialog"][data-state="open"])::before,
 body:has([role="dialog"][data-state="open"])::after {
@@ -135,8 +136,8 @@ body:has([role="dialog"][data-state="open"])::after {
   to { transform: translate3d(4%, 3%, 0) scale(1.12); }
 }
 @keyframes quiz-particles {
-  from { transform: translate3d(0, 2%, 0); opacity: .4; }
-  to { transform: translate3d(2%, -3%, 0); opacity: .85; }
+  from { transform: translate3d(-12px, 30px, 0); opacity: .65; }
+  to { transform: translate3d(24px, -40px, 0); opacity: 1; }
 }
 
 /* Keep the question and all controls within the available viewport. */
