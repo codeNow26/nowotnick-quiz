@@ -100,44 +100,43 @@
 }
 
 
-/* Slow ambient light behind the quiz interface. */
+/* Two small, independent ambient lights; no repeating particle texture. */
 body { isolation: isolate; }
 body::before, body::after {
   content: "";
   position: fixed;
-  inset: -15%;
+  width: min(55vw, 640px);
+  height: min(70vh, 560px);
   z-index: -1;
   pointer-events: none;
+  opacity: .55;
+  will-change: transform;
   transition: opacity 800ms ease;
 }
 body::before {
-  background:
-    radial-gradient(ellipse at 20% 30%, rgba(106, 67, 255, .36), transparent 45%),
-    radial-gradient(ellipse at 80% 65%, rgba(36, 155, 216, .24), transparent 40%);
-  animation: quiz-aurora 18s ease-in-out infinite alternate;
+  left: -12vw;
+  top: 12vh;
+  background: radial-gradient(ellipse, rgba(119, 77, 230, .22), transparent 70%);
+  animation: quiz-light-left 22s ease-in-out infinite alternate;
 }
 body::after {
-  background-image:
-    radial-gradient(circle at 32px 48px, rgba(224,211,255,.95) 1.5px, rgba(153,114,255,.35) 3px, transparent 7px),
-    radial-gradient(circle at 190px 170px, rgba(174,225,255,.85) 1.5px, rgba(90,177,255,.25) 3px, transparent 6px),
-    radial-gradient(circle at 330px 85px, rgba(220,195,255,.8) 2px, rgba(169,112,255,.2) 4px, transparent 9px),
-    radial-gradient(circle at 100px 285px, rgba(185,209,255,.8) 1px, transparent 4px);
-  background-size: 420px 360px;
-  background-repeat: repeat;
-  animation: quiz-particles 16s ease-in-out infinite alternate;
+  right: -12vw;
+  bottom: 4vh;
+  background: radial-gradient(ellipse, rgba(53, 121, 190, .18), transparent 70%);
+  animation: quiz-light-right 29s ease-in-out -11s infinite alternate;
 }
 body:has([role="dialog"][data-state="open"])::before,
 body:has([role="dialog"][data-state="open"])::after {
   animation-play-state: paused;
-  opacity: .25;
+  opacity: .15;
 }
-@keyframes quiz-aurora {
-  from { transform: translate3d(-3%, -2%, 0) scale(1); }
-  to { transform: translate3d(4%, 3%, 0) scale(1.12); }
+@keyframes quiz-light-left {
+  from { transform: translate3d(0, -18px, 0); }
+  to { transform: translate3d(32px, 24px, 0); }
 }
-@keyframes quiz-particles {
-  from { transform: translate3d(-12px, 30px, 0); opacity: .65; }
-  to { transform: translate3d(24px, -40px, 0); opacity: 1; }
+@keyframes quiz-light-right {
+  from { transform: translate3d(16px, 20px, 0); }
+  to { transform: translate3d(-24px, -28px, 0); }
 }
 
 /* Keep the question and all controls within the available viewport. */
