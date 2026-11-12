@@ -2,7 +2,9 @@ export interface Question {
   question: string;
   answer: string;
   value?: number;
-  type?: "normal" | "order" | "hint";
+  type?: "normal" | "order" | "hint" | "choice";
+  options?: string[];
+  correctOption?: number;
   orderItems?: string[];
   hints?: string[];
   imageUrl?: string;
@@ -120,3 +122,11 @@ export const CATEGORIES: Category[] = [
 
 export const MIN_CATEGORIES = 1;
 export const MAX_CATEGORIES = 10;
+
+export function hasValidChoices(question: Question): boolean {
+  return question.type === "choice" &&
+    Array.isArray(question.options) && question.options.length === 4 &&
+    question.options.every((option) => typeof option === "string" && option.trim().length > 0) &&
+    Number.isInteger(question.correctOption) &&
+    question.correctOption! >= 0 && question.correctOption! < 4;
+}

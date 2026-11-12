@@ -30,13 +30,19 @@ export function Board({
 
   return (
     <div
+      role="region"
+      aria-label="Quiz-Spielfeld, bei Bedarf seitlich scrollen"
+      tabIndex={0}
+      className="overflow-x-auto overscroll-x-contain rounded-2xl p-2 -m-2 focus-visible:outline-2 focus-visible:outline-primary"
+    >
+    <div
       className={
         veryManyCategories
           ? "grid gap-1.5 md:gap-2"
           : "grid gap-2 md:gap-3"
       }
       style={{
-        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        gridTemplateColumns: `repeat(${cols}, minmax(9rem, 1fr))`,
       }}
     >
       {/* Kategorien */}
@@ -44,7 +50,7 @@ export function Board({
         <div
           key={`${cat.name}-${categoryIndex}`}
           className={`
-            relative overflow-hidden
+            quiz-category-card relative overflow-hidden
             rounded-2xl
             ${
               manyCategories
@@ -94,47 +100,14 @@ export function Board({
           />
 
           <span
-            className={`
-              relative z-10
-              block
-              w-full
-              min-w-0
-              font-display
-              uppercase
-              text-foreground
-              drop-shadow-sm
-              text-center
-              whitespace-normal
-              break-words
-              [overflow-wrap:anywhere]
-
-              ${
-                veryManyCategories
-                  ? `
-                    text-[9px]
-                    sm:text-[10px]
-                    md:text-[11px]
-                    tracking-[0.035em]
-                    leading-[1.15]
-                  `
-                  : manyCategories
-                    ? `
-                      text-[10px]
-                      sm:text-[11px]
-                      md:text-xs
-                      tracking-[0.05em]
-                      leading-[1.15]
-                    `
-                    : `
-                      text-[10px]
-                      sm:text-xs
-                      md:text-base
-                      tracking-[0.08em]
-                      md:tracking-[0.12em]
-                      leading-tight
-                    `
-              }
-            `}
+            lang="de"
+            className="
+              relative z-10 block w-full min-w-0
+              font-sans font-bold text-base md:text-lg
+              text-foreground text-center leading-snug
+              whitespace-normal break-normal hyphens-auto
+              [overflow-wrap:break-word] py-3
+            "
           >
             {cat.name}
           </span>
@@ -164,7 +137,7 @@ export function Board({
               }
               disabled={done || isRandomizing}
               className={`
-                group
+                quiz-question-card group
                 relative
                 overflow-hidden
                 min-h-16 md:min-h-24
@@ -180,7 +153,7 @@ export function Board({
                     ? `
                       border-white/[0.03]
                       bg-white/[0.025]
-                      opacity-25
+                      brightness-50
                       cursor-not-allowed
                     `
                     : highlighted
@@ -203,7 +176,7 @@ export function Board({
                           via-primary/[0.06]
                           to-primary/[0.10]
                           text-foreground
-                          opacity-65
+                          brightness-75
                           cursor-wait
                         `
                         : `
@@ -347,6 +320,7 @@ export function Board({
           );
         })
       )}
+    </div>
     </div>
   );
 }
