@@ -1224,7 +1224,7 @@ function Index() {
       : null;
 
   return (
-    <div className="min-h-screen p-3 md:p-6 max-w-7xl mx-auto">
+    <div className={`min-h-screen p-3 md:p-6 mx-auto ${categories.length >= 8 ? "max-w-[1920px]" : "max-w-7xl"}`}>
       {showStats && (
         <GameStats
           players={players}
@@ -1274,7 +1274,7 @@ function Index() {
         <MusicControls />
       </div>
 
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6 pr-28">
         <h1
           className="font-display text-3xl md:text-5xl text-foreground tracking-tight uppercase"
           style={{
