@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,8 @@ interface StartScreenProps {
   title: string;
   subtitle: string;
   maxCategories: number;
-  activeQuiz: number;
+  activeQuiz?: number;
+  footer?: ReactNode;
   onQuizChange: (quiz: 1 | 2 | 3 | 4) => void;
   onStart: (playerNames: string[], categoryCount: number) => void;
 }
@@ -17,6 +18,7 @@ export function StartScreen({
   subtitle,
   maxCategories,
   activeQuiz,
+  footer,
   onQuizChange,
   onStart,
 }: StartScreenProps) {
@@ -54,7 +56,7 @@ export function StartScreen({
     "bg-primary text-primary-foreground border-transparent scale-105 shadow-[0_0_30px_-5px_var(--indigo-glow)]";
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center px-4 pt-28 pb-8">
       <div className="w-full max-w-2xl text-center">
         <h1
           className="font-display text-5xl md:text-7xl text-foreground tracking-tight mb-3 uppercase"
@@ -76,7 +78,7 @@ export function StartScreen({
 
           {/* QUIZ AUSWAHL */}
 
-          <div className="mb-7">
+          {activeQuiz !== undefined && <div className="mb-7">
             <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-3 block">
               Quiz auswählen
             </Label>
@@ -96,7 +98,7 @@ export function StartScreen({
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
 
           {/* SPIELERANZAHL */}
 
@@ -181,6 +183,7 @@ export function StartScreen({
             Spiel starten
           </Button>
         </div>
+        {footer}
       </div>
     </div>
   );

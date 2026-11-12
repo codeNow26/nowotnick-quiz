@@ -9,16 +9,14 @@ import { POINT_VALUES, hasValidChoices } from "@/lib/jeopardy-data";
 interface EditorProps {
   initial: Category[];
   initialMeta: { title: string; subtitle: string };
-  onSave: (categories: Category[]) => void;
-  onSaveMeta: (meta: { title: string; subtitle: string }) => void;
-  onReset: () => void;
+  onSave: (categories: Category[], meta: { title: string; subtitle: string }) => Promise<void>;
+  onReset: () => Promise<void>;
   onBack: () => void;
 }
 export function Editor({
   initial,
   initialMeta,
   onSave,
-  onSaveMeta,
   onReset,
   onBack,
 }: EditorProps) {
@@ -33,6 +31,7 @@ export function Editor({
       })),
     }))
   );
+  const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState("");
   const [titleDraft, setTitleDraft] = useState(initialMeta.title);
   const [subtitleDraft, setSubtitleDraft] = useState(initialMeta.subtitle);
@@ -226,7 +225,8 @@ export function Editor({
       };
     });
   };
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (saving) return;
     for (let catIndex = 0; catIndex < draft.length; catIndex++) {
       const invalid = draft[catIndex].questions.findIndex(q => q.type === "choice" &&
         (!q.question.trim() || !hasValidChoices(q)));
@@ -276,23 +276,25 @@ export function Editor({
         };
       }),
     }));
-    onSave(cleaned);
-    onSaveMeta({
-      title: titleDraft.trim() || initialMeta.title,
-      subtitle: subtitleDraft.trim(),
-    });
-    onBack();
-  };
-  const handleReset = () => {
-    if (confirm("Alle Kategorien, Titel und Fragen auf Standard zurücksetzen?")) {
-      onReset();
+    setSaving(true);
+    try {
+      await onSave(cleaned, { title: titleDraft.trim() || initialMeta.title, subtitle: subtitleDraft.trim() });
       onBack();
-    }
+    } catch (error) { setValidationError(error instanceof Error ? error.message : 'Speichern fehlgeschlagen. Deine Eingaben bleiben erhalten.'); }
+    finally { setSaving(false); }
+  };
+  const handleReset = async () => {
+    if (saving || !confirm("Alle Kategorien, Titel und Fragen dieses Quiz auf Standard zurücksetzen?")) return;
+    setSaving(true);
+    try { await onReset(); onBack(); }
+    catch (error) { setValidationError(error instanceof Error ? error.message : 'Zurücksetzen fehlgeschlagen.'); }
+    finally { setSaving(false); }
   };
   return (
     <div className="min-h-screen p-3 md:p-6 max-w-5xl mx-auto">
       <header className="flex items-center justify-between gap-2 mb-6">
         <Button
+          disabled={saving}
           onClick={onBack}
           className="glass text-foreground hover:bg-white/15 border-white/15 rounded-xl"
         >
@@ -305,6 +307,7 @@ export function Editor({
           Bearbeiten
         </h1>
         <Button
+          disabled={saving}
           onClick={handleReset}
           className="glass text-destructive hover:bg-destructive/20 border-destructive/30 rounded-xl"
         >
@@ -593,7 +596,7 @@ export function Editor({
                             onChange={() => updateQuestion(qIdx, question => ({ ...question, correctOption: optionIndex }))} />
                           {letter}
                         </label>
-                        <Input aria-label={`Antwort ${letter}`} value={q.options?.[optionIndex] ?? ""}
+                        <Textarea rows={2} aria-label={`Antwort ${letter}`} value={q.options?.[optionIndex] ?? ""}
                           className="glass border-white/10 rounded-xl"
                           onChange={event => updateQuestion(qIdx, question => {
                             const options = [...(question.options ?? ["", "", "", ""])];
@@ -609,10 +612,11 @@ export function Editor({
                       <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
                         Antwort
                       </Label>
-                      <Input
+                      <Textarea
+                        rows={4}
                         value={q.answer}
                         onChange={(e) => updateQ(qIdx, "answer", e.target.value)}
-                        className="glass border-white/10 text-foreground rounded-xl mt-1 h-11"
+                        className="glass border-white/10 text-foreground rounded-xl mt-1 min-h-28 resize-y"
                       />
                     </div>
                     {isHint && (
@@ -726,11 +730,12 @@ export function Editor({
         </div>
         {validationError && <p role="alert" className="text-destructive">{validationError}</p>}
         <Button
+          disabled={saving}
           onClick={handleSave}
           size="lg"
           className="w-full font-display text-lg md:text-xl py-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider uppercase glow-primary border-0"
         >
-          Änderungen speichern
+          {saving ? "Wird gespeichert …" : "Änderungen speichern"}
         </Button>
       </div>
     </div>
