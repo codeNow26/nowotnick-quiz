@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 import { Button } from "@/components/ui/button";
 
@@ -120,9 +120,19 @@ export function QuestionModal({
 
 }: QuestionModalProps) {
 
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open) contentRef.current?.scrollTo({ top: 0 });
+  }, [open, question]);
+
   const [revealed, setRevealed] = useState(false);
 
 
+
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0 });
+  }, [revealed]);
 
   const [selectedPlayer, setSelectedPlayer] =
 
@@ -818,6 +828,7 @@ export function QuestionModal({
     >
 
       <DialogContent
+        aria-describedby={undefined}
 
         onEscapeKeyDown={(event) => {
 
@@ -853,8 +864,7 @@ export function QuestionModal({
 
         className="
 
-          max-w-3xl
-
+          question-dialog max-w-4xl
           p-0
 
           overflow-hidden
@@ -875,17 +885,16 @@ export function QuestionModal({
 
       >
 
+        <DialogTitle className="sr-only">{category} – Quizfrage</DialogTitle>
         {/* HEADER */}
 
         <div
 
           className="
 
-            relative
-
-            px-6 py-4
-
-            md:px-8 md:py-5
+            question-dialog-header relative
+            px-4 py-3 pr-12
+            md:px-6 md:py-4 md:pr-12
 
             flex
 
@@ -937,7 +946,7 @@ export function QuestionModal({
 
           {/* Kategorie */}
 
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
 
             <div
 
@@ -961,13 +970,8 @@ export function QuestionModal({
 
               className="
 
-                font-display
-
+                font-sans font-bold break-words
                 text-sm md:text-base
-
-                uppercase
-
-                tracking-[0.22em]
 
                 text-foreground/90
 
@@ -1046,28 +1050,16 @@ export function QuestionModal({
         {/* FRAGE / ANTWORT */}
 
         <div
+          ref={contentRef}
+          tabIndex={0}
+          role="region"
+          aria-label={revealed ? "Antwort" : "Frage"}
 
           className="
 
-            relative
-
-            min-h-64
-
-            md:min-h-[310px]
-
-            px-7 py-10
-
-            md:px-12 md:py-14
-
-            flex
-
-            items-center
-
-            justify-center
-
+            question-dialog-body relative
+            px-5 py-10 md:px-10 md:py-12
             text-center
-
-            overflow-hidden
 
           "
 
@@ -1197,15 +1189,12 @@ export function QuestionModal({
 
                     className="
 
-                      font-display
-
-                      uppercase
-
-                      leading-[1.15]
+                      font-sans font-bold
+                  leading-snug
 
                       whitespace-pre-line
 
-                      text-2xl md:text-[2.6rem]
+                      text-2xl md:text-4xl
 
                       text-foreground
 
@@ -1231,7 +1220,7 @@ export function QuestionModal({
 
                     {question.question.replace(
 
-                      /\s+(?=[A-D]:)/g,
+                      /\s+(?=[A-D](?::|\.{1,2}|\)))/g,
 
                       "\n"
 
@@ -1513,11 +1502,8 @@ export function QuestionModal({
 
                   relative z-10
 
-                  font-display
-
-                  uppercase
-
-                  leading-[1.15]
+                  font-sans font-bold
+                  leading-snug
 
                   whitespace-pre-line
 
@@ -1539,7 +1525,7 @@ export function QuestionModal({
 
                       ? "text-2xl md:text-4xl text-foreground"
 
-                      : "text-2xl md:text-[2.6rem] text-foreground"
+                      : "text-2xl md:text-4xl text-foreground"
 
                   }
 
@@ -1561,7 +1547,7 @@ export function QuestionModal({
 
                   : question.question.replace(
 
-                      /\s+(?=[A-D]:)/g,
+                      /\s+(?=[A-D](?::|\.{1,2}|\)))/g,
 
                       "\n"
 
@@ -1613,11 +1599,8 @@ export function QuestionModal({
 
           className="
 
-            relative
-
-            p-4 md:p-6
-
-            space-y-5
+            question-dialog-controls relative
+            p-3 md:p-4 space-y-3
 
             border-t
 
