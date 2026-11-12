@@ -110,20 +110,19 @@ body::before, body::after {
   z-index: -1;
   pointer-events: none;
   opacity: .55;
-  will-change: transform;
   transition: opacity 800ms ease;
 }
 body::before {
   left: -12vw;
   top: 12vh;
   background: radial-gradient(ellipse, rgba(119, 77, 230, .22), transparent 70%);
-  animation: quiz-light-left 22s ease-in-out infinite alternate;
+  /* Ambient light stays static; only tiny stars animate. */
 }
 body::after {
   right: -12vw;
   bottom: 4vh;
   background: radial-gradient(ellipse, rgba(53, 121, 190, .18), transparent 70%);
-  animation: quiz-light-right 29s ease-in-out -11s infinite alternate;
+  
 }
 body:has([role="dialog"][data-state="open"])::before,
 body:has([role="dialog"][data-state="open"])::after {
@@ -190,4 +189,47 @@ body:has([role="dialog"][data-state="open"])::after {
 }
 @media (prefers-reduced-motion: reduce) {
   body::before, body::after { animation: none; transition: none; }
+}
+
+/* Sparse starfield: animate small elements rather than a viewport texture. */
+.ambient-stars {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+.ambient-star {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  background: #d9e4ff;
+  opacity: var(--star-opacity);
+  animation-name: quiz-star-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+@keyframes quiz-star-drift {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+    opacity: var(--star-opacity);
+  }
+  50% {
+    transform: translate3d(var(--star-dx), var(--star-dy), 0);
+    opacity: calc(var(--star-opacity) * .55);
+  }
+}
+body:has([role="dialog"][data-state="open"]) .ambient-star,
+.ambient-stars[data-paused="true"] .ambient-star {
+  animation-play-state: paused;
+}
+body:has([role="dialog"][data-state="open"]) .ambient-stars {
+  visibility: hidden;
+}
+@media (max-width: 640px) {
+  .ambient-star:nth-child(n + 17) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient-star { animation: none; will-change: auto; }
 }
