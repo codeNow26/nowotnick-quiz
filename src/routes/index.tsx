@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-
 import { StartScreen } from "@/components/jeopardy/StartScreen";
 import { Board } from "@/components/jeopardy/Board";
 import { QuestionModal } from "@/components/jeopardy/QuestionModal";
@@ -14,7 +13,6 @@ import {
 } from "@/components/jeopardy/GameStats";
 import { Editor } from "@/components/jeopardy/Editor";
 import { Button } from "@/components/ui/button";
-
 import {
   Music,
   VolumeX,
@@ -24,10 +22,8 @@ import {
   Dices,
   BarChart3,
 } from "lucide-react";
-
 import { POINT_VALUES } from "@/lib/jeopardy-data";
 import { useCategories } from "@/lib/use-categories";
-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -50,24 +46,19 @@ export const Route = createFileRoute("/")({
   }),
   component: Index,
 });
-
 interface Player {
   name: string;
   score: number;
 }
-
 interface Active {
   category: number;
   question: number;
 }
-
 interface LeadershipChange {
   playerName: string;
   score: number;
 }
-
 type Screen = "start" | "game" | "editor";
-
 function makeAnswered(
   categoryCount: number,
   questionCount: number
@@ -76,13 +67,10 @@ function makeAnswered(
     Array.from({ length: questionCount }, () => false)
   );
 }
-
 function makePlayerStats(count: number): PlayerStats[] {
   return Array.from({ length: count }, () => ({
     mainCorrect: 0,
     mainWrong: 0,
-    coCorrect: 0,
-    coWrong: 0,
     pointsWon: 0,
     pointsLost: 0,
     highestScore: 0,
@@ -91,16 +79,13 @@ function makePlayerStats(count: number): PlayerStats[] {
     leadershipChanges: 0,
   }));
 }
-
 function getSoleLeaderIndex(
   players: Player[]
 ): number | null {
   if (players.length === 0) return null;
-
   const highestScore = Math.max(
     ...players.map((player) => player.score)
   );
-
   const leaders = players
     .map((player, index) => ({
       index,
@@ -109,14 +94,11 @@ function getSoleLeaderIndex(
     .filter(
       (player) => player.score === highestScore
     );
-
   if (leaders.length !== 1) {
     return null;
   }
-
   return leaders[0].index;
 }
-
 function Index() {
   const {
     categories: allCategories,
@@ -127,91 +109,68 @@ function Index() {
     quizSlot,
     loadQuiz,
   } = useCategories();
-
   // Normale Hintergrundmusik
   const audioRef =
     useRef<HTMLAudioElement | null>(null);
-
   // Einmaliger 10-Sekunden-Final-Sound
   const finalAudioRef =
     useRef<HTMLAudioElement | null>(null);
-
   // Spannungsmusik während der letzten Frage
   const tenseAudioRef =
     useRef<HTMLAudioElement | null>(null);
-
   const leaderRef =
     useRef<number | null>(null);
-
   const leadershipTimerRef = useRef<
     ReturnType<typeof setTimeout> | null
   >(null);
-
   const randomTimerRef = useRef<
     ReturnType<typeof setTimeout> | null
   >(null);
-
   const popupTimerRef = useRef<
     ReturnType<typeof setTimeout> | null
   >(null);
-
   const popupIdRef = useRef(0);
-
   const [musicPlaying, setMusicPlaying] =
     useState(false);
-
   const [musicVolume, setMusicVolume] =
     useState(0.3);
-
   const [showVolume, setShowVolume] =
     useState(false);
-
   const [
     leadershipChange,
     setLeadershipChange,
   ] = useState<LeadershipChange | null>(null);
-
   const [
     isRandomizing,
     setIsRandomizing,
   ] = useState(false);
-
   const [
     highlightedQuestion,
     setHighlightedQuestion,
   ] = useState<Active | null>(null);
-
   const [gameStats, setGameStats] =
     useState<PlayerStats[]>([]);
-
   const [showStats, setShowStats] =
     useState(false);
-
   const [scorePopups, setScorePopups] =
     useState<ScorePopup[]>([]);
-
   const toggleMusic = () => {
     if (!audioRef.current) {
       audioRef.current =
         new Audio("/music/background.mp3");
-
       audioRef.current.loop = true;
       audioRef.current.volume = musicVolume;
     }
-
     if (musicPlaying) {
       audioRef.current.pause();
-
       if (tenseAudioRef.current) {
         tenseAudioRef.current.pause();
       }
-
       setMusicPlaying(false);
     } else {
       if (tenseAudioRef.current) {
         tenseAudioRef.current.volume =
           musicVolume;
-
         tenseAudioRef.current
           .play()
           .catch((error) => {
@@ -223,7 +182,6 @@ function Index() {
       } else {
         audioRef.current.volume =
           musicVolume;
-
         audioRef.current
           .play()
           .catch((error) => {
@@ -233,26 +191,21 @@ function Index() {
             );
           });
       }
-
       setMusicPlaying(true);
     }
   };
-
   const changeMusicVolume = (
     volume: number
   ) => {
     setMusicVolume(volume);
-
     if (audioRef.current) {
       audioRef.current.volume = volume;
     }
-
     if (tenseAudioRef.current) {
       tenseAudioRef.current.volume =
         volume;
     }
   };
-
   const stopFinalQuestionAudio = (
     resumeBackground = true
   ) => {
@@ -261,13 +214,11 @@ function Index() {
       finalAudioRef.current.currentTime = 0;
       finalAudioRef.current = null;
     }
-
     if (tenseAudioRef.current) {
       tenseAudioRef.current.pause();
       tenseAudioRef.current.currentTime = 0;
       tenseAudioRef.current = null;
     }
-
     if (
       resumeBackground &&
       musicPlaying &&
@@ -275,7 +226,6 @@ function Index() {
     ) {
       audioRef.current.volume =
         musicVolume;
-
       audioRef.current
         .play()
         .catch((error) => {
@@ -286,24 +236,19 @@ function Index() {
         });
     }
   };
-
   const playFinalQuestionAudio = () => {
     // Falls aus irgendeinem Grund noch Boss-Audio läuft:
     stopFinalQuestionAudio(false);
-
     // Normale Musik bleibt an ihrer aktuellen Stelle stehen.
     if (audioRef.current) {
       audioRef.current.pause();
     }
-
     // 10-Sekunden-Final-Sound
     const finalSound = new Audio(
       "/sounds/Sound_Effects/Final.mp3"
     );
-
     finalSound.volume = 0.4;
     finalAudioRef.current = finalSound;
-
     finalSound.onended = () => {
       if (
         finalAudioRef.current ===
@@ -312,7 +257,6 @@ function Index() {
         finalAudioRef.current = null;
       }
     };
-
     finalSound
       .play()
       .catch((error) => {
@@ -320,7 +264,6 @@ function Index() {
           "Final-Sound konnte nicht abgespielt werden:",
           error
         );
-
         if (
           finalAudioRef.current ===
           finalSound
@@ -328,20 +271,16 @@ function Index() {
           finalAudioRef.current = null;
         }
       });
-
     // Tense ersetzt nur dann die Hintergrundmusik,
     // wenn der Nutzer die Musik überhaupt eingeschaltet hat.
     if (musicPlaying) {
       const tenseMusic = new Audio(
         "/music/Tense.mp3"
       );
-
       tenseMusic.loop = true;
       tenseMusic.volume = musicVolume;
-
       tenseAudioRef.current =
         tenseMusic;
-
       tenseMusic
         .play()
         .catch((error) => {
@@ -349,7 +288,6 @@ function Index() {
             "Tense-Musik konnte nicht abgespielt werden:",
             error
           );
-
           if (
             tenseAudioRef.current ===
             tenseMusic
@@ -359,20 +297,16 @@ function Index() {
         });
     }
   };
-
   const [screen, setScreen] =
     useState<Screen>("start");
-
   const [players, setPlayers] =
     useState<Player[]>([]);
-
   const [
     activeCategoryCount,
     setActiveCategoryCount,
   ] = useState(
     Math.min(6, allCategories.length)
   );
-
   const categories = useMemo(
     () =>
       allCategories.slice(
@@ -381,7 +315,6 @@ function Index() {
       ),
     [allCategories, activeCategoryCount]
   );
-
   const [answered, setAnswered] =
     useState<boolean[][]>(() =>
       makeAnswered(
@@ -389,10 +322,8 @@ function Index() {
         POINT_VALUES.length
       )
     );
-
   const [active, setActive] =
     useState<Active | null>(null);
-
   const allAnswered = useMemo(
     () =>
       answered.every((row) =>
@@ -400,7 +331,6 @@ function Index() {
       ),
     [answered]
   );
-
   const MusicControls = () => (
     <div className="flex items-center gap-2">
       <Button
@@ -424,7 +354,6 @@ function Index() {
           <Music className="h-5 w-5" />
         )}
       </Button>
-
       <Button
         variant="outline"
         size="icon"
@@ -442,7 +371,6 @@ function Index() {
       >
         <SlidersHorizontal className="h-5 w-5" />
       </Button>
-
       {showVolume && (
         <div className="flex items-center gap-2 glass px-3 py-2 rounded-2xl border border-white/10 backdrop-blur-md">
           <input
@@ -458,7 +386,6 @@ function Index() {
             }
             className="w-24 md:w-32 cursor-pointer"
           />
-
           <span className="text-xs text-muted-foreground w-9 text-right">
             {Math.round(
               musicVolume * 100
@@ -469,7 +396,6 @@ function Index() {
       )}
     </div>
   );
-
   if (screen === "editor") {
     return (
       <Editor
@@ -484,7 +410,6 @@ function Index() {
       />
     );
   }
-
   if (screen === "start") {
     return (
       <div className="relative">
@@ -501,79 +426,64 @@ function Index() {
             catCount
           ) => {
             stopFinalQuestionAudio(false);
-
             setPlayers(
               names.map((name) => ({
                 name,
                 score: 0,
               }))
             );
-
             setGameStats(
               makePlayerStats(
                 names.length
               )
             );
-
             setActiveCategoryCount(
               catCount
             );
-
             setAnswered(
               makeAnswered(
                 catCount,
                 POINT_VALUES.length
               )
             );
-
             leaderRef.current = null;
-
             setLeadershipChange(null);
             setHighlightedQuestion(null);
             setIsRandomizing(false);
             setShowStats(false);
             setScorePopups([]);
-
             if (
               leadershipTimerRef.current
             ) {
               clearTimeout(
                 leadershipTimerRef.current
               );
-
               leadershipTimerRef.current =
                 null;
             }
-
             if (
               randomTimerRef.current
             ) {
               clearTimeout(
                 randomTimerRef.current
               );
-
               randomTimerRef.current =
                 null;
             }
-
             if (
               popupTimerRef.current
             ) {
               clearTimeout(
                 popupTimerRef.current
               );
-
               popupTimerRef.current =
                 null;
             }
-
             setScreen("game");
           }}
         />
-
         <div className="fixed top-4 right-4 flex items-center gap-2 z-50">
           <MusicControls />
-
           <Button
             variant="outline"
             onClick={() =>
@@ -588,7 +498,6 @@ function Index() {
       </div>
     );
   }
-
   const activeQuestion =
     active !== null
       ? categories[
@@ -597,7 +506,6 @@ function Index() {
           active.question
         ]
       : null;
-
   const activeValue =
     active !== null
       ? categories[
@@ -609,14 +517,12 @@ function Index() {
           active.question
         ]
       : 0;
-
   const activeCategory =
     active !== null
       ? categories[
           active.category
         ].name
       : "";
-
   const openQuestion = (
     questionToOpen: Active
   ) => {
@@ -624,34 +530,26 @@ function Index() {
       categories[
         questionToOpen.category
       ];
-
     const lastQuestionIndex =
       category.questions.length - 1;
-
     const isFinalQuestion =
       questionToOpen.question ===
       lastQuestionIndex;
-
     if (isFinalQuestion) {
       playFinalQuestionAudio();
     } else {
       stopFinalQuestionAudio();
     }
-
     setActive(questionToOpen);
   };
-
   const closeQuestion = () => {
     stopFinalQuestionAudio();
     setActive(null);
   };
-
   const selectRandomQuestion = () => {
     if (isRandomizing) return;
-
     const availableQuestions: Active[] =
       [];
-
     answered.forEach(
       (
         row,
@@ -674,15 +572,12 @@ function Index() {
         );
       }
     );
-
     if (
       availableQuestions.length === 0
     ) {
       return;
     }
-
     setIsRandomizing(true);
-
     const finalQuestion =
       availableQuestions[
         Math.floor(
@@ -690,7 +585,6 @@ function Index() {
             availableQuestions.length
         )
       ];
-
     const delays = [
       70,
       80,
@@ -704,43 +598,33 @@ function Index() {
       230,
       280,
     ];
-
     let step = 0;
-
     let previousQuestion:
       | Active
       | null = null;
-
     const runRoulette = () => {
       const isFinalStep =
         step >= delays.length;
-
       if (isFinalStep) {
         setHighlightedQuestion(
           finalQuestion
         );
-
         randomTimerRef.current =
           setTimeout(() => {
             setIsRandomizing(
               false
             );
-
             setHighlightedQuestion(
               null
             );
-
             openQuestion(
               finalQuestion
             );
-
             randomTimerRef.current =
               null;
           }, 600);
-
         return;
       }
-
       let randomQuestion =
         availableQuestions[
           Math.floor(
@@ -748,7 +632,6 @@ function Index() {
               availableQuestions.length
           )
         ];
-
       if (
         availableQuestions.length >
           1 &&
@@ -769,36 +652,27 @@ function Index() {
             ];
         }
       }
-
       previousQuestion =
         randomQuestion;
-
       setHighlightedQuestion(
         randomQuestion
       );
-
       randomTimerRef.current =
         setTimeout(() => {
           step++;
           runRoulette();
         }, delays[step]);
     };
-
     runRoulette();
   };
-
   const handleResolve = (
     playerIndex: number | null,
     correct: boolean,
-    coGuessers: number[] = [],
-    correctCoGuessers: number[] = [],
     resolvedValue: number = activeValue
   ) => {
     if (!active) return;
-
     // Bossmusik beenden und normale Hintergrundmusik fortsetzen.
     stopFinalQuestionAudio();
-
     const wrongSounds = [
       {
         path: "/sounds/Wrong/Dummkopf.WAV",
@@ -841,7 +715,6 @@ function Index() {
         volume: 0.6,
       },
     ];
-
     const correctSounds = [
       {
         path: "/sounds/Correct/Ja sound effect Hitler.mp3",
@@ -868,7 +741,6 @@ function Index() {
         volume: 1.0,
       },
     ];
-
     const soundData = correct
       ? correctSounds[
           Math.floor(
@@ -882,15 +754,12 @@ function Index() {
               wrongSounds.length
           )
         ];
-
     const sound =
       new Audio(
         soundData.path
       );
-
     sound.volume =
       soundData.volume;
-
     sound
       .play()
       .catch((error) => {
@@ -900,21 +769,13 @@ function Index() {
           error
         );
       });
-
-    const coGuesserPoints =
-      Math.round(
-        resolvedValue * 0.25
-      );
-
     setPlayers((prev) => {
       const previousLeader =
         leaderRef.current;
-
       const scoreChanges =
         prev.map(
           (_, index) => {
             let scoreChange = 0;
-
             if (
               index ===
               playerIndex
@@ -925,26 +786,9 @@ function Index() {
                     resolvedValue / 2
                   );
             }
-
-            if (
-              index !==
-                playerIndex &&
-              coGuessers.includes(
-                index
-              )
-            ) {
-              scoreChange +=
-                correctCoGuessers.includes(
-                  index
-                )
-                  ? coGuesserPoints
-                  : -coGuesserPoints;
-            }
-
             return scoreChange;
           }
         );
-
       const nextPlayers =
         prev.map(
           (
@@ -959,7 +803,6 @@ function Index() {
               ],
           })
         );
-
       const newPopups: ScorePopup[] =
         scoreChanges
           .map(
@@ -972,23 +815,15 @@ function Index() {
               playerIndex:
                 index,
               amount,
-              isCoGuesser:
-                index !==
-                  playerIndex &&
-                coGuessers.includes(
-                  index
-                ),
             })
           )
           .filter(
             (popup) =>
               popup.amount !== 0
           );
-
       setScorePopups(
         newPopups
       );
-
       if (
         popupTimerRef.current
       ) {
@@ -996,19 +831,16 @@ function Index() {
           popupTimerRef.current
         );
       }
-
       popupTimerRef.current =
         setTimeout(() => {
           setScorePopups([]);
           popupTimerRef.current =
             null;
         }, 1600);
-
       const newLeader =
         getSoleLeaderIndex(
           nextPlayers
         );
-
       setGameStats(
         (previousStats) =>
           previousStats.map(
@@ -1020,66 +852,33 @@ function Index() {
                 scoreChanges[
                   index
                 ];
-
               const isMainPlayer =
                 index ===
                 playerIndex;
-
-              const isCoGuesser =
-                index !==
-                  playerIndex &&
-                coGuessers.includes(
-                  index
-                );
-
-              const coGuesserCorrect =
-                correctCoGuessers.includes(
-                  index
-                );
-
               const becameLeader =
                 newLeader ===
                   index &&
                 newLeader !==
                   previousLeader;
-
               return {
                 ...stat,
-
                 mainCorrect:
                   stat.mainCorrect +
                   (isMainPlayer &&
                   correct
                     ? 1
                     : 0),
-
                 mainWrong:
                   stat.mainWrong +
                   (isMainPlayer &&
                   !correct
                     ? 1
                     : 0),
-
-                coCorrect:
-                  stat.coCorrect +
-                  (isCoGuesser &&
-                  coGuesserCorrect
-                    ? 1
-                    : 0),
-
-                coWrong:
-                  stat.coWrong +
-                  (isCoGuesser &&
-                  !coGuesserCorrect
-                    ? 1
-                    : 0),
-
                 pointsWon:
                   stat.pointsWon +
                   (scoreChange > 0
                     ? scoreChange
                     : 0),
-
                 pointsLost:
                   stat.pointsLost +
                   (scoreChange < 0
@@ -1087,7 +886,6 @@ function Index() {
                         scoreChange
                       )
                     : 0),
-
                 highestScore:
                   Math.max(
                     stat.highestScore,
@@ -1095,7 +893,6 @@ function Index() {
                       index
                     ].score
                   ),
-
                 biggestGain:
                   Math.max(
                     stat.biggestGain,
@@ -1103,7 +900,6 @@ function Index() {
                       ? scoreChange
                       : 0
                   ),
-
                 biggestLoss:
                   Math.max(
                     stat.biggestLoss,
@@ -1113,7 +909,6 @@ function Index() {
                         )
                       : 0
                   ),
-
                 leadershipChanges:
                   stat.leadershipChanges +
                   (becameLeader
@@ -1123,7 +918,6 @@ function Index() {
             }
           )
       );
-
       if (
         newLeader !== null &&
         newLeader !==
@@ -1133,14 +927,12 @@ function Index() {
           nextPlayers[
             newLeader
           ];
-
         setLeadershipChange({
           playerName:
             leader.name,
           score:
             leader.score,
         });
-
         if (
           leadershipTimerRef.current
         ) {
@@ -1148,42 +940,33 @@ function Index() {
             leadershipTimerRef.current
           );
         }
-
         leadershipTimerRef.current =
           setTimeout(() => {
             setLeadershipChange(
               null
             );
-
             leadershipTimerRef.current =
               null;
           }, 2500);
       }
-
       leaderRef.current =
         newLeader;
-
       return nextPlayers;
     });
-
     setAnswered((prev) => {
       const next =
         prev.map((row) => [
           ...row,
         ]);
-
       next[
         active.category
       ][
         active.question
       ] = true;
-
       return next;
     });
-
     setActive(null);
   };
-
   const handleManualScoreChange = (
   playerIndex: number,
   newScore: number
@@ -1204,16 +987,13 @@ function Index() {
               }
             : player
       );
-
     leaderRef.current =
       getSoleLeaderIndex(
         nextPlayers
       );
-
     return nextPlayers;
   });
 };
-
   const winner =
     allAnswered
       ? [...players].sort(
@@ -1222,7 +1002,6 @@ function Index() {
             a.score
         )[0]
       : null;
-
   return (
     <div className={`min-h-screen p-3 md:p-6 mx-auto ${categories.length >= 8 ? "max-w-[1920px]" : "max-w-7xl"}`}>
       {showStats && (
@@ -1239,24 +1018,19 @@ function Index() {
           }}
         />
       )}
-
       {leadershipChange && (
         <div className="fixed inset-0 z-[100] pointer-events-none flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px] animate-in fade-in duration-300" />
-
           <div className="relative glass-strong border border-amber-400/40 rounded-3xl px-8 py-7 md:px-14 md:py-10 text-center shadow-2xl animate-in zoom-in-75 fade-in duration-300">
             <Crown className="h-14 w-14 md:h-20 md:w-20 mx-auto mb-3 text-amber-400 drop-shadow-lg" />
-
             <p className="font-display text-lg md:text-2xl uppercase tracking-[0.2em] text-amber-400 mb-2">
               Neue Führung!
             </p>
-
             <p className="font-display text-3xl md:text-5xl uppercase text-foreground">
               {
                 leadershipChange.playerName
               }
             </p>
-
             <p className="mt-3 text-lg md:text-2xl text-muted-foreground">
               übernimmt mit{" "}
               <span className="text-foreground font-bold">
@@ -1269,11 +1043,9 @@ function Index() {
           </div>
         </div>
       )}
-
       <div className="fixed top-4 right-4 z-50">
         <MusicControls />
       </div>
-
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6 pr-28">
         <h1
           className="font-display text-3xl md:text-5xl text-foreground tracking-tight uppercase"
@@ -1284,7 +1056,6 @@ function Index() {
         >
           {meta.title}
         </h1>
-
         <div className="flex gap-2">
           <Button
             onClick={
@@ -1307,12 +1078,10 @@ function Index() {
                   : ""
               }`}
             />
-
             {isRandomizing
               ? "Würfelt..."
               : "Zufallsfrage"}
           </Button>
-
           <Button
             onClick={() => {
               stopFinalQuestionAudio(false);
@@ -1327,7 +1096,6 @@ function Index() {
           </Button>
         </div>
       </header>
-
       <div className="mb-4 md:mb-6">
         <ScoreBoard
   players={players}
@@ -1335,14 +1103,12 @@ function Index() {
   onScoreChange={handleManualScoreChange}
 />
       </div>
-
       {winner && (
         <div className="mb-4 md:mb-6 glass-strong rounded-3xl p-5 md:p-6 text-center glow-primary animate-in fade-in zoom-in">
           <p className="font-display text-2xl md:text-4xl uppercase text-foreground tracking-wide mb-4">
             🏆 {winner.name} gewinnt
             mit {winner.score}!
           </p>
-
           <Button
             onClick={() =>
               setShowStats(true)
@@ -1355,7 +1121,6 @@ function Index() {
           </Button>
         </div>
       )}
-
       <Board
         categories={categories}
         answered={answered}
@@ -1375,9 +1140,6 @@ function Index() {
           })
         }
       />
-
-     
-
       <QuestionModal
         open={active !== null}
         question={

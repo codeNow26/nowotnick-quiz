@@ -5,8 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import type { Category, Question } from "@/lib/jeopardy-data";
-import { POINT_VALUES } from "@/lib/jeopardy-data";
-
+import { POINT_VALUES, hasValidChoices } from "@/lib/jeopardy-data";
 interface EditorProps {
   initial: Category[];
   initialMeta: { title: string; subtitle: string };
@@ -15,7 +14,6 @@ interface EditorProps {
   onReset: () => void;
   onBack: () => void;
 }
-
 export function Editor({
   initial,
   initialMeta,
@@ -30,16 +28,17 @@ export function Editor({
       questions: c.questions.map((q) => ({
         ...q,
         orderItems: q.orderItems ? [...q.orderItems] : undefined,
+        options: q.options ? [...q.options] : undefined,
         hints: q.hints ? [...q.hints] : undefined,
       })),
     }))
   );
+  const [validationError, setValidationError] = useState("");
   const [titleDraft, setTitleDraft] = useState(initialMeta.title);
   const [subtitleDraft, setSubtitleDraft] = useState(initialMeta.subtitle);
   const [activeCat, setActiveCat] = useState(0);
   const [openImageEditors, setOpenImageEditors] = useState<Record<string, boolean>>({});
   const [processingImages, setProcessingImages] = useState<Record<string, boolean>>({});
-
   const toggleImageEditor = (qIdx: number) => {
     const key = `${activeCat}-${qIdx}`;
     setOpenImageEditors((prev) => ({
@@ -47,7 +46,6 @@ export function Editor({
       [key]: !prev[key],
     }));
   };
-
   const closeImageEditor = (qIdx: number) => {
     const key = `${activeCat}-${qIdx}`;
     setOpenImageEditors((prev) => ({
@@ -55,74 +53,54 @@ export function Editor({
       [key]: false,
     }));
   };
-
   const fileToOptimizedDataUrl = (file: File) => {
     return new Promise<string>((resolve, reject) => {
       const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-
       if (!allowedTypes.includes(file.type)) {
         reject(new Error("Bitte JPG, PNG oder WEBP verwenden."));
         return;
       }
-
       if (file.size > 10 * 1024 * 1024) {
         reject(new Error("Das Bild darf maximal 10 MB groß sein."));
         return;
       }
-
       const reader = new FileReader();
-
       reader.onerror = () => reject(new Error("Bild konnte nicht gelesen werden."));
-
       reader.onload = () => {
         const image = new Image();
-
         image.onerror = () => reject(new Error("Bild konnte nicht verarbeitet werden."));
-
         image.onload = () => {
           const maxDimension = 1600;
           const scale = Math.min(
             1,
             maxDimension / Math.max(image.naturalWidth, image.naturalHeight)
           );
-
           const width = Math.max(1, Math.round(image.naturalWidth * scale));
           const height = Math.max(1, Math.round(image.naturalHeight * scale));
-
           const canvas = document.createElement("canvas");
           canvas.width = width;
           canvas.height = height;
-
           const context = canvas.getContext("2d");
-
           if (!context) {
             reject(new Error("Bild konnte nicht verarbeitet werden."));
             return;
           }
-
           context.drawImage(image, 0, 0, width, height);
-
           const optimized = canvas.toDataURL("image/webp", 0.82);
           resolve(optimized);
         };
-
         image.src = String(reader.result);
       };
-
       reader.readAsDataURL(file);
     });
   };
-
   const handleImageUpload = async (qIdx: number, file: File | undefined) => {
     if (!file) return;
-
     const key = `${activeCat}-${qIdx}`;
-
     setProcessingImages((prev) => ({
       ...prev,
       [key]: true,
     }));
-
     try {
       const imageDataUrl = await fileToOptimizedDataUrl(file);
       updateQ(qIdx, "imageUrl", imageDataUrl);
@@ -135,11 +113,9 @@ export function Editor({
       }));
     }
   };
-
   const updateCatName = (name: string) => {
     setDraft((prev) => prev.map((c, i) => (i === activeCat ? { ...c, name } : c)));
   };
-
   const updateQuestion = (qIdx: number, updater: (q: Question) => Question) => {
     setDraft((prev) =>
       prev.map((c, i) =>
@@ -152,17 +128,18 @@ export function Editor({
       )
     );
   };
-
   const updateQ = (qIdx: number, field: "question" | "answer" | "imageUrl", value: string) => {
     updateQuestion(qIdx, (q) => ({ ...q, [field]: value }));
   };
-
   const updateQValue = (qIdx: number, value: number | undefined) => {
     updateQuestion(qIdx, (q) => ({ ...q, value }));
   };
-
-  const setQuestionType = (qIdx: number, type: "normal" | "order" | "hint") => {
+  const setQuestionType = (qIdx: number, type: NonNullable<Question["type"]>) => {
     updateQuestion(qIdx, (q) => {
+      if (type === "choice") {
+        return { ...q, type, options: q.options?.length === 4 ? [...q.options] : ["", "", "", ""],
+          correctOption: q.correctOption, orderItems: undefined, hints: undefined };
+      }
       if (type === "order") {
         const existing = q.orderItems?.length ? q.orderItems : ["", "", "", ""];
         return {
@@ -173,7 +150,6 @@ export function Editor({
           answer: existing.filter(Boolean).join(" → "),
         };
       }
-
       if (type === "hint") {
         return {
           ...q,
@@ -182,7 +158,6 @@ export function Editor({
           hints: q.hints?.length ? q.hints : ["", "", ""],
         };
       }
-
       return {
         ...q,
         type: "normal",
@@ -191,7 +166,6 @@ export function Editor({
       };
     });
   };
-
   const updateHint = (qIdx: number, hintIdx: number, value: string) => {
     updateQuestion(qIdx, (q) => {
       const hints = [...(q.hints ?? ["", "", ""] )];
@@ -204,7 +178,6 @@ export function Editor({
       };
     });
   };
-
   const updateOrderItem = (qIdx: number, itemIdx: number, value: string) => {
     updateQuestion(qIdx, (q) => {
       const items = [...(q.orderItems ?? [])];
@@ -217,7 +190,6 @@ export function Editor({
       };
     });
   };
-
   const addOrderItem = (qIdx: number) => {
     updateQuestion(qIdx, (q) => {
       const items = [...(q.orderItems ?? []), ""];
@@ -229,7 +201,6 @@ export function Editor({
       };
     });
   };
-
   const removeOrderItem = (qIdx: number, itemIdx: number) => {
     updateQuestion(qIdx, (q) => {
       const items = (q.orderItems ?? []).filter((_, index) => index !== itemIdx);
@@ -241,15 +212,12 @@ export function Editor({
       };
     });
   };
-
   const moveOrderItem = (qIdx: number, itemIdx: number, direction: -1 | 1) => {
     updateQuestion(qIdx, (q) => {
       const items = [...(q.orderItems ?? [])];
       const target = itemIdx + direction;
       if (target < 0 || target >= items.length) return q;
-
       [items[itemIdx], items[target]] = [items[target], items[itemIdx]];
-
       return {
         ...q,
         type: "order",
@@ -258,11 +226,26 @@ export function Editor({
       };
     });
   };
-
   const handleSave = () => {
+    for (let catIndex = 0; catIndex < draft.length; catIndex++) {
+      const invalid = draft[catIndex].questions.findIndex(q => q.type === "choice" &&
+        (!q.question.trim() || !hasValidChoices(q)));
+      if (invalid !== -1) {
+        setActiveCat(catIndex);
+        setValidationError(`Frage ${invalid + 1}: Bitte Fragetext, alle vier Antworten und die richtige Lösung angeben.`);
+        return;
+      }
+    }
+    setValidationError("");
     const cleaned = draft.map((category) => ({
       ...category,
       questions: category.questions.map((q) => {
+        if (q.type === "choice") {
+          const options = q.options!.map(option => option.trim());
+          return { ...q, type: "choice" as const, options,
+            answer: options[q.correctOption!], orderItems: undefined, hints: undefined,
+            imageUrl: q.imageUrl?.trim() || undefined };
+        }
         if (q.type === "order") {
           const orderItems = (q.orderItems ?? []).map((item) => item.trim()).filter(Boolean);
           return {
@@ -274,7 +257,6 @@ export function Editor({
             imageUrl: q.imageUrl?.trim() || undefined,
           };
         }
-
         if (q.type === "hint") {
           const hints = (q.hints ?? []).map((hint) => hint.trim()).filter(Boolean);
           return {
@@ -285,7 +267,6 @@ export function Editor({
             imageUrl: q.imageUrl?.trim() || undefined,
           };
         }
-
         return {
           ...q,
           type: "normal" as const,
@@ -295,7 +276,6 @@ export function Editor({
         };
       }),
     }));
-
     onSave(cleaned);
     onSaveMeta({
       title: titleDraft.trim() || initialMeta.title,
@@ -303,14 +283,12 @@ export function Editor({
     });
     onBack();
   };
-
   const handleReset = () => {
     if (confirm("Alle Kategorien, Titel und Fragen auf Standard zurücksetzen?")) {
       onReset();
       onBack();
     }
   };
-
   return (
     <div className="min-h-screen p-3 md:p-6 max-w-5xl mx-auto">
       <header className="flex items-center justify-between gap-2 mb-6">
@@ -320,14 +298,12 @@ export function Editor({
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Zurück
         </Button>
-
         <h1
           className="font-display text-xl md:text-3xl text-foreground tracking-tight uppercase"
           style={{ textShadow: "0 0 30px oklch(0.55 0.24 278 / 0.6)" }}
         >
           Bearbeiten
         </h1>
-
         <Button
           onClick={handleReset}
           className="glass text-destructive hover:bg-destructive/20 border-destructive/30 rounded-xl"
@@ -335,7 +311,6 @@ export function Editor({
           <RotateCcw className="mr-2 h-4 w-4" /> Reset
         </Button>
       </header>
-
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-6">
         {draft.map((c, i) => (
           <button
@@ -352,12 +327,10 @@ export function Editor({
           </button>
         ))}
       </div>
-
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-4 glow-primary mb-4">
         <div className="text-xs text-muted-foreground uppercase tracking-[0.2em]">
           Spiel-Kopfzeile
         </div>
-
         <div>
           <Label className="text-muted-foreground text-xs uppercase tracking-[0.18em] mb-1 block">
             Titel
@@ -370,7 +343,6 @@ export function Editor({
             placeholder="Nowotnick Quiz"
           />
         </div>
-
         <div>
           <Label className="text-muted-foreground text-xs uppercase tracking-[0.18em] mb-1 block">
             Untertitel
@@ -384,7 +356,6 @@ export function Editor({
           />
         </div>
       </div>
-
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-6 glow-primary">
         <div>
           <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-2 block">
@@ -397,24 +368,22 @@ export function Editor({
             maxLength={40}
           />
         </div>
-
         <div className="space-y-5">
           {draft[activeCat].questions.map((q, qIdx) => {
             const isOrder = q.type === "order";
+            const isChoice = q.type === "choice";
             const isHint = q.type === "hint";
             const imageEditorKey = `${activeCat}-${qIdx}`;
             const imageEditorOpen = Boolean(openImageEditors[imageEditorKey]);
             const hasImage = Boolean(q.imageUrl?.trim());
             const isUploadedImage = q.imageUrl?.startsWith("data:image/") ?? false;
             const imageProcessing = Boolean(processingImages[imageEditorKey]);
-
             return (
               <div key={qIdx} className="glass rounded-2xl p-4 space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
                     Punkte
                   </Label>
-
                   <Input
                     type="number"
                     min={0}
@@ -427,13 +396,12 @@ export function Editor({
                     }
                     className="glass border-white/10 text-foreground font-display text-lg h-11 rounded-xl w-28"
                   />
-
-                  <div className="ml-auto flex rounded-xl border border-white/10 bg-white/[0.03] p-1">
+                  <div className="ml-auto flex flex-wrap rounded-xl border border-white/10 bg-white/[0.03] p-1">
                     <button
                       type="button"
                       onClick={() => setQuestionType(qIdx, "normal")}
                       className={`px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${
-                        !isOrder && !isHint
+                        !isOrder && !isHint && !isChoice
                           ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
@@ -463,9 +431,12 @@ export function Editor({
                       <Lightbulb className="h-3.5 w-3.5" />
                       Hinweis
                     </button>
+                    <button type="button" onClick={() => setQuestionType(qIdx, "choice")}
+                      className={`px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${isChoice ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                      ABCD
+                    </button>
                   </div>
                 </div>
-
                 <div>
                   <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
                     Frage
@@ -482,7 +453,6 @@ export function Editor({
                     }
                   />
                 </div>
-
                 <div className="space-y-2">
                   <button
                     type="button"
@@ -506,14 +476,12 @@ export function Editor({
                       <ImagePlus className="h-4 w-4" />
                       {hasImage ? "Bild vorhanden ✓" : "Bild hinzufügen"}
                     </span>
-
                     {imageEditorOpen ? (
                       <ChevronUp className="h-4 w-4" />
                     ) : (
                       <ChevronDown className="h-4 w-4" />
                     )}
                   </button>
-
                   {imageEditorOpen && (
                     <div className="rounded-2xl border border-white/10 bg-black/10 p-3 space-y-3">
                       <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
@@ -533,7 +501,6 @@ export function Editor({
                             }
                           />
                         </div>
-
                         <label
                           className={`
                             h-11
@@ -564,11 +531,9 @@ export function Editor({
                           />
                         </label>
                       </div>
-
                       <p className="text-[11px] text-muted-foreground/70">
                         JPG, PNG oder WEBP · max. 10 MB. Eigene Bilder werden automatisch verkleinert und im Quiz gespeichert.
                       </p>
-
                       {hasImage && (
                         <div className="rounded-xl border border-white/10 bg-black/20 p-2">
                           <img
@@ -581,7 +546,6 @@ export function Editor({
                               event.currentTarget.style.display = "none";
                             }}
                           />
-
                           {isUploadedImage && (
                             <div className="mt-2 text-center text-[11px] text-emerald-300/80">
                               Eigenes Bild gespeichert ✓
@@ -589,7 +553,6 @@ export function Editor({
                           )}
                         </div>
                       )}
-
                       <div className="flex gap-2">
                         {hasImage && (
                           <Button
@@ -605,7 +568,6 @@ export function Editor({
                             Bild entfernen
                           </Button>
                         )}
-
                         <Button
                           type="button"
                           variant="outline"
@@ -618,8 +580,30 @@ export function Editor({
                     </div>
                   )}
                 </div>
-
-                {!isOrder ? (
+                {isChoice ? (
+                  <fieldset className="space-y-3">
+                    <legend className="text-sm font-semibold">Antworten A–D</legend>
+                    <p className="text-xs text-muted-foreground">Trage vier Antworten ein und markiere die richtige Lösung.</p>
+                    {["A", "B", "C", "D"].map((letter, optionIndex) => (
+                      <div key={letter} className="flex items-center gap-3">
+                        <label className="flex shrink-0 items-center gap-2 font-bold">
+                          <input type="radio" name={`correct-${activeCat}-${qIdx}`}
+                            aria-label={`Antwort ${letter} ist richtig`}
+                            checked={q.correctOption === optionIndex}
+                            onChange={() => updateQuestion(qIdx, question => ({ ...question, correctOption: optionIndex }))} />
+                          {letter}
+                        </label>
+                        <Input aria-label={`Antwort ${letter}`} value={q.options?.[optionIndex] ?? ""}
+                          className="glass border-white/10 rounded-xl"
+                          onChange={event => updateQuestion(qIdx, question => {
+                            const options = [...(question.options ?? ["", "", "", ""])];
+                            options[optionIndex] = event.target.value;
+                            return { ...question, options };
+                          })} />
+                      </div>
+                    ))}
+                  </fieldset>
+                ) : !isOrder ? (
                   <div className="space-y-4">
                     <div>
                       <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
@@ -631,7 +615,6 @@ export function Editor({
                         className="glass border-white/10 text-foreground rounded-xl mt-1 h-11"
                       />
                     </div>
-
                     {isHint && (
                       <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[0.035] p-3 space-y-3">
                         <div className="flex items-center gap-2 text-amber-300/90">
@@ -643,7 +626,6 @@ export function Editor({
                         <p className="text-xs text-muted-foreground/70">
                           Jeder verwendete Hinweis zieht 20 % vom ursprünglichen Punktwert ab.
                         </p>
-
                         {(q.hints ?? ["", "", ""]).slice(0, 3).map((hint, hintIdx) => (
                           <div key={hintIdx}>
                             <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
@@ -671,25 +653,21 @@ export function Editor({
                         Von oben nach unten = richtige Reihenfolge. Mit den Pfeilen kannst du sie ändern.
                       </p>
                     </div>
-
                     <div className="space-y-2">
                       {(q.orderItems ?? []).map((item, itemIdx) => (
                         <div key={itemIdx} className="flex items-center gap-2">
                           <div className="h-11 w-9 shrink-0 rounded-xl border border-white/10 bg-white/[0.04] flex items-center justify-center text-muted-foreground">
                             <GripVertical className="h-4 w-4" />
                           </div>
-
                           <div className="h-11 w-8 shrink-0 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center font-display text-primary">
                             {itemIdx + 1}
                           </div>
-
                           <Input
                             value={item}
                             onChange={(e) => updateOrderItem(qIdx, itemIdx, e.target.value)}
                             className="glass border-white/10 text-foreground rounded-xl h-11"
                             placeholder={`Begriff ${itemIdx + 1}`}
                           />
-
                           <Button
                             type="button"
                             variant="outline"
@@ -701,7 +679,6 @@ export function Editor({
                           >
                             <ArrowLeft className="h-4 w-4 rotate-90" />
                           </Button>
-
                           <Button
                             type="button"
                             variant="outline"
@@ -713,7 +690,6 @@ export function Editor({
                           >
                             <ArrowRight className="h-4 w-4 rotate-90" />
                           </Button>
-
                           <Button
                             type="button"
                             variant="outline"
@@ -728,7 +704,6 @@ export function Editor({
                         </div>
                       ))}
                     </div>
-
                     <Button
                       type="button"
                       variant="outline"
@@ -738,7 +713,6 @@ export function Editor({
                       <Plus className="mr-2 h-4 w-4" />
                       Begriff hinzufügen
                     </Button>
-
                     <div className="rounded-xl border border-primary/15 bg-primary/[0.05] px-4 py-3 text-sm text-muted-foreground">
                       <span className="text-foreground font-semibold">Antwort: </span>
                       {(q.orderItems ?? []).filter((item) => item.trim()).join(" → ") ||
@@ -750,7 +724,7 @@ export function Editor({
             );
           })}
         </div>
-
+        {validationError && <p role="alert" className="text-destructive">{validationError}</p>}
         <Button
           onClick={handleSave}
           size="lg"

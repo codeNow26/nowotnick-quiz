@@ -50,7 +50,7 @@ export function Board({
         <div
           key={`${cat.name}-${categoryIndex}`}
           className={`
-            relative overflow-hidden
+            quiz-category-card relative overflow-hidden
             rounded-2xl
             ${
               manyCategories
@@ -137,7 +137,7 @@ export function Board({
               }
               disabled={done || isRandomizing}
               className={`
-                group
+                quiz-question-card group
                 relative
                 overflow-hidden
                 min-h-16 md:min-h-24
@@ -153,7 +153,7 @@ export function Board({
                     ? `
                       border-white/[0.03]
                       bg-white/[0.025]
-                      opacity-25
+                      brightness-50
                       cursor-not-allowed
                     `
                     : highlighted
@@ -176,7 +176,7 @@ export function Board({
                           via-primary/[0.06]
                           to-primary/[0.10]
                           text-foreground
-                          opacity-65
+                          brightness-75
                           cursor-wait
                         `
                         : `

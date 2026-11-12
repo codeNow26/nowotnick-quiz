@@ -233,3 +233,9 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {
 @media (prefers-reduced-motion: reduce) {
   .ambient-star { animation: none; will-change: auto; }
 }
+
+/* Opaque surfaces hide the starfield below cards, including answered cells. */
+.quiz-category-card { background-color: #100d2a; }
+.quiz-question-card { background-color: #0d1029; }
+.quiz-player-card { background-color: #171039; }
+.quiz-category-card, .quiz-question-card, .quiz-player-card { background-clip: padding-box; }

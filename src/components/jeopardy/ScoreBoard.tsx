@@ -1,18 +1,14 @@
 import { useEffect, useState } from "react";
 import { Check, Crown, Pencil, X } from "lucide-react";
-
 interface Player {
   name: string;
   score: number;
 }
-
 export interface ScorePopup {
   id: number;
   playerIndex: number;
   amount: number;
-  isCoGuesser: boolean;
 }
-
 interface ScoreBoardProps {
   players: Player[];
   scorePopups?: ScorePopup[];
@@ -21,7 +17,6 @@ interface ScoreBoardProps {
     newScore: number
   ) => void;
 }
-
 export function ScoreBoard({
   players,
   scorePopups = [],
@@ -29,20 +24,15 @@ export function ScoreBoard({
 }: ScoreBoardProps) {
   const [editingPlayer, setEditingPlayer] =
     useState<number | null>(null);
-
   const [editValue, setEditValue] = useState("");
-
   const highestScore =
     players.length > 0
       ? Math.max(...players.map((p) => p.score))
       : 0;
-
   const leaders = players.filter(
     (p) => p.score === highestScore
   );
-
   const hasSingleLeader = leaders.length === 1;
-
   useEffect(() => {
     if (
       editingPlayer !== null &&
@@ -52,59 +42,46 @@ export function ScoreBoard({
       setEditValue("");
     }
   }, [players, editingPlayer]);
-
   const startEditing = (playerIndex: number) => {
     if (!onScoreChange) return;
-
     setEditingPlayer(playerIndex);
     setEditValue(String(players[playerIndex].score));
   };
-
   const cancelEditing = () => {
     setEditingPlayer(null);
     setEditValue("");
   };
-
   const saveScore = (playerIndex: number) => {
     const trimmedValue = editValue.trim();
-
     if (trimmedValue === "") {
       return;
     }
-
     const newScore = Number(trimmedValue);
-
     if (!Number.isFinite(newScore)) {
       return;
     }
-
     onScoreChange?.(
       playerIndex,
       Math.round(newScore)
     );
-
     setEditingPlayer(null);
     setEditValue("");
   };
-
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
       {players.map((p, i) => {
         const isLeader =
           hasSingleLeader &&
           p.score === highestScore;
-
         const playerPopups = scorePopups.filter(
           (popup) => popup.playerIndex === i
         );
-
         const isEditing = editingPlayer === i;
-
         return (
           <div
             key={i}
             className={`
-              group/player
+              quiz-player-card group/player
               relative
               overflow-visible
               rounded-2xl
@@ -114,7 +91,6 @@ export function ScoreBoard({
               border
               transition-all
               duration-300
-
               ${
                 isLeader
                   ? `
@@ -148,7 +124,6 @@ export function ScoreBoard({
                 rounded-full
                 blur-3xl
                 pointer-events-none
-
                 ${
                   isLeader
                     ? "bg-amber-400/[0.08]"
@@ -156,7 +131,6 @@ export function ScoreBoard({
                 }
               `}
             />
-
             {/* obere Lichtkante */}
             <div
               className={`
@@ -168,7 +142,6 @@ export function ScoreBoard({
                 bg-gradient-to-r
                 from-transparent
                 to-transparent
-
                 ${
                   isLeader
                     ? "via-amber-300/50"
@@ -176,7 +149,6 @@ export function ScoreBoard({
                 }
               `}
             />
-
             {/* Führungskrone */}
             {isLeader && (
               <div
@@ -198,7 +170,6 @@ export function ScoreBoard({
                 <Crown className="h-3.5 w-3.5 text-amber-400" />
               </div>
             )}
-
             {/* Punkte-Popups */}
             {playerPopups.map(
               (popup, popupIndex) => (
@@ -222,11 +193,9 @@ export function ScoreBoard({
                 >
                   {popup.amount > 0 ? "+" : "−"}
                   {Math.abs(popup.amount)}
-                  {popup.isCoGuesser && " 🙋"}
                 </div>
               )
             )}
-
             {/* Spielername */}
             <div
               className={`
@@ -237,7 +206,6 @@ export function ScoreBoard({
                 mb-1.5
                 font-medium
                 truncate
-
                 ${
                   isLeader
                     ? "text-amber-200/80"
@@ -247,7 +215,6 @@ export function ScoreBoard({
             >
               {p.name}
             </div>
-
             {/* Punktestand / Bearbeitung */}
             {isEditing ? (
               <div className="relative z-10 flex items-center justify-center gap-1 mt-1">
@@ -262,7 +229,6 @@ export function ScoreBoard({
                     if (e.key === "Enter") {
                       saveScore(i);
                     }
-
                     if (e.key === "Escape") {
                       cancelEditing();
                     }
@@ -284,7 +250,6 @@ export function ScoreBoard({
                     focus:shadow-[0_0_15px_rgba(99,102,241,0.25)]
                   "
                 />
-
                 <button
                   type="button"
                   onClick={() => saveScore(i)}
@@ -301,7 +266,6 @@ export function ScoreBoard({
                 >
                   <Check className="h-4 w-4" />
                 </button>
-
                 <button
                   type="button"
                   onClick={cancelEditing}
@@ -333,7 +297,6 @@ export function ScoreBoard({
                   px-3 py-0.5
                   transition-all
                   duration-200
-
                   ${
                     onScoreChange
                       ? "cursor-pointer hover:bg-white/[0.06]"
@@ -353,7 +316,6 @@ export function ScoreBoard({
                     leading-none
                     transition-all
                     duration-200
-
                     ${
                       p.score < 0
                         ? "text-destructive"
@@ -372,7 +334,6 @@ export function ScoreBoard({
                 >
                   {p.score}
                 </span>
-
                 {onScoreChange && (
                   <Pencil
                     className="
@@ -388,7 +349,6 @@ export function ScoreBoard({
                 )}
               </button>
             )}
-
             {/* Führungs-Akzent unten */}
             {isLeader && (
               <div
@@ -406,29 +366,24 @@ export function ScoreBoard({
                 "
               />
             )}
-
             <style>{`
               @keyframes score-popup {
                 0% {
                   opacity: 0;
                   transform: translate(-50%, 12px) scale(0.7);
                 }
-
                 15% {
                   opacity: 1;
                   transform: translate(-50%, 0px) scale(1.2);
                 }
-
                 35% {
                   opacity: 1;
                   transform: translate(-50%, -8px) scale(1);
                 }
-
                 75% {
                   opacity: 1;
                   transform: translate(-50%, -18px) scale(1);
                 }
-
                 100% {
                   opacity: 0;
                   transform: translate(-50%, -35px) scale(0.9);
