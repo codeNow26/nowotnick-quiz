@@ -26,6 +26,7 @@ import {
 import { POINT_VALUES, type QuestionResult } from "@/lib/jeopardy-data";
 import { useCategories } from "@/lib/use-categories";
 interface Player {
+  color: string;
   name: string;
   score: number;
 }
@@ -81,11 +82,10 @@ function getSoleLeaderIndex(
 export function QuizApp({ customId, editInitially = false }: { customId?: string; editInitially?: boolean }) {
   const {
     categories: allCategories,
-    save,
+    editorTarget, editorSource, applySaved,
     meta,
     loading,
     loadError,
-    reset,
     quizSlot,
     loadQuiz,
   } = useCategories(customId);
@@ -395,10 +395,10 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   if (screen === "editor") {
     return (
       <Editor
-        initial={allCategories}
-        initialMeta={meta}
-        onSave={save}
-        onReset={reset}
+        key={editorSource!.id}
+        source={editorSource!}
+        target={editorTarget}
+        onSaved={applySaved}
         onBack={() =>
           setScreen("start")
         }
@@ -420,12 +420,14 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           onQuizChange={loadQuiz}
           onStart={(
             names,
-            catCount
+            catCount,
+            colors
           ) => {
             stopFinalQuestionAudio(false);
             setPlayers(
-              names.map((name) => ({
+              names.map((name, index) => ({
                 name,
+                color: colors[index],
                 score: 0,
               }))
             );

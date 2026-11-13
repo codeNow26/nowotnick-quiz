@@ -21,7 +21,7 @@ interface QuestionModalProps {
   question: Question | null;
   value: number;
   category: string;
-  players: { name: string; score: number }[];
+  players: { name: string; score: number; color?:string }[];
   onResolve: (
     playerIndex: number | null,
     correct: boolean,
@@ -813,7 +813,7 @@ export function QuestionModal({
                     aria-pressed={selectedPlayer === index}
                     onClick={() => setSelectedPlayer(index)}
                     className={`rounded-xl border px-4 py-2 font-semibold transition-colors ${selectedPlayer === index ? "border-primary bg-primary text-primary-foreground" : "border-white/15 bg-white/5 text-foreground"}`}>
-                    <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: playerColor(index) }} />
+                    <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: playerColor(index, player.color) }} />
                     {player.name}
                   </button>
                 ))}

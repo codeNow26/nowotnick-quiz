@@ -45,5 +45,11 @@ export function useCategories(customId?: string) {
   const reset = async () => {
     await save(structuredClone(CATEGORIES), { title: customId ? meta.title : quizSlot === 1 ? DEFAULT_TITLE : `Quiz ${quizSlot}`, subtitle: DEFAULT_SUBTITLE });
   };
-  return { categories, meta, save, reset, quizSlot, loadQuiz, loading, loadError, pointValues: POINT_VALUES };
+  const editorTarget: QuizTarget = customId ? { kind:'custom', id:customId } : { kind:'legacy', slot:quizSlot };
+  const applySaved = (snapshot:LoadedQuiz) => {
+    if(loaded.current?.snapshot.id!==snapshot.id) return;
+    loaded.current={target:loaded.current.target,snapshot};
+    setCategories(snapshot.data.categories);setMeta(snapshot.data.meta);
+  };
+  return { editorTarget, editorSource:loaded.current?.snapshot, applySaved, categories, meta, save, reset, quizSlot, loadQuiz, loading, loadError, pointValues: POINT_VALUES };
 }

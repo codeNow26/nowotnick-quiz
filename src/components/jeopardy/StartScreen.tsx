@@ -1,7 +1,9 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+import { PLAYER_PALETTE, DEFAULT_PLAYER_COLORS, readPlayerPreferences, rememberPlayers, selectPlayerColor } from "@/lib/player-preferences";
 
 interface StartScreenProps {
   title: string;
@@ -10,7 +12,7 @@ interface StartScreenProps {
   activeQuiz?: number;
   footer?: ReactNode;
   onQuizChange: (quiz: 1 | 2 | 3 | 4) => void;
-  onStart: (playerNames: string[], categoryCount: number) => void;
+  onStart: (playerNames: string[], categoryCount: number, colors:string[]) => void;
 }
 
 export function StartScreen({
@@ -24,6 +26,10 @@ export function StartScreen({
 }: StartScreenProps) {
   const [count, setCount] = useState(2);
   const [names, setNames] = useState<string[]>(["", "", "", ""]);
+  const [colors,setColors]=useState<string[]>([...DEFAULT_PLAYER_COLORS]);
+  const [colorPicker,setColorPicker]=useState<number|null>(null);
+  useEffect(()=>{const prefs=readPlayerPreferences();setNames(prefs.names);setColors(prefs.colors);setCount(prefs.count);},[]);
+  const chooseColor=(index:number,color:string)=>{const next=selectPlayerColor(colors,index,color,count);setColors(next);rememberPlayers({names,colors:next,count});setColorPicker(null);};
   const defaultCats = Math.min(6, maxCategories);
   const [catCount, setCatCount] = useState(defaultCats);
 
@@ -31,6 +37,7 @@ export function StartScreen({
     const next = [...names];
     next[i] = v;
     setNames(next);
+    rememberPlayers({names:next,colors,count});
   };
 
   const handleStart = () => {
@@ -38,7 +45,8 @@ export function StartScreen({
       .slice(0, count)
       .map((n, i) => n.trim() || `Spieler ${i + 1}`);
 
-    onStart(final, Math.min(catCount, maxCategories));
+    rememberPlayers({names,colors,count});
+    onStart(final, Math.min(catCount, maxCategories), colors.slice(0,count));
   };
 
   const catOptions = Array.from(
@@ -111,7 +119,7 @@ export function StartScreen({
               {[1, 2, 3, 4].map((n) => (
                 <button
                   key={n}
-                  onClick={() => setCount(n)}
+                  onClick={() => {setCount(n);rememberPlayers({names,colors,count:n});}}
                   className={`${pillBase} w-14 h-14 text-2xl ${
                     count === n
                       ? pillActive
@@ -161,6 +169,10 @@ export function StartScreen({
                     Spieler {i + 1}
                   </Label>
 
+                  <div className="flex items-center gap-3 mt-1">
+                  <button type="button" className="shrink-0 h-11 w-11 rounded-xl border border-white/25 flex items-center justify-center focus-visible:outline-2 focus-visible:outline-primary" aria-label={`Farbe für Spieler ${i+1}: ${PLAYER_PALETTE.find(p=>p.color===colors[i])?.name}`} aria-expanded={colorPicker===i} onClick={()=>setColorPicker(colorPicker===i?null:i)}>
+                    <span className="h-6 w-6 rounded-full border border-white/40" style={{backgroundColor:colors[i]}} />
+                  </button>
                   <Input
                     id={`p${i}`}
                     value={names[i]}
@@ -168,8 +180,14 @@ export function StartScreen({
                       updateName(i, e.target.value)
                     }
                     placeholder={`Spieler ${i + 1}`}
-                    className="glass border-white/10 text-foreground placeholder:text-muted-foreground/60 mt-1 h-11 rounded-xl"
+                    className="glass border-white/10 text-foreground placeholder:text-muted-foreground/60 h-11 rounded-xl min-w-0"
                   />
+                  </div>
+                  {colorPicker===i && <fieldset className="mt-3 rounded-xl border border-white/10 bg-background/70 p-3"><legend className="px-1 text-xs text-muted-foreground">Farbe auswählen · belegte Farben sind gesperrt</legend>
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">{PLAYER_PALETTE.map(p=>{const used=colors.some((c,j)=>j!==i&&j<count&&c===p.color);return <button key={p.color} type="button" disabled={used} aria-label={`${p.name}${used?' (bereits vergeben)':''}`} aria-pressed={colors[i]===p.color} title={p.name} onClick={()=>chooseColor(i,p.color)} className="flex flex-col items-center gap-1 rounded-lg p-1.5 border border-transparent aria-pressed:border-white/70 disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-primary">
+                      <span className="h-7 w-7 rounded-full border border-white/30 flex items-center justify-center text-slate-950 text-sm font-bold" style={{backgroundColor:p.color}}>{used?'×':colors[i]===p.color?'✓':''}</span><span className="text-[10px]">{p.name}</span>
+                    </button>;})}</div>
+                  </fieldset>}
                 </div>
               )
             )}

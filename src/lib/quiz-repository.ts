@@ -45,15 +45,16 @@ export async function loadQuizData(target: QuizTarget): Promise<LoadedQuiz> {
   if (!data || !validPayload(data.data)) throw new Error('Quizdaten fehlen oder haben ein unerwartetes Format. Es wurde nichts zurückgesetzt oder überschrieben.');
   return data as LoadedQuiz;
 }
+export class QuizConflictError extends Error { readonly code = 'CONFLICT'; }
 export async function saveQuizData(target: QuizTarget, before: LoadedQuiz, payload: QuizPayload): Promise<LoadedQuiz> {
   if (before.id !== targetId(target)) throw new Error('Quiz-Zuordnung stimmt nicht überein. Speichern wurde abgebrochen.');
   if (!validPayload(payload)) throw new Error('Ungültige Quizdaten. Speichern wurde abgebrochen.');
   let query = supabase.from(targetTable(target)).update({ data: payload, updated_at: new Date().toISOString() }).eq('id', before.id);
   query = target.kind === 'custom' ? query.eq('revision', before.revision!)
     : before.updated_at === null ? query.is('updated_at', null) : query.eq('updated_at', before.updated_at);
-  const { data, error } = await query.select(target.kind === 'legacy' ? 'id,data,updated_at' : 'id,data,updated_at,revision').returns<LoadedQuiz[]>().maybeSingle();
+  const { data, error } = await query.select(target.kind === 'legacy' ? 'id,data,updated_at' : 'id,data,updated_at,revision').returns<LoadedQuiz[]>().abortSignal(AbortSignal.timeout(20000)).maybeSingle();
   check(error);
-  if (!data) throw new Error('Dieses Quiz wurde inzwischen verändert oder gelöscht. Deine Eingaben bleiben im Editor. Sichere sie und lade das Quiz neu.');
+  if (!data) throw new QuizConflictError('Dieses Quiz wurde inzwischen verändert oder gelöscht. Deine Eingaben bleiben im Editor. Sichere sie und lade das Quiz neu.');
   return data as LoadedQuiz;
 }
 export async function findQuiz(slug: string): Promise<CustomQuiz> {

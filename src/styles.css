@@ -239,3 +239,35 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {
 .quiz-question-card { background-color: #0d1029; }
 .quiz-player-card { background-color: #171039; }
 .quiz-category-card, .quiz-question-card, .quiz-player-card { background-clip: padding-box; }
+
+/* One-pass border glint only on an actionable hovered/focused card. */
+.quiz-card-active { transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease; }
+.quiz-card-edge { position:absolute; inset:0; padding:1px; border-radius:inherit; pointer-events:none; overflow:hidden; opacity:0;
+  mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite:exclude; }
+.quiz-card-edge::before { content:""; position:absolute; inset:-100%; background:linear-gradient(110deg,transparent 35%,rgba(212,202,255,.48) 50%,transparent 65%); transform:translateX(-60%); }
+@media (hover:hover) and (pointer:fine) {
+  .quiz-card-active:not(:disabled):hover { transform:translateY(-3px); box-shadow:0 8px 26px -12px rgba(130,108,210,.4); }
+  .quiz-card-active:not(:disabled):hover .quiz-card-edge { opacity:1; }
+  .quiz-card-active:not(:disabled):hover .quiz-card-edge::before { animation:card-glint 850ms ease-out both; }
+}
+.quiz-card-active:focus-visible { outline:2px solid #b6a4ed; outline-offset:3px; }
+.quiz-card-active:not(:disabled):active { transform:scale(.99); }
+@keyframes card-glint { to { transform:translateX(60%); } }
+.question-dialog[data-state="open"] { animation:question-arrive 220ms cubic-bezier(.2,.7,.2,1) both; }
+@keyframes question-arrive { from {opacity:0;transform:translateY(6px) scale(.985);} to {opacity:1;transform:translateY(0) scale(1);} }
+
+/* Optional backdrop: two soft gradients, no animated blur or new particles. */
+.ambient-veils { position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
+.ambient-veils span { position:absolute; width:min(90vw,1200px); height:85vh; opacity:.38; background:radial-gradient(ellipse,rgba(103,65,167,.22),transparent 68%); animation:veil-drift 85s ease-in-out infinite alternate; }
+.ambient-veils span:first-child { left:-25vw;top:-20vh; }
+.ambient-veils span:last-child { right:-28vw;bottom:-25vh;background:radial-gradient(ellipse,rgba(55,97,158,.20),transparent 68%);animation-duration:105s;animation-delay:-40s;animation-direction:alternate-reverse; }
+@keyframes veil-drift { from {transform:translate3d(-1vw,0,0) scale(1);} to {transform:translate3d(5vw,5vh,0) scale(1.04);} }
+.ambient-veils[data-paused="true"] span, body:has([role="dialog"][data-state="open"]) .ambient-veils span { animation-play-state:paused; }
+@media(max-width:640px) { .ambient-veils span:last-child { display:none; } }
+@media(prefers-reduced-motion:reduce) {
+  .quiz-card-active { transition:none; }
+  .quiz-card-active:not(:disabled):hover, .quiz-card-active:not(:disabled):active { transform:none; }
+  .quiz-card-edge { display:none; }
+  .question-dialog[data-state="open"] { animation:none; }
+  .ambient-veils span { animation:none; }
+}
