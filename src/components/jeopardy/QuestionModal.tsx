@@ -1,3 +1,4 @@
+import { QuestionAtmosphere } from "./QuestionAtmosphere";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -477,7 +478,7 @@ function QuestionModalContent({
           "
         >
           {/* A single decorative layer, stable across timer, hint and answer updates. */}
-          <div aria-hidden="true" className="question-stage-light"><span /></div>
+          <QuestionAtmosphere />
           {/* kleine Bezeichnung nach Reveal */}
           {revealed && !review && (
             <div

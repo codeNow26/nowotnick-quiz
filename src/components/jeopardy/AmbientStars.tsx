@@ -26,13 +26,13 @@ function makeStars() {
 const stars = makeStars().map((star,index) => {
   let seed=1907+index*7919;
   const random=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};
-  return {...star, drift:index%5===1, soft:index%8===3,
+  return {...star, drift:[1,3,6].includes(index%8), soft:index%8===3,
     tint:['235 239 255','211 199 255','183 214 255'][index%3],
     twinkleDuration:7+random()*10,twinkleDelay:-random()*25,
-    driftDuration:38+random()*28,driftDelay:-random()*65,
+    driftDuration:14+random()*12,driftDelay:-random()*65,
     glowDuration:29+random()*15,glowDelay:-random()*45,
     low:.22+random()*.12,high:.65+random()*.2,
-    dx:(random()>.5?1:-1)*(10+random()*12),dy:(random()>.5?1:-1)*(8+random()*12),
+    dx:(random()>.5?1:-1)*(5+random()*6),dy:(random()>.5?1:-1)*(4+random()*6),
   };
 });
 

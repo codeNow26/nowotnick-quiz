@@ -326,3 +326,23 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 @media(prefers-reduced-motion:reduce) {
   .question-stage-light, .question-stage-light > span {animation:none;transform:none;opacity:1;}
 }
+
+/* Fine open ring segments and two asymmetric arcs. Clip only decoration, never
+   the scrollable question. Static blur softens arcs; only transforms animate. */
+.question-light-forms {position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;}
+.question-light-rings {opacity:.9;}
+.question-light-arc {filter:blur(3px);transform-box:view-box;transform-origin:50% 50%;}
+.question-light-arc-violet {animation:question-arc-violet 26s ease-in-out infinite;}
+.question-light-arc-blue {animation:question-arc-blue 33s ease-in-out -11s infinite;}
+@keyframes question-arc-violet {
+  0%,100% {transform:translate(-10px,4px) scale(1);}
+  50% {transform:translate(14px,-10px) scale(1.025,.98);}
+}
+@keyframes question-arc-blue {
+  0%,100% {transform:translate(8px,-7px) scale(1);}
+  50% {transform:translate(-13px,11px) scale(.985,1.025);}
+}
+.question-dialog[data-state="closed"] .question-light-arc {animation-play-state:paused;}
+@media(prefers-reduced-motion:reduce) {
+  .question-light-arc {animation:none;transform:none;}
+}
