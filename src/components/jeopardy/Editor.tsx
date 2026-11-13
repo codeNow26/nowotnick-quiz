@@ -1,43 +1,52 @@
-import { useState } from "react";
+import { useEffect, useRef, useState, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
+import { useEditorAutosave } from "@/lib/autosave/use-editor-autosave";
+import { ensureCategoryCount, MAX_CATEGORIES, type LoadedQuiz, type QuizTarget } from "@/lib/quiz-repository";
 import type { Category, Question } from "@/lib/jeopardy-data";
-import { POINT_VALUES, hasValidChoices } from "@/lib/jeopardy-data";
+import { POINT_VALUES, CATEGORIES } from "@/lib/jeopardy-data";
 interface EditorProps {
-  initial: Category[];
-  initialMeta: { title: string; subtitle: string };
-  onSave: (categories: Category[], meta: { title: string; subtitle: string }) => Promise<void>;
-  onReset: () => Promise<void>;
+  source: LoadedQuiz;
+  target: QuizTarget;
+  onSaved: (source:LoadedQuiz) => void;
   onBack: () => void;
+  categoryCount?: number;
+  onCategoryCountChange?: (count:number)=>void;
 }
 export function Editor({
-  initial,
-  initialMeta,
-  onSave,
-  onReset,
+  source, target, onSaved, categoryCount, onCategoryCountChange,
   onBack,
 }: EditorProps) {
-  const [draft, setDraft] = useState<Category[]>(() =>
-    initial.map((c) => ({
-      name: c.name,
-      questions: c.questions.map((q) => ({
-        ...q,
-        orderItems: q.orderItems ? [...q.orderItems] : undefined,
-        options: q.options ? [...q.options] : undefined,
-        hints: q.hints ? [...q.hints] : undefined,
-      })),
-    }))
-  );
-  const [saving, setSaving] = useState(false);
-  const [validationError, setValidationError] = useState("");
-  const [titleDraft, setTitleDraft] = useState(initialMeta.title);
-  const [subtitleDraft, setSubtitleDraft] = useState(initialMeta.subtitle);
+  const autosave = useEditorAutosave(target,source,onSaved);
+  const { value, status, recovery } = autosave.state;
+  const draft=value.categories;
+  const titleDraft=value.meta.title;
+  const subtitleDraft=value.meta.subtitle;
+  const setDraft=(next:SetStateAction<Category[]>)=>autosave.update(v=>({...v,categories:typeof next==='function'?next(v.categories):next}));
+  const visibleCount = categoryCount ?? draft.length;
+  useEffect(()=>{
+    if(autosave.state.ready && !recovery.length && draft.length < visibleCount) {
+      autosave.update(v=>({...v,categories:ensureCategoryCount(v.categories,visibleCount)}));
+    }
+  },[autosave.state.ready,recovery.length,draft.length,visibleCount]);
+  const setTitleDraft=(title:string)=>autosave.update(v=>({...v,meta:{...v.meta,title}}));
+  const setSubtitleDraft=(subtitle:string)=>autosave.update(v=>({...v,meta:{...v.meta,subtitle}}));
+  const [validationError,setValidationError]=useState('');
+  const [manualSaving,setManualSaving]=useState(false);
+  const saving=manualSaving;
   const [activeCat, setActiveCat] = useState(0);
   const [openImageEditors, setOpenImageEditors] = useState<Record<string, boolean>>({});
   const [processingImages, setProcessingImages] = useState<Record<string, boolean>>({});
+  const imageGeneration=useRef<Record<string,number>>({});
+  const imagePending=Object.values(processingImages).some(Boolean);
+  useEffect(()=>{
+    if(!imagePending)return;
+    const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};
+    window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);
+  },[imagePending]);
   const toggleImageEditor = (qIdx: number) => {
     const key = `${activeCat}-${qIdx}`;
     setOpenImageEditors((prev) => ({
@@ -95,21 +104,22 @@ export function Editor({
   };
   const handleImageUpload = async (qIdx: number, file: File | undefined) => {
     if (!file) return;
-    const key = `${activeCat}-${qIdx}`;
+    const categoryIndex = activeCat;
+    const key = `${categoryIndex}-${qIdx}`;
+    const generation=(imageGeneration.current[key]??0)+1;imageGeneration.current[key]=generation;
     setProcessingImages((prev) => ({
       ...prev,
       [key]: true,
     }));
     try {
       const imageDataUrl = await fileToOptimizedDataUrl(file);
-      updateQ(qIdx, "imageUrl", imageDataUrl);
+      await autosave.prepareImage(imageDataUrl);
+      if(imageGeneration.current[key]!==generation)return;
+      setDraft(prev=>prev.map((c,i)=>i===categoryIndex ? {...c,questions:c.questions.map((q,j)=>j===qIdx?{...q,imageUrl:imageDataUrl}:q)}:c));
     } catch (error) {
       alert(error instanceof Error ? error.message : "Bild konnte nicht hochgeladen werden.");
     } finally {
-      setProcessingImages((prev) => ({
-        ...prev,
-        [key]: false,
-      }));
+      if(imageGeneration.current[key]===generation) setProcessingImages((prev)=>({...prev,[key]:false}));
     }
   };
   const updateCatName = (name: string) => {
@@ -128,6 +138,10 @@ export function Editor({
     );
   };
   const updateQ = (qIdx: number, field: "question" | "answer" | "imageUrl", value: string) => {
+    if(field==='imageUrl') {
+      const key=`${activeCat}-${qIdx}`;imageGeneration.current[key]=(imageGeneration.current[key]??0)+1;
+      setProcessingImages(prev=>({...prev,[key]:false}));
+    }
     updateQuestion(qIdx, (q) => ({ ...q, [field]: value }));
   };
   const updateQValue = (qIdx: number, value: number | undefined) => {
@@ -225,77 +239,50 @@ export function Editor({
       };
     });
   };
-  const handleSave = async () => {
-    if (saving) return;
-    for (let catIndex = 0; catIndex < draft.length; catIndex++) {
-      const invalid = draft[catIndex].questions.findIndex(q => q.type === "choice" &&
-        (!q.question.trim() || !hasValidChoices(q)));
-      if (invalid !== -1) {
-        setActiveCat(catIndex);
-        setValidationError(`Frage ${invalid + 1}: Bitte Fragetext, alle vier Antworten und die richtige Lösung angeben.`);
-        return;
-      }
-    }
-    setValidationError("");
-    const cleaned = draft.map((category) => ({
-      ...category,
-      questions: category.questions.map((q) => {
-        if (q.type === "choice") {
-          const options = q.options!.map(option => option.trim());
-          return { ...q, type: "choice" as const, options,
-            answer: options[q.correctOption!], orderItems: undefined, hints: undefined,
-            imageUrl: q.imageUrl?.trim() || undefined };
-        }
-        if (q.type === "order") {
-          const orderItems = (q.orderItems ?? []).map((item) => item.trim()).filter(Boolean);
-          return {
-            ...q,
-            type: "order" as const,
-            orderItems,
-            hints: undefined,
-            answer: orderItems.join(" → "),
-            imageUrl: q.imageUrl?.trim() || undefined,
-          };
-        }
-        if (q.type === "hint") {
-          const hints = (q.hints ?? []).map((hint) => hint.trim()).filter(Boolean);
-          return {
-            ...q,
-            type: "hint" as const,
-            orderItems: undefined,
-            hints,
-            imageUrl: q.imageUrl?.trim() || undefined,
-          };
-        }
-        return {
-          ...q,
-          type: "normal" as const,
-          orderItems: undefined,
-          hints: undefined,
-          imageUrl: q.imageUrl?.trim() || undefined,
-        };
-      }),
-    }));
-    setSaving(true);
-    try {
-      await onSave(cleaned, { title: titleDraft.trim() || initialMeta.title, subtitle: subtitleDraft.trim() });
-      onBack();
-    } catch (error) { setValidationError(error instanceof Error ? error.message : 'Speichern fehlgeschlagen. Deine Eingaben bleiben erhalten.'); }
-    finally { setSaving(false); }
+  const handleSave=async()=>{
+    setManualSaving(true);setValidationError('');
+    try { await autosave.flush(); } finally {setManualSaving(false);}
   };
-  const handleReset = async () => {
-    if (saving || !confirm("Alle Kategorien, Titel und Fragen dieses Quiz auf Standard zurücksetzen?")) return;
-    setSaving(true);
-    try { await onReset(); onBack(); }
-    catch (error) { setValidationError(error instanceof Error ? error.message : 'Zurücksetzen fehlgeschlagen.'); }
-    finally { setSaving(false); }
+  const handleReset=()=>{
+    if(!confirm('Alle Kategorien und Fragen dieses Quiz auf Standard zurücksetzen? Der neue Stand wird automatisch gespeichert.'))return;
+    setActiveCat(0);setDraft(structuredClone(CATEGORIES));
   };
+  const goBack=async()=>{
+    const localSafe=await autosave.localSettled();
+    if(!localSafe && !confirm('Die lokale Sicherung ist fehlgeschlagen. Bitte den Entwurf exportieren. Trotzdem verlassen?'))return;
+    onBack();
+  };
+  const statusText={loading:'Lokaler Speicher wird vorbereitet …',saved:'Gespeichert',dirty:'Ungespeicherte Änderungen',saving:'Speichert …',error:'Speichern fehlgeschlagen',conflict:'Online-Konflikt · Entwurf bleibt lokal'}[status];
+  if(!autosave.state.ready)return <div className="p-8 text-center" role="status">{statusText}</div>;
   return (
-    <div className="min-h-screen p-3 md:p-6 max-w-5xl mx-auto">
+    <div className="min-h-screen p-3 md:p-6 pb-20 md:pb-20 max-w-5xl mx-auto">
+      <div className="mb-4 rounded-xl border border-white/10 bg-background/90 p-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p role="status" aria-live="polite" className={status==='error'||status==='conflict'?'text-amber-200':'text-muted-foreground'}>{statusText}{autosave.state.dirty && !autosave.state.localError && !autosave.state.localPending ? ' · lokal gesichert' : ''}</p>
+          <button type="button" className="text-primary underline underline-offset-4" onClick={autosave.exportDraft}>Entwurf exportieren</button>
+        </div>
+        {(autosave.state.error||autosave.state.localError||validationError) && <p role="alert" className="mt-2 text-amber-200">{autosave.state.localError || autosave.state.error || validationError}</p>}
+        {status==='error' && <Button variant="outline" size="sm" onClick={handleSave} className="mt-2">Erneut speichern</Button>}
+        {status==='conflict' && <Button variant="outline" size="sm" className="mt-2" onClick={async()=>{
+          if(!confirm('Deinen lokalen Entwurf ausdrücklich anstelle des aktuellen Online-Stands speichern? Andere Änderungen können dabei ersetzt werden. Exportiere deinen Entwurf, wenn du zuerst vergleichen möchtest.'))return;
+          try {await autosave.rebase();}catch(e){setValidationError(e instanceof Error?e.message:'Online-Stand konnte nicht geladen werden.');}
+        }}>Diesen Entwurf online übernehmen</Button>}
+      </div>
+      {recovery.length>0 && <section aria-label="Lokale Entwürfe" className="mb-6 rounded-2xl border border-amber-400/25 bg-amber-400/5 p-5 space-y-3">
+        <h2 className="font-semibold text-lg">Lokaler Entwurf gefunden</h2>
+        <p className="text-sm text-muted-foreground">Es gibt noch nicht synchronisierte Änderungen für dieses Quiz. Wähle einen Entwurf, bevor du weiterarbeitest. Auch Entwürfe aus anderen Tabs bleiben getrennt erhalten.</p>
+        {recovery.map(record=><div key={record.id} className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-3">
+          <span className="text-sm flex-1">{record.value.meta.title || 'Ohne Titel'} · {new Date(record.updatedAt).toLocaleString('de-DE')}</span>
+          <Button size="sm" onClick={()=>{setActiveCat(0);autosave.restore(record);}}>Wiederherstellen</Button>
+          <Button size="sm" variant="ghost" onClick={()=>{if(confirm('Diesen lokalen Entwurf endgültig verwerfen?'))void autosave.discard(record)?.catch(e=>setValidationError(String(e)));}}>Verwerfen</Button>
+        </div>)}
+        <Button variant="outline" onClick={autosave.useOnline}>Online-Stand verwenden · Entwürfe behalten</Button>
+      </section>}
+      <fieldset disabled={recovery.length>0} className="min-w-0">
       <header className="flex items-center justify-between gap-2 mb-6">
         <Button
-          disabled={saving}
-          onClick={onBack}
+          disabled={saving || imagePending}
+          onClick={goBack}
           className="glass text-foreground hover:bg-white/15 border-white/15 rounded-xl"
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Zurück
@@ -307,7 +294,7 @@ export function Editor({
           Bearbeiten
         </h1>
         <Button
-          disabled={saving}
+          disabled={saving || imagePending}
           onClick={handleReset}
           className="glass text-destructive hover:bg-destructive/20 border-destructive/30 rounded-xl"
         >
@@ -315,7 +302,7 @@ export function Editor({
         </Button>
       </header>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-6">
-        {draft.map((c, i) => (
+        {draft.slice(0,visibleCount).map((c, i) => (
           <button
             key={i}
             onClick={() => setActiveCat(i)}
@@ -329,6 +316,14 @@ export function Editor({
             {c.name || `Kat. ${i + 1}`}
           </button>
         ))}
+      </div>
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <Button type="button" variant="outline" disabled={visibleCount >= MAX_CATEGORIES} onClick={() => {
+          if(visibleCount >= MAX_CATEGORIES) return;
+          setDraft(v=>ensureCategoryCount(v,visibleCount+1));
+          onCategoryCountChange?.(visibleCount+1); setActiveCat(visibleCount);
+        }}><Plus className="h-4 w-4" /> Kategorie hinzufügen</Button>
+        <span className="text-sm text-muted-foreground" role="status">{visibleCount} von {MAX_CATEGORIES} Kategorien{draft.length > visibleCount ? ` · ${draft.length-visibleCount} weitere bleiben gespeichert` : ''}</span>
       </div>
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-4 glow-primary mb-4">
         <div className="text-xs text-muted-foreground uppercase tracking-[0.2em]">
@@ -730,14 +725,15 @@ export function Editor({
         </div>
         {validationError && <p role="alert" className="text-destructive">{validationError}</p>}
         <Button
-          disabled={saving}
+          disabled={saving || imagePending}
           onClick={handleSave}
           size="lg"
           className="w-full font-display text-lg md:text-xl py-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider uppercase glow-primary border-0"
         >
-          {saving ? "Wird gespeichert …" : "Änderungen speichern"}
+          {saving ? "Wird gespeichert …" : "Jetzt speichern"}
         </Button>
       </div>
+      </fieldset>
     </div>
   );
 }

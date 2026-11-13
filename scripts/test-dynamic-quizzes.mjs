@@ -16,4 +16,4 @@ registerHooks({
     return next(url, context);
   },
 });
-await import('../tests/dynamic-quizzes.test.ts');
+await import(process.argv[2] ? new URL(process.argv[2], 'file://' + process.cwd() + '/').href : '../tests/dynamic-quizzes.test.ts');

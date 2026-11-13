@@ -60,6 +60,30 @@ for (const slot of [1,2,3,4] as const) {
   assert.equal(loaded.id, QUIZ_IDS[slot]); assert.deepEqual(loaded.data, fixture(`Quiz ${slot}`));
 }
 assert.equal(slugify('  Fröhliche Grüße & Spaß!  '), 'froehliche-gruesse-spass');
+// New quizzes and explicit expansion of older six-category quizzes preserve all content.
+const fresh = await createQuiz('Zehn Kategorien');
+assert.equal(fresh.data.categories.length, 6);
+assert.equal(repo.ensureCategoryCount(fresh.data.categories,10).length,10);
+assert.equal(fresh.data.categories.length,6,'Preparing a round must not mutate saved content');
+const olderPayload = { ...fixture('Bestehendes Quiz'), categories: repo.emptyQuiz('Alt').categories.slice(0,6) };
+olderPayload.categories[0].questions[0] = fixture('Original').categories[0].questions[0];
+const older = await createQuiz('Sechs Kategorien', olderPayload);
+const originalSix = structuredClone(older.data.categories);
+let expanded = older.data.categories;
+for(let count=7;count<=10;count++) {
+  expanded = repo.appendCategory(expanded);
+  assert.equal(expanded.length,count);
+  const loaded = await loadQuizData({kind:'custom',id:older.id});
+  expanded[count-1].questions[0].answer = `Antwort ${count}`;
+  await saveQuizData({kind:'custom',id:older.id},loaded,{...loaded.data,categories:expanded});
+  const reloaded = await findQuiz(older.slug);
+  assert.equal(reloaded.data.categories.length,count);
+  assert.equal(reloaded.data.categories[count-1].questions[0].answer,`Antwort ${count}`);
+  assert.deepEqual(reloaded.data.categories.slice(0,6),originalSix);
+}
+assert.equal(repo.appendCategory(expanded),expanded,'At ten, no content is removed or replaced');
+assert.equal(repo.ensureCategoryCount(expanded,3),expanded,'Reducing round size keeps all saved questions');
+assert.deepEqual((await findQuiz(fresh.slug)).data,fresh.data,'Other quiz remains unchanged');
 const [a, b] = await Promise.all([createQuiz('Weihnachtsquiz 2026', fixture('A')), createQuiz('Weihnachtsquiz 2026', fixture('B'))]);
 assert.notEqual(a.id, b.id); assert.deepEqual([a.slug, b.slug].sort(), ['weihnachtsquiz-2026', 'weihnachtsquiz-2026-2']);
 const target = { kind: 'custom' as const, id: a.id };

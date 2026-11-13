@@ -9,7 +9,7 @@ interface BoardProps {
   categories: Category[];
   answered: boolean[][];
   results: Record<string, QuestionResult>;
-  players: { name: string }[];
+  players: { name: string; color?:string }[];
   onSelect: (
     categoryIndex: number,
     questionIndex: number
@@ -81,7 +81,7 @@ export function Board({
           {/* dezenter Lichtschein */}
           <div
             className="
-              absolute inset-x-4 top-0
+              quiz-category-accent absolute inset-x-4 bottom-0
               h-px
               bg-gradient-to-r
               from-transparent
@@ -124,7 +124,7 @@ export function Board({
           const done = answered[cIdx][qIdx];
           const result = results[`${cIdx}:${qIdx}`];
           const winner = result?.correct && result.playerIndex !== null ? result.playerIndex : undefined;
-          const winnerColor = winner !== undefined ? playerColor(winner) : undefined;
+          const winnerColor = winner !== undefined ? playerColor(winner, players[winner]?.color) : undefined;
           const description = done ? `${cat.name}, ${cat.questions[qIdx]?.value ?? value} Punkte: ${winner !== undefined ? `${players[winner]?.name} richtig` : "bereits gespielt"}. Zum Nachlesen öffnen.` : `${cat.name}, ${cat.questions[qIdx]?.value ?? value} Punkte`;
 
           const highlighted =
@@ -143,11 +143,12 @@ export function Board({
                 onSelect(cIdx, qIdx)
               }
               disabled={isRandomizing}
+              data-review={done || undefined}
               title={description}
               aria-label={description}
-              style={winnerColor ? { borderColor: `${winnerColor}55`, boxShadow: `inset 0 -3px 0 ${winnerColor}80`, backgroundImage: `linear-gradient(${winnerColor}10, ${winnerColor}10)` } : undefined}
+              style={winnerColor ? { borderColor: `${winnerColor}65`, boxShadow: `inset 0 -3px 0 ${winnerColor}80`, backgroundImage: `linear-gradient(${winnerColor}06, ${winnerColor}06)` } : undefined}
               className={`
-                quiz-question-card group
+                quiz-question-card group ${!done && !isRandomizing ? "quiz-card-active" : ""}
                 relative
                 overflow-hidden
                 min-h-16 md:min-h-24
@@ -163,7 +164,7 @@ export function Board({
                     ? `
                       border-white/[0.03]
                       bg-white/[0.025]
-                      cursor-pointer hover:border-white/25
+                      cursor-default
                     `
                     : highlighted
                       ? `
@@ -197,15 +198,10 @@ export function Board({
                           text-foreground
                           shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]
                           hover:z-10
-                          hover:-translate-y-1
-                          hover:scale-[1.035]
                           hover:border-primary/45
                           hover:from-primary/20
                           hover:via-primary/15
                           hover:to-primary/25
-                          hover:shadow-[0_10px_35px_-12px_rgba(99,102,241,0.75)]
-                          active:translate-y-0
-                          active:scale-[0.98]
                         `
                 }
               `}
@@ -227,6 +223,8 @@ export function Board({
                   "
                 />
               )}
+
+              {!done && !isRandomizing && <span aria-hidden="true" className="quiz-card-edge" />}
 
               {/* Hover-Glow */}
               {!done && !highlighted && (
@@ -293,7 +291,7 @@ export function Board({
                         drop-shadow-[0_0_12px_rgba(255,255,255,0.45)]
                       `
                       : done
-                        ? "text-foreground/30 group-hover:text-foreground/65"
+                        ? "text-foreground/30"
                         : `
                           text-foreground
                           drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]

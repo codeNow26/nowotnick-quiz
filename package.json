@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test:quizzes": "node scripts/test-dynamic-quizzes.mjs"
+    "test:quizzes": "node scripts/test-dynamic-quizzes.mjs",
+    "test:autosave": "node scripts/test-dynamic-quizzes.mjs tests/autosave.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

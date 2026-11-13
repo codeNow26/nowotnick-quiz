@@ -27,10 +27,21 @@ export function slugify(name: string) {
   return name.trim().toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
     .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80).replace(/-$/g, '') || 'quiz';
 }
+export const MAX_CATEGORIES = 10;
+export function emptyCategory(index: number): Category {
+  return { name: `Kategorie ${index + 1}`, questions: POINT_VALUES.map(value => ({ question: '', answer: '', value, type: 'normal' as const })) };
+}
+export function appendCategory(categories: Category[]): Category[] {
+  return categories.length >= MAX_CATEGORIES ? categories : [...categories, emptyCategory(categories.length)];
+}
+// Only append missing slots; lowering the round size never deletes stored content.
+export function ensureCategoryCount(categories: Category[], count: number): Category[] {
+  const desired = Math.min(MAX_CATEGORIES, Math.max(1, Math.floor(count)));
+  if(categories.length >= desired) return categories;
+  return [...categories, ...Array.from({length:desired-categories.length}, (_,i)=>emptyCategory(categories.length+i))];
+}
 export function emptyQuiz(name: string): QuizPayload {
-  return { meta: { title: name.trim(), subtitle: '' }, categories: Array.from({ length: 6 }, (_, i) => ({
-    name: `Kategorie ${i + 1}`, questions: POINT_VALUES.map(value => ({ question: '', answer: '', value, type: 'normal' as const })),
-  })) };
+  return { meta: { title: name.trim(), subtitle: '' }, categories: Array.from({ length: 6 }, (_, i) => emptyCategory(i)) };
 }
 function check(error: { message: string; code?: string } | null) {
   if (!error) return;
@@ -45,15 +56,16 @@ export async function loadQuizData(target: QuizTarget): Promise<LoadedQuiz> {
   if (!data || !validPayload(data.data)) throw new Error('Quizdaten fehlen oder haben ein unerwartetes Format. Es wurde nichts zurückgesetzt oder überschrieben.');
   return data as LoadedQuiz;
 }
+export class QuizConflictError extends Error { readonly code = 'CONFLICT'; }
 export async function saveQuizData(target: QuizTarget, before: LoadedQuiz, payload: QuizPayload): Promise<LoadedQuiz> {
   if (before.id !== targetId(target)) throw new Error('Quiz-Zuordnung stimmt nicht überein. Speichern wurde abgebrochen.');
   if (!validPayload(payload)) throw new Error('Ungültige Quizdaten. Speichern wurde abgebrochen.');
   let query = supabase.from(targetTable(target)).update({ data: payload, updated_at: new Date().toISOString() }).eq('id', before.id);
   query = target.kind === 'custom' ? query.eq('revision', before.revision!)
     : before.updated_at === null ? query.is('updated_at', null) : query.eq('updated_at', before.updated_at);
-  const { data, error } = await query.select(target.kind === 'legacy' ? 'id,data,updated_at' : 'id,data,updated_at,revision').returns<LoadedQuiz[]>().maybeSingle();
+  const { data, error } = await query.select(target.kind === 'legacy' ? 'id,data,updated_at' : 'id,data,updated_at,revision').returns<LoadedQuiz[]>().abortSignal(AbortSignal.timeout(20000)).maybeSingle();
   check(error);
-  if (!data) throw new Error('Dieses Quiz wurde inzwischen verändert oder gelöscht. Deine Eingaben bleiben im Editor. Sichere sie und lade das Quiz neu.');
+  if (!data) throw new QuizConflictError('Dieses Quiz wurde inzwischen verändert oder gelöscht. Deine Eingaben bleiben im Editor. Sichere sie und lade das Quiz neu.');
   return data as LoadedQuiz;
 }
 export async function findQuiz(slug: string): Promise<CustomQuiz> {

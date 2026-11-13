@@ -1,7 +1,8 @@
 import { playerColor } from "@/lib/jeopardy-data";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, type CSSProperties } from "react";
 import { Check, Crown, Pencil, X } from "lucide-react";
 interface Player {
+  color?: string;
   name: string;
   score: number;
 }
@@ -17,6 +18,14 @@ interface ScoreBoardProps {
     playerIndex: number,
     newScore: number
   ) => void;
+}
+function ScoreFlash({score}: {score:number}) {
+  const previous = useRef(score);
+  const [version,setVersion] = useState(0);
+  useEffect(() => {
+    if(previous.current !== score) { previous.current=score; setVersion(v=>v+1); }
+  },[score]);
+  return version ? <span key={version} aria-hidden="true" className="quiz-score-flash" /> : null;
 }
 export function ScoreBoard({
   players,
@@ -81,6 +90,7 @@ export function ScoreBoard({
         return (
           <div
             key={i}
+            style={{"--player-color": playerColor(i,p.color)} as CSSProperties}
             className={`
               quiz-player-card group/player
               relative
@@ -132,24 +142,8 @@ export function ScoreBoard({
                 }
               `}
             />
-            {/* obere Lichtkante */}
-            <div
-              className={`
-                absolute
-                top-0 left-1/2
-                -translate-x-1/2
-                h-px
-                w-2/3
-                bg-gradient-to-r
-                from-transparent
-                to-transparent
-                ${
-                  isLeader
-                    ? "via-amber-300/50"
-                    : "via-primary/30"
-                }
-              `}
-            />
+            <span aria-hidden="true" className="quiz-player-stripe" />
+            <ScoreFlash score={p.score} />
             {/* Führungskrone */}
             {isLeader && (
               <div
@@ -214,7 +208,7 @@ export function ScoreBoard({
                 }
               `}
             >
-              <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: playerColor(i) }} />
+              <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: playerColor(i, p.color) }} />
               {p.name}
             </div>
             {/* Punktestand / Bearbeitung */}
