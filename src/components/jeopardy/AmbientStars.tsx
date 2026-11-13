@@ -11,12 +11,15 @@ function makeStars() {
     id: index,
     x: 3 + random() * 94,
     y: 3 + random() * 94,
-    size: index % 7 === 0 ? 2 : 1.25,
+    size: index % 9 === 0 ? 2.2 : .9 + random() * .6,
+    twinkle: index % 9 === 0,
+    glint: index % 18 === 0,
+    drift: index % 9 === 5,
     opacity: 0.3 + random() * 0.35,
-    dx: (random() - 0.5) * 48,
-    dy: (random() - 0.5) * 56,
-    duration: 17 + random() * 19,
-    delay: -random() * 36,
+    dx: (random() - 0.5) * 10,
+    dy: (random() - 0.5) * 12,
+    duration: index % 9 === 0 ? 40 : 55 + random() * 23,
+    delay: index % 9 === 0 ? -(index / 9) * 10 : -random() * 60,
   }));
 }
 const stars = makeStars();
@@ -38,12 +41,16 @@ export function AmbientStars() {
         <span
           key={star.id}
           className="ambient-star"
+          data-twinkle={star.twinkle || undefined}
+          data-glint={star.glint || undefined}
+          data-drift={star.drift || undefined}
           style={{
             left: star.x + "%",
             top: star.y + "%",
             width: star.size,
             height: star.size,
             "--star-opacity": star.opacity,
+            "--star-delay": star.delay + "s",
             "--star-dx": star.dx + "px",
             "--star-dy": star.dy + "px",
             animationDuration: star.duration + "s",

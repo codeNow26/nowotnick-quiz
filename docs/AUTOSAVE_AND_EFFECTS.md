@@ -20,7 +20,7 @@ In der Spielvorbereitung lassen sich acht Farben auswählen. Bereits von aktiven
 
 Unbeantwortete Karten erhalten auf Geräten mit Maus eine kleine Anhebung, weichen Glow und einen einmaligen Randschimmer. Beantwortete Karten behalten ihre ruhige Darstellung. Die Frageansicht öffnet mit einer kurzen Animation. `prefers-reduced-motion` deaktiviert die Bewegung.
 
-Der Schalter „Lichtschleier“ ergänzt die unveränderten Sterne um zwei sehr langsame Farbflächen. Standardmäßig aus, lokal gespeichert. Auf kleinen Bildschirmen wird nur eine Fläche verwendet. Bei verborgenem Dokument oder geöffnetem Dialog pausiert die Animation.
+Die Lichtschleier und Sterne wurden anschließend überarbeitet; aktuelles Verhalten siehe `VISUAL_POLISH.md`. Der Hintergrund ist standardmäßig aktiv und hat keinen Schalter mehr.
 
 ## Prüfung
 

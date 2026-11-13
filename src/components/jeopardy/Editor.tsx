@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import { useEditorAutosave } from "@/lib/autosave/use-editor-autosave";
-import { appendCategory, MAX_CATEGORIES, type LoadedQuiz, type QuizTarget } from "@/lib/quiz-repository";
+import { ensureCategoryCount, MAX_CATEGORIES, type LoadedQuiz, type QuizTarget } from "@/lib/quiz-repository";
 import type { Category, Question } from "@/lib/jeopardy-data";
 import { POINT_VALUES, CATEGORIES } from "@/lib/jeopardy-data";
 interface EditorProps {
@@ -13,9 +13,11 @@ interface EditorProps {
   target: QuizTarget;
   onSaved: (source:LoadedQuiz) => void;
   onBack: () => void;
+  categoryCount?: number;
+  onCategoryCountChange?: (count:number)=>void;
 }
 export function Editor({
-  source, target, onSaved,
+  source, target, onSaved, categoryCount, onCategoryCountChange,
   onBack,
 }: EditorProps) {
   const autosave = useEditorAutosave(target,source,onSaved);
@@ -24,6 +26,12 @@ export function Editor({
   const titleDraft=value.meta.title;
   const subtitleDraft=value.meta.subtitle;
   const setDraft=(next:SetStateAction<Category[]>)=>autosave.update(v=>({...v,categories:typeof next==='function'?next(v.categories):next}));
+  const visibleCount = categoryCount ?? draft.length;
+  useEffect(()=>{
+    if(autosave.state.ready && !recovery.length && draft.length < visibleCount) {
+      autosave.update(v=>({...v,categories:ensureCategoryCount(v.categories,visibleCount)}));
+    }
+  },[autosave.state.ready,recovery.length,draft.length,visibleCount]);
   const setTitleDraft=(title:string)=>autosave.update(v=>({...v,meta:{...v.meta,title}}));
   const setSubtitleDraft=(subtitle:string)=>autosave.update(v=>({...v,meta:{...v.meta,subtitle}}));
   const [validationError,setValidationError]=useState('');
@@ -294,7 +302,7 @@ export function Editor({
         </Button>
       </header>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-6">
-        {draft.map((c, i) => (
+        {draft.slice(0,visibleCount).map((c, i) => (
           <button
             key={i}
             onClick={() => setActiveCat(i)}
@@ -310,11 +318,12 @@ export function Editor({
         ))}
       </div>
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Button type="button" variant="outline" disabled={draft.length >= MAX_CATEGORIES} onClick={() => {
-          if(draft.length >= MAX_CATEGORIES) return;
-          setDraft(appendCategory); setActiveCat(draft.length);
+        <Button type="button" variant="outline" disabled={visibleCount >= MAX_CATEGORIES} onClick={() => {
+          if(visibleCount >= MAX_CATEGORIES) return;
+          setDraft(v=>ensureCategoryCount(v,visibleCount+1));
+          onCategoryCountChange?.(visibleCount+1); setActiveCat(visibleCount);
         }}><Plus className="h-4 w-4" /> Kategorie hinzufügen</Button>
-        <span className="text-sm text-muted-foreground" role="status">{draft.length} von {MAX_CATEGORIES} Kategorien</span>
+        <span className="text-sm text-muted-foreground" role="status">{visibleCount} von {MAX_CATEGORIES} Kategorien{draft.length > visibleCount ? ` · ${draft.length-visibleCount} weitere bleiben gespeichert` : ''}</span>
       </div>
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-4 glow-primary mb-4">
         <div className="text-xs text-muted-foreground uppercase tracking-[0.2em]">

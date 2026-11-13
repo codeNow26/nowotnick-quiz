@@ -9,6 +9,8 @@ interface StartScreenProps {
   title: string;
   subtitle: string;
   maxCategories: number;
+  selectedCategoryCount?: number;
+  onCategoryCountChange?: (count:number)=>void;
   activeQuiz?: number;
   footer?: ReactNode;
   onQuizChange: (quiz: 1 | 2 | 3 | 4) => void;
@@ -18,7 +20,7 @@ interface StartScreenProps {
 export function StartScreen({
   title,
   subtitle,
-  maxCategories,
+  maxCategories, selectedCategoryCount, onCategoryCountChange,
   activeQuiz,
   footer,
   onQuizChange,
@@ -31,7 +33,9 @@ export function StartScreen({
   useEffect(()=>{const prefs=readPlayerPreferences();setNames(prefs.names);setColors(prefs.colors);setCount(prefs.count);},[]);
   const chooseColor=(index:number,color:string)=>{const next=selectPlayerColor(colors,index,color,count);setColors(next);rememberPlayers({names,colors:next,count});setColorPicker(null);};
   const defaultCats = Math.min(6, maxCategories);
-  const [catCount, setCatCount] = useState(defaultCats);
+  const [localCatCount, setLocalCatCount] = useState(defaultCats);
+  const catCount = Math.min(selectedCategoryCount ?? localCatCount,maxCategories);
+  const setCatCount=(count:number)=>{setLocalCatCount(count);onCategoryCountChange?.(count);};
 
   const updateName = (i: number, v: string) => {
     const next = [...names];

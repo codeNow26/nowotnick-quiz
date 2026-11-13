@@ -1,3 +1,4 @@
+import { ensureCategoryCount, MAX_CATEGORIES } from "@/lib/quiz-repository";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { CreateQuiz } from "./CreateQuiz";
@@ -285,15 +286,15 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     activeCategoryCount,
     setActiveCategoryCount,
   ] = useState(
-    Math.min(6, allCategories.length)
+    6
   );
   const categories = useMemo(
     () =>
-      allCategories.slice(
+      (customId ? ensureCategoryCount(allCategories,activeCategoryCount) : allCategories).slice(
         0,
         activeCategoryCount
       ),
-    [allCategories, activeCategoryCount]
+    [allCategories, activeCategoryCount, customId]
   );
   const [answered, setAnswered] =
     useState<boolean[][]>(() =>
@@ -398,6 +399,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         key={editorSource!.id}
         source={editorSource!}
         target={editorTarget}
+        categoryCount={customId ? activeCategoryCount : undefined}
+        onCategoryCountChange={customId ? setActiveCategoryCount : undefined}
         onSaved={applySaved}
         onBack={() =>
           setScreen("start")
@@ -412,8 +415,10 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           title={meta.title}
           subtitle={meta.subtitle}
           maxCategories={
-            allCategories.length
+            customId ? MAX_CATEGORIES : allCategories.length
           }
+          selectedCategoryCount={customId ? activeCategoryCount : undefined}
+          onCategoryCountChange={setActiveCategoryCount}
           key={customId ?? quizSlot}
           activeQuiz={customId ? undefined : quizSlot}
           footer={<div className="mt-5 flex flex-wrap justify-center gap-3 text-sm">{!customId && <CreateQuiz />}{customId && <Link to="/" className="rounded-xl border border-white/15 px-4 py-2">Zur Startseite</Link>}<Link to="/verwaltung" className="rounded-xl border border-white/15 px-4 py-2">Quiz-Verwaltung</Link></div>}

@@ -34,8 +34,14 @@ export function emptyCategory(index: number): Category {
 export function appendCategory(categories: Category[]): Category[] {
   return categories.length >= MAX_CATEGORIES ? categories : [...categories, emptyCategory(categories.length)];
 }
+// Only append missing slots; lowering the round size never deletes stored content.
+export function ensureCategoryCount(categories: Category[], count: number): Category[] {
+  const desired = Math.min(MAX_CATEGORIES, Math.max(1, Math.floor(count)));
+  if(categories.length >= desired) return categories;
+  return [...categories, ...Array.from({length:desired-categories.length}, (_,i)=>emptyCategory(categories.length+i))];
+}
 export function emptyQuiz(name: string): QuizPayload {
-  return { meta: { title: name.trim(), subtitle: '' }, categories: Array.from({ length: MAX_CATEGORIES }, (_, i) => emptyCategory(i)) };
+  return { meta: { title: name.trim(), subtitle: '' }, categories: Array.from({ length: 6 }, (_, i) => emptyCategory(i)) };
 }
 function check(error: { message: string; code?: string } | null) {
   if (!error) return;

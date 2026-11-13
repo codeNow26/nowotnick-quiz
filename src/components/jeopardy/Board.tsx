@@ -146,7 +146,7 @@ export function Board({
               data-review={done || undefined}
               title={description}
               aria-label={description}
-              style={winnerColor ? { borderColor: `${winnerColor}55`, boxShadow: `inset 0 -3px 0 ${winnerColor}80`, backgroundImage: `linear-gradient(${winnerColor}10, ${winnerColor}10)` } : undefined}
+              style={winnerColor ? { borderColor: `${winnerColor}65`, boxShadow: `inset 0 -3px 0 ${winnerColor}80`, backgroundImage: `linear-gradient(${winnerColor}06, ${winnerColor}06)` } : undefined}
               className={`
                 quiz-question-card group ${!done && !isRandomizing ? "quiz-card-active" : ""}
                 relative
@@ -164,7 +164,7 @@ export function Board({
                     ? `
                       border-white/[0.03]
                       bg-white/[0.025]
-                      cursor-pointer hover:border-white/25
+                      cursor-default
                     `
                     : highlighted
                       ? `
@@ -291,7 +291,7 @@ export function Board({
                         drop-shadow-[0_0_12px_rgba(255,255,255,0.45)]
                       `
                       : done
-                        ? "text-foreground/30 group-hover:text-foreground/65"
+                        ? "text-foreground/30"
                         : `
                           text-foreground
                           drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]

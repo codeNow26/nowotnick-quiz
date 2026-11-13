@@ -563,9 +563,9 @@ function QuestionModalContent({
                       <button key={index} type="button"
                         aria-pressed={chosen}
                         aria-label={`Antwort ${"ABCD"[index]}: ${option}`}
-                        disabled={selectedChoice !== null || revealed || selectedPlayer === null}
+                        disabled={selectedChoice !== null || revealed}
                         onClick={() => {
-                          if (lockedChoiceRef.current !== null || selectedPlayer === null) return;
+                          if (lockedChoiceRef.current !== null) return;
                           lockedChoiceRef.current = index;
                           setSelectedChoice(index);
                           setTimeLeft(null);
@@ -587,7 +587,6 @@ function QuestionModalContent({
               <p aria-live="polite" className="text-sm text-muted-foreground">
                 {revealed ? (selectedChoice === question.correctOption ? "Richtig beantwortet!" : `Richtig ist Antwort ${"ABCD"[question.correctOption ?? 0]}.`)
                   : selectedChoice !== null ? `Antwort ${"ABCD"[selectedChoice]} ist eingeloggt.`
-                  : selectedPlayer === null ? "Wähle zuerst unten einen Spieler aus."
                   : "Klicke auf eine Antwort, um sie verbindlich einzuloggen."}
               </p>
             </div>
@@ -814,13 +813,12 @@ function QuestionModalContent({
           {review ? (
             <Button onClick={onClose} className="w-full rounded-xl">Zurück zum Spielfeld</Button>
           ) : <>
-          {players.length > 1 && (
+          {revealed && players.length > 1 && (
             <div>
-              <p className="mb-2 text-center text-sm text-muted-foreground">Wer beantwortet die Frage?</p>
+              <p className="mb-2 text-center text-sm text-muted-foreground">Wer bekommt die Punkte?</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {players.map((player, index) => (
                   <button key={index} type="button"
-                    disabled={isChoiceQuestion && selectedChoice !== null}
                     aria-pressed={selectedPlayer === index}
                     onClick={() => setSelectedPlayer(index)}
                     className={`rounded-xl border px-4 py-2 font-semibold transition-colors ${selectedPlayer === index ? "border-primary bg-primary text-primary-foreground" : "border-white/15 bg-white/5 text-foreground"}`}>

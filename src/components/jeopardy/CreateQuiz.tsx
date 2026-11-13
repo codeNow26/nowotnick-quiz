@@ -19,13 +19,13 @@ export function CreateQuiz() {
         <DialogDescription>Es erhält einen eigenen Link und erscheint nicht in der Quiz-Auswahl auf der Startseite. Die Verwaltung ist vorerst öffentlich und nicht geschützt.</DialogDescription>
         <form className="space-y-4" onSubmit={async e => {
           e.preventDefault(); if (busy) return; setBusy(true); setError('');
-          try { const quiz = await createQuiz(name); await navigate({ to: '/quiz/$slug', params: { slug: quiz.slug }, search: { edit: true } }); setOpen(false); }
+          try { const quiz = await createQuiz(name); await navigate({ to: '/quiz/$slug', params: { slug: quiz.slug }, search: { edit: false } }); setOpen(false); }
           catch (e) { setError(e instanceof Error ? e.message : 'Erstellen fehlgeschlagen.'); }
           finally { setBusy(false); }
         }}>
           <label className="block text-sm space-y-2">Quizname<Input autoFocus required maxLength={120} value={name} onChange={e => setName(e.target.value)} placeholder="Weihnachtsquiz 2026" disabled={busy} /></label>
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="quiz-action w-full rounded-xl" disabled={busy || !name.trim()}>{busy ? 'Wird erstellt …' : 'Quiz erstellen & bearbeiten'}</Button>
+          <Button type="submit" className="quiz-action w-full rounded-xl" disabled={busy || !name.trim()}>{busy ? 'Wird erstellt …' : 'Quiz erstellen'}</Button>
         </form>
       </DialogContent>
     </Dialog>
