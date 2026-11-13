@@ -64,9 +64,12 @@ const ctx: any = {
     positions.push([x, y]);
   },
   fill() {},
-  drawImage(_image: unknown, x: number, y: number) {
-    positions.push([x, y]);
+  drawImage(_image: unknown, x: number, y: number, width: number) {
+    if (width !== 14) positions.push([x, y]);
   },
+  translate() {},
+  rotate() {},
+  createLinearGradient() { return { addColorStop() {} }; },
   createRadialGradient() {
     return { addColorStop() {} };
   },

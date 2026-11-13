@@ -283,9 +283,12 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 /* A fixed pale metal base with one text-clipped sweep, then a long rest.
    18% of 14s = 2.52s sweep; the remaining 11.48s stays outside the letters. */
 .quiz-title {
-  color: #f5f4ff;
+  color: #e6dcff;
+  /* Text-shadow can paint over clipped gradients; an outer shadow preserves color. */
+  text-shadow: none !important;
+  filter: drop-shadow(0 0 16px rgba(123,83,231,.38));
   background-image: linear-gradient(110deg, transparent 43%, rgba(255,255,255,.12) 47%, rgba(255,255,255,.95) 50%, rgba(229,239,255,.18) 53%, transparent 57%),
-    linear-gradient(115deg, #fafbff 5%, #e7e1f6 48%, #e3effa 75%, #fafbff 100%);
+    linear-gradient(118deg, #f7f3ff 0%, #d4b5ff 22%, #ac9aff 40%, #b8dcff 60%, #d5f7ff 76%, #e6c6ff 93%, #faf6ff 100%);
   background-size: 250% 100%, 100% 100%;
   background-position: 100% 0, 0 0;
   background-repeat: no-repeat;
@@ -299,5 +302,5 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
   18%, 100% { background-position: 0% 0, 0 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .quiz-title { animation: none; background-image: linear-gradient(115deg, #fafbff 5%, #e7e1f6 48%, #e3effa 75%, #fafbff 100%); background-size: 100% 100%; background-position: 0 0; }
+  .quiz-title { animation: none; background-image: linear-gradient(118deg, #f7f3ff 0%, #d4b5ff 22%, #ac9aff 40%, #b8dcff 60%, #d5f7ff 76%, #e6c6ff 93%, #faf6ff 100%); background-size: 100% 100%; background-position: 0 0; }
 }

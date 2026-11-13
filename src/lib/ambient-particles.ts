@@ -1,11 +1,11 @@
-/** Fixed anchors with seeded, irregular light events. No per-frame randomness. */
+/** Seeded light events relocate only while fully invisible. No per-frame randomness. */
 export interface LightParticle {
   x: number;
   y: number;
   radius: number;
   offset: number;
   period: number;
-  events: { start: number; duration: number; strength: number }[];
+  events: { start: number; duration: number; strength: number; x: number; y: number }[];
   tint: string;
 }
 export function createLightParticles(): LightParticle[] {
@@ -35,9 +35,15 @@ export function createLightParticles(): LightParticle[] {
     const events: LightParticle["events"] = [];
     let period = 0;
     for (let event = 0; event < 8; event++) {
-      period += 9 + random() * 24;
-      const duration = 1 + random() * 1.5;
-      events.push({ start: period, duration, strength: 0.65 + random() * 0.35 });
+      period += 4 + random() * 10;
+      const duration = 1.8 + random() * 1.2;
+      events.push({
+        start: period,
+        duration,
+        strength: 0.8 + random() * 0.2,
+        x: 0.025 + random() * 0.95,
+        y: 0.025 + random() * 0.95,
+      });
       period += duration;
     }
     period += 8 + random() * 12;
@@ -55,14 +61,18 @@ export function createLightParticles(): LightParticle[] {
 export function particleSample(p: LightParticle, time: number) {
   const local = (time + p.offset) % p.period;
   let sparkle = 0;
+  let x = p.x,
+    y = p.y;
   for (const event of p.events) {
     if (local >= event.start && local <= event.start + event.duration) {
+      x = event.x;
+      y = event.y;
       // Zero slope at both ends, no blinking or visible cycle boundary.
       sparkle = Math.sin((Math.PI * (local - event.start)) / event.duration) ** 2 * event.strength;
       break;
     }
   }
-  return { dx: 0, dy: 0, alpha: 0.3, sparkle };
+  return { dx: 0, dy: 0, alpha: 0.3, sparkle, x, y };
 }
 
 export function particleBudget(width: number, height: number, cores = 8) {
@@ -103,6 +113,22 @@ export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
     c.fillRect(0, 0, 32, 32);
     sprites.set(tint, sprite);
   }
+  // A restrained four-ray highlight cached once, visible only at a peak.
+  const glint = document.createElement("canvas");
+  glint.width = glint.height = 64;
+  const g = glint.getContext("2d");
+  if (g) {
+    const ray = g.createLinearGradient(0, 0, 64, 0);
+    ray.addColorStop(0, "rgba(213,224,255,0)");
+    ray.addColorStop(0.5, "rgba(242,240,255,.8)");
+    ray.addColorStop(1, "rgba(213,224,255,0)");
+    g.fillStyle = ray;
+    g.fillRect(0, 30.5, 64, 3);
+    g.translate(32, 32);
+    g.rotate(Math.PI / 2);
+    g.translate(-32, -32);
+    g.fillRect(6, 31, 52, 2);
+  }
   const draw = () => {
     ctx.clearRect(0, 0, width, height);
     const special = Math.max(1, Math.round(count * 0.05));
@@ -110,19 +136,21 @@ export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
     for (let i = 0; i < count; i++) {
       const p = particles[i],
         s = particleSample(p, elapsed);
-      const x = p.x * width,
-        y = p.y * height;
       const highlight = i < special,
         softCore = i < special + soft;
       const sparkle = reduced.matches ? 0 : s.sparkle;
-      ctx.globalAlpha = softCore
-        ? 0.48 + sparkle * (highlight ? 0.5 : 0.36)
-        : s.alpha + sparkle * 0.18;
+      // Brighter stars fade to zero before the next event changes location.
+      const relocating = softCore && !reduced.matches;
+      const x = (relocating ? s.x : p.x) * width;
+      const y = (relocating ? s.y : p.y) * height;
+      ctx.globalAlpha = relocating ? sparkle : softCore ? 0.65 : 0.28 + sparkle * 0.55;
       const sprite = sprites.get(p.tint);
-      // A compact radial kernel for every point, not a hard filled disc.
-      // The size stays fixed; only luminance changes during each event.
-      const size = (highlight ? 5.4 : softCore ? 4.8 : 3.2) * (p.radius / 0.65);
+      const size = (highlight ? 11 : softCore ? 8 : 4.2) * (p.radius / 0.65);
       if (sprite) ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size);
+      if (highlight && sparkle > 0) {
+        ctx.globalAlpha = sparkle ** 3 * 0.65;
+        ctx.drawImage(glint, x - 7, y - 7, 14, 14);
+      }
     }
     ctx.globalAlpha = 1;
   };
