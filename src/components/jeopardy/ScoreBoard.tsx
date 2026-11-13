@@ -90,7 +90,7 @@ export function ScoreBoard({
         return (
           <div
             key={i}
-            style={{"--player-color": playerColor(i,p.color)} as CSSProperties}
+            style={{"--entry-delay": `${i * 35}ms`, "--player-color": playerColor(i,p.color)} as CSSProperties}
             className={`
               quiz-player-card group/player
               relative
