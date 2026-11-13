@@ -1,12 +1,11 @@
-/** Stable anchors and continuously sampled motion. No per-frame random values. */
+/** Fixed anchors with seeded, irregular light events. No per-frame randomness. */
 export interface LightParticle {
   x: number;
   y: number;
   radius: number;
-  phase: number;
-  speed: number;
-  ax: number;
-  ay: number;
+  offset: number;
+  period: number;
+  events: { start: number; duration: number; strength: number }[];
   tint: string;
 }
 export function createLightParticles(): LightParticle[] {
@@ -32,28 +31,40 @@ export function createLightParticles(): LightParticle[] {
       motionSeed = (motionSeed * 16807) % 2147483647;
       return (motionSeed - 1) / 2147483646;
     };
+    const radius = 0.45 + random() * 0.35;
+    const events: LightParticle["events"] = [];
+    let period = 0;
+    for (let event = 0; event < 8; event++) {
+      period += 9 + random() * 24;
+      const duration = 1 + random() * 1.5;
+      events.push({ start: period, duration, strength: 0.65 + random() * 0.35 });
+      period += duration;
+    }
+    period += 8 + random() * 12;
     return {
       x,
       y,
-      radius: 0.45 + random() * 0.35,
-      phase: random() * Math.PI * 2,
-      speed: 0.19 + random() * 0.16,
-      ax: 5 + random() * 7,
-      ay: 4 + random() * 6,
+      radius,
+      events,
+      period,
+      offset: random() * period,
       tint: i % 7 === 0 ? "187,215,255" : i % 3 === 0 ? "220,210,255" : "242,244,255",
     };
   });
 }
 export function particleSample(p: LightParticle, time: number) {
-  const t = time * p.speed + p.phase;
-  return {
-    dx: p.ax * (Math.sin(t) * 0.78 + Math.sin(t * 0.47 + p.phase) * 0.22),
-    dy: p.ay * (Math.cos(t * 0.81) * 0.8 + Math.sin(t * 0.39 + p.phase) * 0.2),
-    alpha:
-      0.55 + 0.1 * Math.sin(time * 0.43 + p.phase) + 0.035 * Math.sin(time * 0.71 + p.phase * 2),
-    sparkle: Math.pow((1 + Math.sin(time * 0.36 + p.phase)) / 2, 14),
-  };
+  const local = (time + p.offset) % p.period;
+  let sparkle = 0;
+  for (const event of p.events) {
+    if (local >= event.start && local <= event.start + event.duration) {
+      // Zero slope at both ends, no blinking or visible cycle boundary.
+      sparkle = Math.sin((Math.PI * (local - event.start)) / event.duration) ** 2 * event.strength;
+      break;
+    }
+  }
+  return { dx: 0, dy: 0, alpha: 0.3, sparkle };
 }
+
 export function particleBudget(width: number, height: number, cores = 8) {
   return Math.min(width <= 640 ? 16 : width * height < 1100000 ? 24 : 32, cores <= 4 ? 24 : 32);
 }
@@ -83,8 +94,10 @@ export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
     const c = sprite.getContext("2d");
     if (!c) continue;
     const glow = c.createRadialGradient(16, 16, 0, 16, 16, 16);
-    glow.addColorStop(0, `rgba(${tint},.65)`);
-    glow.addColorStop(0.22, `rgba(${tint},.22)`);
+    glow.addColorStop(0, `rgba(${tint},1)`);
+    glow.addColorStop(0.14, `rgba(${tint},.95)`);
+    glow.addColorStop(0.32, `rgba(${tint},.28)`);
+    glow.addColorStop(0.62, `rgba(${tint},.06)`);
     glow.addColorStop(1, `rgba(${tint},0)`);
     c.fillStyle = glow;
     c.fillRect(0, 0, 32, 32);
@@ -93,24 +106,23 @@ export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
   const draw = () => {
     ctx.clearRect(0, 0, width, height);
     const special = Math.max(1, Math.round(count * 0.05));
-    const soft = Math.round(count * 0.15);
+    const soft = Math.round(count * 0.25);
     for (let i = 0; i < count; i++) {
       const p = particles[i],
         s = particleSample(p, elapsed);
-      const x = p.x * width + s.dx,
-        y = p.y * height + s.dy;
+      const x = p.x * width,
+        y = p.y * height;
       const highlight = i < special,
-        halo = i < special + soft;
-      ctx.globalAlpha = s.alpha + (highlight ? s.sparkle * 0.24 : 0);
-      if (halo) {
-        const sprite = sprites.get(p.tint);
-        const size = highlight ? 4.8 : 3.8;
-        if (sprite) ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size);
-      }
-      ctx.fillStyle = `rgb(${p.tint})`;
-      ctx.beginPath();
-      ctx.arc(x, y, p.radius * (highlight ? 1.2 : 1), 0, Math.PI * 2);
-      ctx.fill();
+        softCore = i < special + soft;
+      const sparkle = reduced.matches ? 0 : s.sparkle;
+      ctx.globalAlpha = softCore
+        ? 0.48 + sparkle * (highlight ? 0.5 : 0.36)
+        : s.alpha + sparkle * 0.18;
+      const sprite = sprites.get(p.tint);
+      // A compact radial kernel for every point, not a hard filled disc.
+      // The size stays fixed; only luminance changes during each event.
+      const size = (highlight ? 5.4 : softCore ? 4.8 : 3.2) * (p.radius / 0.65);
+      if (sprite) ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size);
     }
     ctx.globalAlpha = 1;
   };

@@ -71,7 +71,7 @@ export function StartScreen({
     <div className="min-h-screen flex items-center justify-center px-4 pt-28 pb-8">
       <div className="w-full max-w-2xl text-center">
         <h1
-          className="font-display text-5xl md:text-7xl text-foreground tracking-tight mb-3 uppercase"
+          className="quiz-title font-display text-5xl md:text-7xl text-foreground tracking-tight mb-3 uppercase"
           style={{
             textShadow:
               "0 0 40px oklch(0.55 0.24 278 / 0.6)",

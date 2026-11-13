@@ -64,7 +64,9 @@ const ctx: any = {
     positions.push([x, y]);
   },
   fill() {},
-  drawImage() {},
+  drawImage(_image: unknown, x: number, y: number) {
+    positions.push([x, y]);
+  },
   createRadialGradient() {
     return { addColorStop() {} };
   },
@@ -117,7 +119,7 @@ frame(100);
 frame(116.667);
 const before = positions.map((p) => [...p]);
 frame(133.334);
-assert.notDeepEqual(positions, before);
+assert.deepEqual(positions, before);
 doc.hidden = true;
 doc.dispatchEvent(new Event("visibilitychange"));
 assert.equal(queue.size, 0);

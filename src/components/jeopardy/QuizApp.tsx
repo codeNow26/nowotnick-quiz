@@ -1059,7 +1059,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       </div>
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6 pr-28">
         <h1
-          className="font-display text-3xl md:text-5xl text-foreground tracking-tight uppercase"
+          className="quiz-title font-display text-3xl md:text-5xl text-foreground tracking-tight uppercase"
           style={{
             textShadow:
               "0 0 30px oklch(0.55 0.24 278 / 0.6)",
