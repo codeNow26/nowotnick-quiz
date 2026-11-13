@@ -223,8 +223,8 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 /* Viewport-wide gradients have no transformed tile edges to expose.
    Both lobes reach transparency at their natural boundaries, without blur. */
 .ambient-veils {position:fixed;inset:0;z-index:-2;pointer-events:none;
-  background:radial-gradient(ellipse 82vw 58vh at 8% 18%,rgba(113,68,194,.28) 0%,rgba(83,48,152,.12) 42%,transparent 78%),
-    radial-gradient(ellipse 78vw 64vh at 96% 78%,rgba(57,103,188,.25) 0%,rgba(64,57,156,.10) 44%,transparent 80%);}
+  background:radial-gradient(ellipse 82vw 58vh at 8% 18%,rgba(113,68,194,.34) 0%,rgba(92,54,163,.17) 35%,rgba(65,42,117,.06) 61%,transparent 83%),
+    radial-gradient(ellipse 78vw 64vh at 96% 78%,rgba(57,103,188,.31) 0%,rgba(64,68,163,.15) 38%,rgba(63,43,126,.05) 65%,transparent 85%);}
 @media(prefers-reduced-motion:reduce) {
   .quiz-card-active { transition:none; }
   .quiz-card-active:not(:disabled):hover, .quiz-card-active:not(:disabled):active { transform:none; }
@@ -303,4 +303,39 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 }
 @media (prefers-reduced-motion: reduce) {
   .quiz-title { animation: none; background-image: linear-gradient(118deg, #f7f3ff 0%, #d4b5ff 22%, #ac9aff 40%, #b8dcff 60%, #d5f7ff 76%, #e6c6ff 93%, #faf6ff 100%); background-size: 100% 100%; background-position: 0 0; }
+}
+
+/* Selected controls and color gems: static lighting, unchanged geometry. */
+.quiz-selection[aria-pressed="true"] {
+  background-image: linear-gradient(145deg, rgba(255,255,255,.18), transparent 45%, rgba(39,22,112,.17));
+  border-color: rgba(210,199,255,.48);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 -1px 0 rgba(75,47,168,.3), 0 0 22px -6px rgba(123,97,255,.6);
+}
+.quiz-color-gem {
+  position: relative;
+  background-image: radial-gradient(ellipse at 30% 22%, rgba(255,255,255,.7), rgba(255,255,255,.10) 32%, transparent 58%), linear-gradient(145deg, transparent 45%, rgba(15,12,48,.30));
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.5), inset 0 -2px 3px rgba(12,9,38,.25), 0 2px 5px rgba(0,0,0,.25);
+}
+.quiz-color-gem::after { content:""; position:absolute; top:15%; left:22%; width:30%; height:13%; border-radius:50%; background:rgba(255,255,255,.65); transform:rotate(-32deg); pointer-events:none; }
+
+/* 220ms departure + 650ms arrival. Only opacity/transform are animated. */
+.quiz-start-depart { animation:quiz-start-depart 220ms ease-in both; pointer-events:none; }
+@keyframes quiz-start-depart { to {opacity:0;transform:scale(.97) translateY(5px);} }
+.quiz-game-enter { position:relative; isolation:isolate; animation:quiz-field-arrive 420ms cubic-bezier(.16,1,.3,1) both; }
+.quiz-game-enter::before {
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:radial-gradient(ellipse 48% 42% at 50% 42%,rgba(137,94,241,.20),rgba(83,130,224,.10) 40%,transparent 72%);
+  animation:quiz-launch-light 600ms ease-out both;
+}
+.quiz-game-enter .quiz-player-card,
+.quiz-game-enter .quiz-category-card,
+.quiz-game-enter .quiz-question-card {
+  animation:quiz-tile-arrive 230ms cubic-bezier(.16,1,.3,1) var(--entry-delay,0ms) both;
+}
+@keyframes quiz-field-arrive { from {opacity:0;transform:scale(.985);} to {opacity:1;transform:none;} }
+@keyframes quiz-tile-arrive { from {opacity:0;transform:translateY(9px) scale(.98);} to {opacity:1;transform:none;} }
+@keyframes quiz-launch-light { 0% {opacity:0;transform:scale(.55);} 28% {opacity:1;} 100% {opacity:0;transform:scale(1.15);} }
+@media(prefers-reduced-motion:reduce) {
+  .quiz-start-depart, .quiz-game-enter, .quiz-game-enter .quiz-player-card, .quiz-game-enter .quiz-category-card, .quiz-game-enter .quiz-question-card {animation:none;}
+  .quiz-game-enter::before {display:none;animation:none;}
 }

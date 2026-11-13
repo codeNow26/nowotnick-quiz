@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { POINT_VALUES, playerColor, type QuestionResult, type Category } from "@/lib/jeopardy-data";
 
 interface HighlightedQuestion {
@@ -53,6 +54,7 @@ export function Board({
       {categories.map((cat, categoryIndex) => (
         <div
           key={`${cat.name}-${categoryIndex}`}
+          style={{ "--entry-delay": `${80 + categoryIndex * 12}ms` } as CSSProperties}
           className={`
             quiz-category-card relative overflow-hidden
             rounded-2xl
@@ -146,7 +148,7 @@ export function Board({
               data-review={done || undefined}
               title={description}
               aria-label={description}
-              style={winnerColor ? { borderColor: `${winnerColor}65`, boxShadow: `inset 0 -3px 0 ${winnerColor}80`, backgroundImage: `linear-gradient(${winnerColor}06, ${winnerColor}06)` } : undefined}
+              style={{ "--entry-delay": `${130 + qIdx * 42 + cIdx * 10}ms`, ...(winnerColor ? { borderColor: `${winnerColor}65`, boxShadow: `inset 0 -3px 0 ${winnerColor}80`, backgroundImage: `linear-gradient(${winnerColor}06, ${winnerColor}06)` } : {}) } as CSSProperties}
               className={`
                 quiz-question-card group ${!done && !isRandomizing ? "quiz-card-active" : ""}
                 relative

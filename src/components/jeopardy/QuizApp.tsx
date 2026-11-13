@@ -81,6 +81,13 @@ function getSoleLeaderIndex(
   return leaders[0].index;
 }
 export function QuizApp({ customId, editInitially = false }: { customId?: string; editInitially?: boolean }) {
+  const [gameEntering, setGameEntering] = useState(false);
+  useEffect(() => {
+    if (!gameEntering) return;
+    const timer = setTimeout(() => setGameEntering(false), 650);
+    return () => clearTimeout(timer);
+  }, [gameEntering]);
+
   const {
     categories: allCategories,
     editorTarget, editorSource, applySaved,
@@ -484,6 +491,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
               popupTimerRef.current =
                 null;
             }
+            setGameEntering(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
             setScreen("game");
           }}
         />
@@ -1014,7 +1022,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         )[0]
       : null;
   return (
-    <div className={`min-h-screen p-3 md:p-6 mx-auto ${categories.length >= 8 ? "max-w-[1920px]" : "max-w-7xl"}`}>
+    <div className={`${gameEntering ? "quiz-game-enter" : ""} min-h-screen p-3 md:p-6 mx-auto ${categories.length >= 8 ? "max-w-[1920px]" : "max-w-7xl"}`}>
       {showStats && (
         <GameStats
           players={players}

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,9 @@ export function StartScreen({
   onQuizChange,
   onStart,
 }: StartScreenProps) {
+  const [launching, setLaunching] = useState(false);
+  const launchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (launchTimer.current) clearTimeout(launchTimer.current); }, []);
   const [count, setCount] = useState(2);
   const [names, setNames] = useState<string[]>(["", "", "", ""]);
   const [colors,setColors]=useState<string[]>([...DEFAULT_PLAYER_COLORS]);
@@ -45,12 +48,18 @@ export function StartScreen({
   };
 
   const handleStart = () => {
+    if (launchTimer.current || launching) return;
     const final = names
       .slice(0, count)
       .map((n, i) => n.trim() || `Spieler ${i + 1}`);
 
     rememberPlayers({names,colors,count});
-    onStart(final, Math.min(catCount, maxCategories), colors.slice(0,count));
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      onStart(final, Math.min(catCount, maxCategories), colors.slice(0,count));
+      return;
+    }
+    setLaunching(true);
+    launchTimer.current = setTimeout(() => onStart(final, Math.min(catCount, maxCategories), colors.slice(0,count)), 220);
   };
 
   const catOptions = Array.from(
@@ -69,7 +78,7 @@ export function StartScreen({
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 pt-28 pb-8">
-      <div className="w-full max-w-2xl text-center">
+      <div className={`w-full max-w-2xl text-center ${launching ? "quiz-start-depart" : ""}`} inert={launching || undefined}>
         <h1
           className="quiz-title font-display text-5xl md:text-7xl text-foreground tracking-tight mb-3 uppercase"
           style={{
@@ -178,7 +187,7 @@ export function StartScreen({
 
                   <div className="flex items-center gap-3 mt-1">
                   <button type="button" className="shrink-0 h-11 w-11 rounded-xl border border-white/25 flex items-center justify-center focus-visible:outline-2 focus-visible:outline-primary" aria-label={`Farbe für Spieler ${i+1}: ${PLAYER_PALETTE.find(p=>p.color===colors[i])?.name}`} aria-expanded={colorPicker===i} onClick={()=>setColorPicker(colorPicker===i?null:i)}>
-                    <span className="h-6 w-6 rounded-full border border-white/40" style={{backgroundColor:colors[i]}} />
+                    <span className="quiz-color-gem h-6 w-6 rounded-full border border-white/40" style={{backgroundColor:colors[i]}} />
                   </button>
                   <Input
                     id={`p${i}`}
@@ -192,7 +201,7 @@ export function StartScreen({
                   </div>
                   {colorPicker===i && <fieldset className="mt-3 rounded-xl border border-white/10 bg-background/70 p-3"><legend className="px-1 text-xs text-muted-foreground">Farbe auswählen · belegte Farben sind gesperrt</legend>
                     <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">{PLAYER_PALETTE.map(p=>{const used=colors.some((c,j)=>j!==i&&j<count&&c===p.color);return <button key={p.color} type="button" disabled={used} aria-label={`${p.name}${used?' (bereits vergeben)':''}`} aria-pressed={colors[i]===p.color} title={p.name} onClick={()=>chooseColor(i,p.color)} className="flex flex-col items-center gap-1 rounded-lg p-1.5 border border-transparent aria-pressed:border-white/70 disabled:opacity-25 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-primary">
-                      <span className="h-7 w-7 rounded-full border border-white/30 flex items-center justify-center text-slate-950 text-sm font-bold" style={{backgroundColor:p.color}}>{used?'×':colors[i]===p.color?'✓':''}</span><span className="text-[10px]">{p.name}</span>
+                      <span className="quiz-color-gem h-7 w-7 rounded-full border border-white/30 flex items-center justify-center text-slate-950 text-sm font-bold" style={{backgroundColor:p.color}}>{used?'×':colors[i]===p.color?'✓':''}</span><span className="text-[10px]">{p.name}</span>
                     </button>;})}</div>
                   </fieldset>}
                 </div>
@@ -202,6 +211,7 @@ export function StartScreen({
 
           <Button
             onClick={handleStart}
+            disabled={launching}
             size="lg"
             className="quiz-action w-full font-display text-xl md:text-2xl py-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider uppercase glow-primary border-0"
           >
