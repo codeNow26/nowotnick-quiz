@@ -476,26 +476,8 @@ function QuestionModalContent({
             text-center
           "
         >
-          {/* Hintergrundlicht */}
-          <div
-            className={`
-              absolute
-              left-1/2 top-1/2
-              -translate-x-1/2
-              -translate-y-1/2
-              h-48 w-[70%]
-              rounded-full
-              blur-[80px]
-              pointer-events-none
-              transition-all
-              duration-500
-              ${
-                revealed
-                  ? "bg-emerald-500/[0.07]"
-                  : "bg-primary/[0.08]"
-              }
-            `}
-          />
+          {/* A single decorative layer, stable across timer, hint and answer updates. */}
+          <div aria-hidden="true" className="question-stage-light"><span /></div>
           {/* kleine Bezeichnung nach Reveal */}
           {revealed && !review && (
             <div

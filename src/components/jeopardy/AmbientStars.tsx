@@ -22,7 +22,19 @@ function makeStars() {
     delay: index % 9 === 0 ? -(index / 9) * 10 : -random() * 60,
   }));
 }
-const stars = makeStars();
+// Separate seeded animation values preserve the original particle positions.
+const stars = makeStars().map((star,index) => {
+  let seed=1907+index*7919;
+  const random=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};
+  return {...star, drift:index%5===1, soft:index%8===3,
+    tint:['235 239 255','211 199 255','183 214 255'][index%3],
+    twinkleDuration:7+random()*10,twinkleDelay:-random()*25,
+    driftDuration:38+random()*28,driftDelay:-random()*65,
+    glowDuration:29+random()*15,glowDelay:-random()*45,
+    low:.22+random()*.12,high:.65+random()*.2,
+    dx:(random()>.5?1:-1)*(10+random()*12),dy:(random()>.5?1:-1)*(8+random()*12),
+  };
+});
 
 export function AmbientStars() {
   const layer = useRef<HTMLDivElement>(null);
@@ -41,7 +53,7 @@ export function AmbientStars() {
         <span
           key={star.id}
           className="ambient-star"
-          data-twinkle={star.twinkle || undefined}
+          data-soft={star.soft || undefined}
           data-glint={star.glint || undefined}
           data-drift={star.drift || undefined}
           style={{
@@ -50,13 +62,15 @@ export function AmbientStars() {
             width: star.size,
             height: star.size,
             "--star-opacity": star.opacity,
-            "--star-delay": star.delay + "s",
+            "--star-size":star.size+"px", "--star-tint":star.tint,
+            "--star-low":star.low, "--star-high":star.high,
+            "--twinkle-duration":star.twinkleDuration+"s", "--twinkle-delay":star.twinkleDelay+"s",
+            "--drift-duration":star.driftDuration+"s", "--drift-delay":star.driftDelay+"s",
+            "--glint-duration":star.glowDuration+"s", "--glint-delay":star.glowDelay+"s",
             "--star-dx": star.dx + "px",
             "--star-dy": star.dy + "px",
-            animationDuration: star.duration + "s",
-            animationDelay: star.delay + "s",
           } as CSSProperties}
-        />
+        ><span className="ambient-star-light" /></span>
       ))}
     </div>
   );

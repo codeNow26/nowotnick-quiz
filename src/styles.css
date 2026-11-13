@@ -199,41 +199,42 @@ body:has([role="dialog"][data-state="open"])::after {
   pointer-events: none;
   z-index: -1;
 }
-.ambient-star {
-  position: absolute;
-  display: block;
-  border-radius: 50%;
-  background: #d9e4ff;
-  opacity: var(--star-opacity);
+.ambient-star { position:absolute; display:block; }
+/* Painted soft cores: only opacity and transform animate, never blur/shadow. */
+.ambient-star-light { position:absolute; display:block; left:50%; top:50%;
+  width:calc(var(--star-size) * 3.5); height:calc(var(--star-size) * 3.5);
+  transform:translate(-50%,-50%); border-radius:50%;
+  background:radial-gradient(circle,rgb(245 246 255 / .98) 0%,rgb(var(--star-tint) / .85) 13%,rgb(var(--star-tint) / .28) 34%,rgb(var(--star-tint) / .07) 54%,transparent 72%);
+  opacity:var(--star-opacity); animation:quiz-star-twinkle var(--twinkle-duration) ease-in-out var(--twinkle-delay) infinite;
 }
-.ambient-star[data-drift] { animation-name:quiz-star-drift; animation-timing-function:ease-in-out; animation-iteration-count:infinite; }
-.ambient-star[data-twinkle] { animation-name:quiz-star-twinkle; animation-timing-function:ease-in-out; animation-iteration-count:infinite; box-shadow:0 0 5px rgb(192 202 255 / .35); }
-.ambient-star[data-glint]::before, .ambient-star[data-glint]::after { content:""; position:absolute; top:50%; left:50%; width:7px; height:1px; background:linear-gradient(90deg,transparent,#e1ddff,transparent); transform:translate(-50%,-50%); opacity:0; animation:quiz-star-glint 40s ease-in-out var(--star-delay) infinite; }
-.ambient-star[data-glint]::after { transform:translate(-50%,-50%) rotate(90deg); }
-@keyframes quiz-star-drift { 0%,100% {transform:translate3d(0,0,0);} 50% {transform:translate3d(var(--star-dx),var(--star-dy),0);} }
-@keyframes quiz-star-twinkle { 0%,82%,100% {opacity:var(--star-opacity);} 91% {opacity:.95;} }
-@keyframes quiz-star-glint { 0%,86%,98%,100% {opacity:0;} 91% {opacity:.6;} }
+.ambient-star[data-soft] .ambient-star-light { width:calc(var(--star-size) * 4.5);height:calc(var(--star-size) * 4.5);background:radial-gradient(circle,rgb(var(--star-tint) / .65),rgb(var(--star-tint) / .18) 35%,transparent 72%); }
+.ambient-star[data-drift] { animation:quiz-star-drift var(--drift-duration) ease-in-out var(--drift-delay) infinite;will-change:transform; }
+.ambient-star[data-glint]::before, .ambient-star[data-glint]::after { content:"";position:absolute;top:50%;left:50%;width:7px;height:1px;background:linear-gradient(90deg,transparent,rgb(var(--star-tint) / .7),transparent);transform:translate(-50%,-50%);opacity:0;animation:quiz-star-glint var(--glint-duration) ease-in-out var(--glint-delay) infinite; }
+.ambient-star[data-glint]::after {transform:translate(-50%,-50%) rotate(90deg);}
+@keyframes quiz-star-drift {0%,100% {transform:translate3d(0,0,0);}30% {transform:translate3d(calc(var(--star-dx) * .6),calc(var(--star-dy) * -.35),0);}65% {transform:translate3d(var(--star-dx),var(--star-dy),0);}}
+@keyframes quiz-star-twinkle {0%,100% {opacity:var(--star-low);}32%,82% {opacity:var(--star-opacity);}58% {opacity:var(--star-high);}}
+@keyframes quiz-star-glint {0%,80%,100% {opacity:0;}90% {opacity:.45;}}
 body:has([role="dialog"][data-state="open"]) .ambient-star,
-.ambient-stars[data-paused="true"] .ambient-star,
-.ambient-stars[data-paused="true"] .ambient-star::before,
-.ambient-stars[data-paused="true"] .ambient-star::after,
+body:has([role="dialog"][data-state="open"]) .ambient-star-light,
 body:has([role="dialog"][data-state="open"]) .ambient-star::before,
-body:has([role="dialog"][data-state="open"]) .ambient-star::after {
-  animation-play-state: paused;
-}
-body:has([role="dialog"][data-state="open"]) .ambient-stars {
-  visibility: hidden;
-}
-@media (max-width: 640px) {
-  .ambient-star:nth-child(n + 17) { display: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ambient-star[data-drift], .ambient-star[data-twinkle] { animation:none; }
-  .ambient-star[data-glint]::before, .ambient-star[data-glint]::after { display:none;animation:none; }
+body:has([role="dialog"][data-state="open"]) .ambient-star::after,
+.ambient-stars[data-paused="true"] .ambient-star,
+.ambient-stars[data-paused="true"] .ambient-star-light,
+.ambient-stars[data-paused="true"] .ambient-star::before,
+.ambient-stars[data-paused="true"] .ambient-star::after {animation-play-state:paused;}
+body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
+@media(max-width:640px) {.ambient-star:nth-child(n + 17) {display:none;}}
+@media(prefers-reduced-motion:reduce) {
+  .ambient-star[data-drift], .ambient-star-light {animation:none;will-change:auto;}
+  .ambient-star[data-glint]::before, .ambient-star[data-glint]::after {display:none;animation:none;}
 }
 
 /* Opaque surfaces hide the starfield below cards, including answered cells. */
-.quiz-category-card { background-color: #100d2a; }
+.quiz-category-card {
+  background-color:#100d2a;
+  background-image:linear-gradient(145deg,rgba(130,111,193,.13),rgba(70,73,137,.06) 46%,rgba(8,9,25,.12));
+  box-shadow:inset 0 1px 0 rgba(221,212,255,.09),inset 1px 0 0 rgba(182,177,232,.035),inset 0 -1px 0 rgba(9,8,26,.2);
+}
 .quiz-question-card { background-color: #151b3c; }
 .quiz-question-card[data-review="true"] { background-color:#080b1a; }
 .quiz-player-card { background-color: #171039; }
@@ -309,4 +310,19 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {
   .quiz-selection:not(:disabled):hover { translate:none; }
   .quiz-action:not(:disabled):active { scale:1; }
   .quiz-action::after, .quiz-score-flash { display:none; animation:none; }
+}
+
+/* Local stage illumination. No sizing/spacing changes to the scrollable body.
+   The entrance runs on the wrapper; the inner light keeps drifting after reveal. */
+.question-dialog-body {isolation:isolate;}
+.question-stage-light {position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none;
+  animation:question-light-arrive 700ms cubic-bezier(.2,.65,.25,1) both;}
+.question-stage-light > span {position:absolute;inset:5% 2%;pointer-events:none;
+  background:radial-gradient(ellipse 45% 40% at 44% 47%,rgba(110,66,193,.31),rgba(75,43,142,.13) 55%,transparent 100%),radial-gradient(ellipse 32% 33% at 65% 59%,rgba(54,96,179,.22),transparent 100%);
+  animation:question-light-drift 36s ease-in-out infinite alternate;}
+@keyframes question-light-arrive {from {opacity:0;transform:scale(.93);}to {opacity:1;transform:scale(1);}}
+@keyframes question-light-drift {from {transform:translate3d(-1%,0,0) scale(.99);opacity:.88;}to {transform:translate3d(2%,1.5%,0) scale(1.035);opacity:1;}}
+.question-dialog[data-state="closed"] .question-stage-light > span {animation-play-state:paused;}
+@media(prefers-reduced-motion:reduce) {
+  .question-stage-light, .question-stage-light > span {animation:none;transform:none;opacity:1;}
 }
