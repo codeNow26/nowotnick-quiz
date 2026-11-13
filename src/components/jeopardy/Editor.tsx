@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import { useEditorAutosave } from "@/lib/autosave/use-editor-autosave";
-import type { LoadedQuiz, QuizTarget } from "@/lib/quiz-repository";
+import { appendCategory, MAX_CATEGORIES, type LoadedQuiz, type QuizTarget } from "@/lib/quiz-repository";
 import type { Category, Question } from "@/lib/jeopardy-data";
 import { POINT_VALUES, CATEGORIES } from "@/lib/jeopardy-data";
 interface EditorProps {
@@ -308,6 +308,13 @@ export function Editor({
             {c.name || `Kat. ${i + 1}`}
           </button>
         ))}
+      </div>
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <Button type="button" variant="outline" disabled={draft.length >= MAX_CATEGORIES} onClick={() => {
+          if(draft.length >= MAX_CATEGORIES) return;
+          setDraft(appendCategory); setActiveCat(draft.length);
+        }}><Plus className="h-4 w-4" /> Kategorie hinzufügen</Button>
+        <span className="text-sm text-muted-foreground" role="status">{draft.length} von {MAX_CATEGORIES} Kategorien</span>
       </div>
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-4 glow-primary mb-4">
         <div className="text-xs text-muted-foreground uppercase tracking-[0.2em]">

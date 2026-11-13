@@ -25,7 +25,7 @@ export function CreateQuiz() {
         }}>
           <label className="block text-sm space-y-2">Quizname<Input autoFocus required maxLength={120} value={name} onChange={e => setName(e.target.value)} placeholder="Weihnachtsquiz 2026" disabled={busy} /></label>
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full rounded-xl" disabled={busy || !name.trim()}>{busy ? 'Wird erstellt …' : 'Quiz erstellen & bearbeiten'}</Button>
+          <Button type="submit" className="quiz-action w-full rounded-xl" disabled={busy || !name.trim()}>{busy ? 'Wird erstellt …' : 'Quiz erstellen & bearbeiten'}</Button>
         </form>
       </DialogContent>
     </Dialog>

@@ -44,7 +44,13 @@ function shuffleItems(items: string[]) {
   }
   return shuffled;
 }
-export function QuestionModal({
+export function QuestionModal(props: QuestionModalProps) {
+  const lastOpen = useRef(props);
+  useEffect(() => { if(props.open && props.question) lastOpen.current = props; }, [props]);
+  const content = props.open ? props : lastOpen.current;
+  return <QuestionModalContent {...content} open={props.open} onClose={props.onClose} onResolve={props.onResolve} />;
+}
+function QuestionModalContent({
   open,
   review,
   question,
@@ -104,7 +110,7 @@ export function QuestionModal({
   }, [open, players.length, question, review]);
   useEffect(() => {
     if (
-      timeLeft === null ||
+      !open || timeLeft === null ||
       timeLeft <= 0
     ) {
       return;
@@ -118,7 +124,7 @@ export function QuestionModal({
       });
     }, 1000);
     return () => clearTimeout(timer);
-  }, [timeLeft]);
+  }, [timeLeft, open]);
   useEffect(() => {
     if (!imageExpanded) {
       return;
@@ -157,7 +163,7 @@ export function QuestionModal({
   const isChoiceQuestion = question.type === "choice";
   const validChoices = hasValidChoices(question);
   const commitResult = (player: number | null, correct: boolean) => {
-    if (review || resolvedRef.current) return;
+    if (!open || review || resolvedRef.current) return;
     resolvedRef.current = true;
     onResolve(player, correct, currentValue, selectedChoice);
   };
@@ -277,7 +283,7 @@ export function QuestionModal({
               bg-black/90
               p-4 md:p-8
               backdrop-blur-md
-              cursor-zoom-out
+              cursor-pointer
               pointer-events-auto
             "
             onPointerDown={(event) => event.stopPropagation()}
@@ -308,6 +314,10 @@ export function QuestionModal({
               <X className="h-5 w-5" />
             </button>
             <img
+              role="button"
+              tabIndex={0}
+              aria-label="Vergrößertes Bild schließen"
+              onKeyDown={event => { if(event.key === 'Enter' || event.key === ' ') {event.preventDefault();setImageExpanded(false);} }}
               src={question.imageUrl}
               alt="Fragenbild vergrößert"
               referrerPolicy="no-referrer"
@@ -319,7 +329,7 @@ export function QuestionModal({
                 bg-black
                 object-contain
                 shadow-[0_30px_100px_rgba(0,0,0,0.75)]
-                cursor-default
+                cursor-pointer
               "
               onClick={(event) => {
                 event.stopPropagation();
@@ -345,6 +355,7 @@ export function QuestionModal({
       }}
     >
       <DialogContent
+        motion="question"
         aria-describedby={undefined}
         onEscapeKeyDown={(event) => {
           if (imageExpanded) {
@@ -942,14 +953,14 @@ export function QuestionModal({
               disabled={isChoiceQuestion && (!validChoices || selectedChoice === null)}
               onClick={() => { setTimeLeft(null); setRevealed(true); }}
               size="lg"
-              className="w-full rounded-2xl bg-primary py-6 font-display text-lg text-white">
+              className="quiz-action w-full rounded-2xl bg-primary py-6 font-display text-lg text-white">
               <Eye className="mr-2 h-5 w-5" />
               {isChoiceQuestion ? "Antwort auflösen" : isOrderQuestion ? "Reihenfolge prüfen" : "Antwort zeigen"}
             </Button>
           ) : isChoiceQuestion ? (
             <Button onClick={() => commitResult(selectedPlayer, selectedChoice === question.correctOption)}
               disabled={selectedPlayer === null || selectedChoice === null}
-              size="lg" className="w-full rounded-2xl py-6 font-display">
+              size="lg" className="quiz-action w-full rounded-2xl py-6 font-display">
               Punkte übernehmen & weiter
             </Button>
           ) : (

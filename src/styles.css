@@ -253,14 +253,21 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {
 .quiz-card-active:focus-visible { outline:2px solid #b6a4ed; outline-offset:3px; }
 .quiz-card-active:not(:disabled):active { transform:scale(.99); }
 @keyframes card-glint { to { transform:translateX(60%); } }
-.question-dialog[data-state="open"] { animation:question-arrive 220ms cubic-bezier(.2,.7,.2,1) both; }
-@keyframes question-arrive { from {opacity:0;transform:translateY(6px) scale(.985);} to {opacity:1;transform:translateY(0) scale(1);} }
+/* Radix Presence keeps the question mounted through the matching exit animation. */
+.question-dialog[data-state="open"] { animation:question-arrive 260ms cubic-bezier(.2,.7,.2,1) both; }
+.question-dialog[data-state="closed"] { animation:question-depart 220ms ease-in both; pointer-events:none; }
+.question-overlay { background:rgb(3 3 14 / .68); backdrop-filter:blur(4px); }
+.question-overlay[data-state="open"] { animation:question-dim 260ms ease-out both; }
+.question-overlay[data-state="closed"] { animation:question-dim 220ms ease-in reverse both; pointer-events:none; }
+@keyframes question-arrive { from {opacity:0;transform:translateY(7px) scale(.96);} to {opacity:1;transform:translateY(0) scale(1);} }
+@keyframes question-depart { from {opacity:1;transform:translateY(0) scale(1);} to {opacity:0;transform:translateY(5px) scale(.96);} }
+@keyframes question-dim { from {opacity:0;} to {opacity:1;} }
 
 /* Optional backdrop: two soft gradients, no animated blur or new particles. */
 .ambient-veils { position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
-.ambient-veils span { position:absolute; width:min(90vw,1200px); height:85vh; opacity:.38; background:radial-gradient(ellipse,rgba(103,65,167,.22),transparent 68%); animation:veil-drift 85s ease-in-out infinite alternate; }
+.ambient-veils span { position:absolute; width:min(90vw,1200px); height:85vh; opacity:.8; background:radial-gradient(ellipse at center,rgba(113,68,194,.55) 0%,rgba(83,48,152,.24) 35%,transparent 72%); animation:veil-drift 85s ease-in-out infinite alternate; }
 .ambient-veils span:first-child { left:-25vw;top:-20vh; }
-.ambient-veils span:last-child { right:-28vw;bottom:-25vh;background:radial-gradient(ellipse,rgba(55,97,158,.20),transparent 68%);animation-duration:105s;animation-delay:-40s;animation-direction:alternate-reverse; }
+.ambient-veils span:last-child { right:-28vw;bottom:-25vh;background:radial-gradient(ellipse,rgba(57,103,188,.46) 0%,rgba(43,73,148,.18) 38%,transparent 72%);animation-duration:105s;animation-delay:-40s;animation-direction:alternate-reverse; }
 @keyframes veil-drift { from {transform:translate3d(-1vw,0,0) scale(1);} to {transform:translate3d(5vw,5vh,0) scale(1.04);} }
 .ambient-veils[data-paused="true"] span, body:has([role="dialog"][data-state="open"]) .ambient-veils span { animation-play-state:paused; }
 @media(max-width:640px) { .ambient-veils span:last-child { display:none; } }
@@ -268,6 +275,37 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {
   .quiz-card-active { transition:none; }
   .quiz-card-active:not(:disabled):hover, .quiz-card-active:not(:disabled):active { transform:none; }
   .quiz-card-edge { display:none; }
-  .question-dialog[data-state="open"] { animation:none; }
+  .question-dialog[data-state], .question-overlay[data-state] { animation:none; }
   .ambient-veils span { animation:none; }
+}
+
+/* Shared affordances cover native buttons, Radix controls, links and uploads.
+   Exclude cards from the generic hover tint so their existing light effects stay singular. */
+:where(button, a[href], select, summary, [role="button"], [role="tab"], [role="menuitem"], [role="option"], [role="checkbox"], [role="switch"], input[type="range"], input[type="checkbox"], input[type="radio"], input[type="file"], label[for], label:has(input[type="file"])):not(:disabled):not([aria-disabled="true"]) { cursor:pointer; }
+:where(button, a[href], select, summary, input, textarea, [tabindex], [role="button"]):focus-visible { outline:2px solid #c4b5fd; outline-offset:3px; }
+:where(button, input, select, textarea, [role="button"], [role="tab"], [role="menuitem"], [role="option"]):is(:disabled,[aria-disabled="true"]) { cursor:not-allowed; }
+.quiz-question-card[data-review="true"] { cursor:default; }
+/* Answered cards still open read-only review; their subdued border feedback stays. */
+@media (hover:hover) and (pointer:fine) {
+  :where(button, a[href], summary, select, [role="button"], [role="tab"], [role="menuitem"], [role="option"], [role="checkbox"], [role="switch"], input[type="range"], input[type="checkbox"], input[type="radio"], input[type="file"]):not(:disabled):not([aria-disabled="true"]):not(.quiz-question-card):hover { filter:brightness(1.10); }
+  .quiz-selection:not(:disabled):hover { translate:0 -2px; border-color:rgb(196 181 253 / .5); box-shadow:0 5px 22px -9px rgb(139 92 246 / .45); }
+}
+.quiz-selection { transition:translate 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease; }
+.quiz-category-accent { box-shadow:0 2px 9px rgb(139 92 246 / .25); }
+.quiz-player-stripe { position:absolute; top:0; left:18%; right:18%; height:2px; border-radius:999px; pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--player-color),transparent); box-shadow:0 1px 10px color-mix(in srgb,var(--player-color) 35%,transparent); }
+.quiz-score-flash { position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:radial-gradient(ellipse at top,color-mix(in srgb,var(--player-color) 30%,transparent),transparent 80%); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--player-color) 50%,transparent); animation:score-flash 550ms ease-out both; }
+@keyframes score-flash { 0% {opacity:0;} 25% {opacity:1;} 100% {opacity:0;} }
+.quiz-action { position:relative; overflow:hidden; isolation:isolate; transition:scale 160ms ease, background-color 180ms ease; }
+.quiz-action::after { content:""; position:absolute; inset:-30% -50%; pointer-events:none; background:linear-gradient(110deg,transparent 42%,rgb(231 220 255 / .19) 50%,transparent 58%); transform:translateX(-90%); }
+@media (hover:hover) and (pointer:fine) {
+  .quiz-action:not(:disabled):not([aria-disabled="true"]):hover::after { animation:action-glint 650ms ease-out both; }
+}
+.quiz-action:not(:disabled):not([aria-disabled="true"]):active { scale:.98; }
+@keyframes action-glint { to {transform:translateX(90%);} }
+@media(prefers-reduced-motion:reduce) {
+  .quiz-selection, .quiz-action { transition:none; }
+  .quiz-selection:not(:disabled):hover { translate:none; }
+  .quiz-action:not(:disabled):active { scale:1; }
+  .quiz-action::after, .quiz-score-flash { display:none; animation:none; }
 }

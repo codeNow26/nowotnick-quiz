@@ -27,10 +27,15 @@ export function slugify(name: string) {
   return name.trim().toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
     .normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80).replace(/-$/g, '') || 'quiz';
 }
+export const MAX_CATEGORIES = 10;
+export function emptyCategory(index: number): Category {
+  return { name: `Kategorie ${index + 1}`, questions: POINT_VALUES.map(value => ({ question: '', answer: '', value, type: 'normal' as const })) };
+}
+export function appendCategory(categories: Category[]): Category[] {
+  return categories.length >= MAX_CATEGORIES ? categories : [...categories, emptyCategory(categories.length)];
+}
 export function emptyQuiz(name: string): QuizPayload {
-  return { meta: { title: name.trim(), subtitle: '' }, categories: Array.from({ length: 6 }, (_, i) => ({
-    name: `Kategorie ${i + 1}`, questions: POINT_VALUES.map(value => ({ question: '', answer: '', value, type: 'normal' as const })),
-  })) };
+  return { meta: { title: name.trim(), subtitle: '' }, categories: Array.from({ length: MAX_CATEGORIES }, (_, i) => emptyCategory(i)) };
 }
 function check(error: { message: string; code?: string } | null) {
   if (!error) return;

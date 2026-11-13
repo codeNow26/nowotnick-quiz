@@ -81,7 +81,7 @@ export function Board({
           {/* dezenter Lichtschein */}
           <div
             className="
-              absolute inset-x-4 top-0
+              quiz-category-accent absolute inset-x-4 bottom-0
               h-px
               bg-gradient-to-r
               from-transparent
@@ -143,6 +143,7 @@ export function Board({
                 onSelect(cIdx, qIdx)
               }
               disabled={isRandomizing}
+              data-review={done || undefined}
               title={description}
               aria-label={description}
               style={winnerColor ? { borderColor: `${winnerColor}55`, boxShadow: `inset 0 -3px 0 ${winnerColor}80`, backgroundImage: `linear-gradient(${winnerColor}10, ${winnerColor}10)` } : undefined}

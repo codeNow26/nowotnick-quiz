@@ -55,7 +55,7 @@ export function StartScreen({
   );
 
   const pillBase =
-    "rounded-xl font-display transition-all duration-200 border";
+    "quiz-selection rounded-xl font-display transition-all duration-200 border";
 
   const pillIdle =
     "glass text-foreground/80 hover:text-foreground hover:bg-white/10";
@@ -95,6 +95,7 @@ export function StartScreen({
               {([1, 2, 3, 4] as const).map((quiz) => (
                 <button
                   key={quiz}
+                  aria-pressed={activeQuiz === quiz}
                   onClick={() => onQuizChange(quiz)}
                   className={`${pillBase} h-12 text-sm ${
                     activeQuiz === quiz
@@ -119,6 +120,7 @@ export function StartScreen({
               {[1, 2, 3, 4].map((n) => (
                 <button
                   key={n}
+                  aria-pressed={count === n}
                   onClick={() => {setCount(n);rememberPlayers({names,colors,count:n});}}
                   className={`${pillBase} w-14 h-14 text-2xl ${
                     count === n
@@ -143,6 +145,7 @@ export function StartScreen({
               {catOptions.map((n) => (
                 <button
                   key={n}
+                  aria-pressed={catCount === n}
                   onClick={() => setCatCount(n)}
                   className={`${pillBase} w-11 h-11 text-base ${
                     catCount === n
@@ -196,7 +199,7 @@ export function StartScreen({
           <Button
             onClick={handleStart}
             size="lg"
-            className="w-full font-display text-xl md:text-2xl py-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider uppercase glow-primary border-0"
+            className="quiz-action w-full font-display text-xl md:text-2xl py-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider uppercase glow-primary border-0"
           >
             Spiel starten
           </Button>
