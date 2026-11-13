@@ -129,15 +129,6 @@ body:has([role="dialog"][data-state="open"])::after {
   animation-play-state: paused;
   opacity: .15;
 }
-@keyframes quiz-light-left {
-  from { transform: translate3d(0, -18px, 0); }
-  to { transform: translate3d(32px, 24px, 0); }
-}
-@keyframes quiz-light-right {
-  from { transform: translate3d(16px, 20px, 0); }
-  to { transform: translate3d(-24px, -28px, 0); }
-}
-
 /* Keep the question and all controls within the available viewport. */
 .question-dialog {
   display: grid;
@@ -191,43 +182,9 @@ body:has([role="dialog"][data-state="open"])::after {
   body::before, body::after { animation: none; transition: none; }
 }
 
-/* Sparse starfield: animate small elements rather than a viewport texture. */
-.ambient-stars {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: -1;
-}
-.ambient-star { position:absolute; display:block; }
-/* Painted soft cores: only opacity and transform animate, never blur/shadow. */
-.ambient-star-light { position:absolute; display:block; left:50%; top:50%;
-  width:calc(var(--star-size) * 3.5); height:calc(var(--star-size) * 3.5);
-  transform:translate(-50%,-50%); border-radius:50%;
-  background:radial-gradient(circle,rgb(245 246 255 / .98) 0%,rgb(var(--star-tint) / .85) 13%,rgb(var(--star-tint) / .28) 34%,rgb(var(--star-tint) / .07) 54%,transparent 72%);
-  opacity:var(--star-opacity); animation:quiz-star-twinkle var(--twinkle-duration) ease-in-out var(--twinkle-delay) infinite;
-}
-.ambient-star[data-soft] .ambient-star-light { width:calc(var(--star-size) * 4.5);height:calc(var(--star-size) * 4.5);background:radial-gradient(circle,rgb(var(--star-tint) / .65),rgb(var(--star-tint) / .18) 35%,transparent 72%); }
-.ambient-star[data-drift] { animation:quiz-star-drift var(--drift-duration) ease-in-out var(--drift-delay) infinite;will-change:transform; }
-.ambient-star[data-glint]::before, .ambient-star[data-glint]::after { content:"";position:absolute;top:50%;left:50%;width:7px;height:1px;background:linear-gradient(90deg,transparent,rgb(var(--star-tint) / .7),transparent);transform:translate(-50%,-50%);opacity:0;animation:quiz-star-glint var(--glint-duration) ease-in-out var(--glint-delay) infinite; }
-.ambient-star[data-glint]::after {transform:translate(-50%,-50%) rotate(90deg);}
-@keyframes quiz-star-drift {0%,100% {transform:translate3d(0,0,0);}30% {transform:translate3d(calc(var(--star-dx) * .6),calc(var(--star-dy) * -.35),0);}65% {transform:translate3d(var(--star-dx),var(--star-dy),0);}}
-@keyframes quiz-star-twinkle {0%,100% {opacity:var(--star-low);}32%,82% {opacity:var(--star-opacity);}58% {opacity:var(--star-high);}}
-@keyframes quiz-star-glint {0%,80%,100% {opacity:0;}90% {opacity:.45;}}
-body:has([role="dialog"][data-state="open"]) .ambient-star,
-body:has([role="dialog"][data-state="open"]) .ambient-star-light,
-body:has([role="dialog"][data-state="open"]) .ambient-star::before,
-body:has([role="dialog"][data-state="open"]) .ambient-star::after,
-.ambient-stars[data-paused="true"] .ambient-star,
-.ambient-stars[data-paused="true"] .ambient-star-light,
-.ambient-stars[data-paused="true"] .ambient-star::before,
-.ambient-stars[data-paused="true"] .ambient-star::after {animation-play-state:paused;}
+/* One canvas field, between static illumination and opaque content. */
+.ambient-stars {position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:-1;}
 body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
-@media(max-width:640px) {.ambient-star:nth-child(n + 17) {display:none;}}
-@media(prefers-reduced-motion:reduce) {
-  .ambient-star[data-drift], .ambient-star-light {animation:none;will-change:auto;}
-  .ambient-star[data-glint]::before, .ambient-star[data-glint]::after {display:none;animation:none;}
-}
 
 /* Opaque surfaces hide the starfield below cards, including answered cells. */
 .quiz-category-card {
@@ -263,22 +220,16 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 @keyframes question-depart { from {opacity:1;transform:translateY(0) scale(1);} to {opacity:0;transform:translateY(5px) scale(.96);} }
 @keyframes question-dim { from {opacity:0;} to {opacity:1;} }
 
-/* Two shaped aurora ribbons, not a full-screen brightness wash. No animated blur. */
-.ambient-veils { position:fixed; inset:0; z-index:-2; overflow:hidden; pointer-events:none; }
-.ambient-veils span { position:absolute; width:110vw; height:65vh; opacity:.85;
-  background:radial-gradient(ellipse 46% 18% at 43% 48%,rgba(130,78,211,.32),rgba(96,51,177,.13) 50%,transparent 100%),radial-gradient(ellipse 35% 12% at 70% 60%,rgba(77,94,194,.20),transparent 100%);
-  animation:veil-drift 64s ease-in-out infinite alternate; }
-.ambient-veils span:first-child { left:-35vw;top:-3vh; }
-.ambient-veils span:last-child { right:-38vw;bottom:-5vh;background:radial-gradient(ellipse 43% 17% at 50% 50%,rgba(69,111,199,.28),rgba(64,57,156,.12) 55%,transparent 100%),radial-gradient(ellipse 30% 11% at 30% 65%,rgba(113,69,190,.22),transparent 100%);animation-duration:79s;animation-delay:-31s;animation-direction:alternate-reverse; }
-@keyframes veil-drift { from {transform:translate3d(-3vw,-2vh,0) rotate(-18deg) scaleY(.9);} to {transform:translate3d(10vw,9vh,0) rotate(-7deg) scaleY(1.2);} }
-.ambient-veils[data-paused="true"] span, body:has([role="dialog"][data-state="open"]) .ambient-veils span { animation-play-state:paused; }
-@media(max-width:640px) { .ambient-veils span:last-child { display:none; } }
+/* Viewport-wide gradients have no transformed tile edges to expose.
+   Both lobes reach transparency at their natural boundaries, without blur. */
+.ambient-veils {position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:radial-gradient(ellipse 82vw 58vh at 8% 18%,rgba(113,68,194,.28) 0%,rgba(83,48,152,.12) 42%,transparent 78%),
+    radial-gradient(ellipse 78vw 64vh at 96% 78%,rgba(57,103,188,.25) 0%,rgba(64,57,156,.10) 44%,transparent 80%);}
 @media(prefers-reduced-motion:reduce) {
   .quiz-card-active { transition:none; }
   .quiz-card-active:not(:disabled):hover, .quiz-card-active:not(:disabled):active { transform:none; }
   .quiz-card-edge { display:none; }
   .question-dialog[data-state], .question-overlay[data-state] { animation:none; }
-  .ambient-veils span { animation:none; }
 }
 
 /* Shared affordances cover native buttons, Radix controls, links and uploads.
@@ -313,36 +264,18 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 }
 
 /* Local stage illumination. No sizing/spacing changes to the scrollable body.
-   The entrance runs on the wrapper; the inner light keeps drifting after reveal. */
+   The entrance runs on the wrapper; the inner light remains static after reveal. */
 .question-dialog-body {isolation:isolate;}
 .question-stage-light {position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none;
   animation:question-light-arrive 700ms cubic-bezier(.2,.65,.25,1) both;}
 .question-stage-light > span {position:absolute;inset:5% 2%;pointer-events:none;
   background:radial-gradient(ellipse 45% 40% at 44% 47%,rgba(110,66,193,.31),rgba(75,43,142,.13) 55%,transparent 100%),radial-gradient(ellipse 32% 33% at 65% 59%,rgba(54,96,179,.22),transparent 100%);
-  animation:question-light-drift 36s ease-in-out infinite alternate;}
+  opacity:.94;}
 @keyframes question-light-arrive {from {opacity:0;transform:scale(.93);}to {opacity:1;transform:scale(1);}}
-@keyframes question-light-drift {from {transform:translate3d(-1%,0,0) scale(.99);opacity:.88;}to {transform:translate3d(2%,1.5%,0) scale(1.035);opacity:1;}}
-.question-dialog[data-state="closed"] .question-stage-light > span {animation-play-state:paused;}
 @media(prefers-reduced-motion:reduce) {
   .question-stage-light, .question-stage-light > span {animation:none;transform:none;opacity:1;}
 }
 
-/* Fine open ring segments and two asymmetric arcs. Clip only decoration, never
-   the scrollable question. Static blur softens arcs; only transforms animate. */
+/* Static fine ring segments only; no broad blurred light bands. */
 .question-light-forms {position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;}
 .question-light-rings {opacity:.9;}
-.question-light-arc {filter:blur(3px);transform-box:view-box;transform-origin:50% 50%;}
-.question-light-arc-violet {animation:question-arc-violet 26s ease-in-out infinite;}
-.question-light-arc-blue {animation:question-arc-blue 33s ease-in-out -11s infinite;}
-@keyframes question-arc-violet {
-  0%,100% {transform:translate(-10px,4px) scale(1);}
-  50% {transform:translate(14px,-10px) scale(1.025,.98);}
-}
-@keyframes question-arc-blue {
-  0%,100% {transform:translate(8px,-7px) scale(1);}
-  50% {transform:translate(-13px,11px) scale(.985,1.025);}
-}
-.question-dialog[data-state="closed"] .question-light-arc {animation-play-state:paused;}
-@media(prefers-reduced-motion:reduce) {
-  .question-light-arc {animation:none;transform:none;}
-}
