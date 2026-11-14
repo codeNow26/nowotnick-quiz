@@ -1,3 +1,4 @@
+import { QuestionVideoEditor } from "./QuestionVideoEditor";
 import { useEffect, useRef, useState, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +42,9 @@ export function Editor({
   const [openImageEditors, setOpenImageEditors] = useState<Record<string, boolean>>({});
   const [processingImages, setProcessingImages] = useState<Record<string, boolean>>({});
   const imageGeneration=useRef<Record<string,number>>({});
-  const imagePending=Object.values(processingImages).some(Boolean);
+  const [processingVideos, setProcessingVideos] = useState<Record<string, boolean>>({});
+  const videoPending = Object.values(processingVideos).some(Boolean);
+  const imagePending=Object.values(processingImages).some(Boolean) || videoPending;
   useEffect(()=>{
     if(!imagePending)return;
     const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};
@@ -305,6 +308,7 @@ export function Editor({
         {draft.slice(0,visibleCount).map((c, i) => (
           <button
             key={i}
+            disabled={videoPending}
             onClick={() => setActiveCat(i)}
             className={`px-2 py-3 rounded-xl font-display text-xs md:text-sm uppercase tracking-wider transition-all truncate border ${
               activeCat === i
@@ -318,7 +322,7 @@ export function Editor({
         ))}
       </div>
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Button type="button" variant="outline" disabled={visibleCount >= MAX_CATEGORIES} onClick={() => {
+        <Button type="button" variant="outline" disabled={videoPending || visibleCount >= MAX_CATEGORIES} onClick={() => {
           if(visibleCount >= MAX_CATEGORIES) return;
           setDraft(v=>ensureCategoryCount(v,visibleCount+1));
           onCategoryCountChange?.(visibleCount+1); setActiveCat(visibleCount);
@@ -451,6 +455,9 @@ export function Editor({
                     }
                   />
                 </div>
+                <QuestionVideoEditor key={`video-${source.id}-${activeCat}-${qIdx}`} quizId={source.id} value={q.videoUrl}
+                  onChange={url => updateQuestion(qIdx, current => ({...current, videoUrl: url}))}
+                  onPending={pending => setProcessingVideos(prev => ({...prev, [`${activeCat}-${qIdx}`]: pending}))} />
                 <div className="space-y-2">
                   <button
                     type="button"

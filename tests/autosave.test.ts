@@ -61,7 +61,12 @@ await new Promise(r=>setTimeout(r,35));assert.equal(debouncedWrites,1);debounced
 // Leaving the editor drains the queued newest save after an in-flight request.
 const leaving=new AutosaveController('custom:quiz-a',source(),new MemoryStorage(),save,()=>{},()=>{},60000);await leaving.start();leaving.update(payload('Vor Verlassen'));const sending=leaving.flush();leaving.update(payload('Letzter Tastendruck'));leaving.dispose();pending.shift()!({...source(),revision:2});await sending;await tick();assert.equal(requests.at(-1)!.value.categories[0].questions[0].answer,'Letzter Tastendruck');pending.shift()!({...source(),revision:3});await tick();
 assert.notEqual(serverVersion(source('quiz-a')),serverVersion(source('quiz-b')));
-assert.equal(PLAYER_PALETTE.length,8);assert.equal(new Set(normalizeColors(['#60a5fa','#60a5fa','invalid'])).size,4);
+assert.equal(PLAYER_PALETTE.length,16);assert.equal(new Set(normalizeColors(['#60a5fa','#60a5fa','invalid'])).size,4);
 const colors=normalizeColors([]);assert.deepEqual(selectPlayerColor(colors,0,colors[1],4),colors,'Used color cannot be assigned twice');
 const chosen=selectPlayerColor(colors,0,PLAYER_PALETTE[7].color,4);assert.equal(chosen[0],PLAYER_PALETTE[7].color);assert.equal(playerColor(0,chosen[0]),chosen[0]);
 console.log('PASS autosave: synchronous local capture, serial writes, stale acknowledgements, offline images, recovery, conflicts, isolation, quota failures, debounce, exit flush; unique player colors.');
+
+const partial=normalizeColors(['',PLAYER_PALETTE[0].color,'',PLAYER_PALETTE[8].color]);
+assert.equal(partial[1],PLAYER_PALETTE[0].color);
+assert.equal(partial[3],PLAYER_PALETTE[8].color);
+assert.equal(new Set(partial).size,4);

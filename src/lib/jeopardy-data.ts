@@ -8,6 +8,7 @@ export interface Question {
   orderItems?: string[];
   hints?: string[];
   imageUrl?: string;
+  videoUrl?: string;
 }
 
 export interface Category {
