@@ -279,7 +279,7 @@ export function Board({
 
               <span
                 className={`
-                  relative z-10
+                  relative z-10 ${!done && !highlighted ? "quiz-point-value" : ""}
                   text-xl sm:text-2xl md:text-[2rem]
                   tracking-tight
                   transition-all

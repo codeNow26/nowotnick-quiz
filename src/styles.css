@@ -364,3 +364,15 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
   .quiz-start-depart, .quiz-game-enter, .quiz-game-enter .quiz-player-card, .quiz-game-enter .quiz-category-card, .quiz-game-enter .quiz-question-card {animation:none;}
   .quiz-game-enter::before {display:none;animation:none;}
 }
+
+/* Quiet, static point lettering; answered and roulette cells keep their states. */
+.quiz-point-value {
+  background:linear-gradient(125deg,#fbf9ff 5%,#ded0ff 43%,#c7e9ff 78%,#f8f4ff);
+  background-clip:text;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.question-dialog-header { padding-right:3.5rem; }
+@media(forced-colors:active) {
+  .quiz-point-value {background:none;-webkit-text-fill-color:currentColor;}
+}
