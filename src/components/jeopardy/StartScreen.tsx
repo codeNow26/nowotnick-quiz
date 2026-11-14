@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { PLAYER_PALETTE, DEFAULT_PLAYER_COLORS, readPlayerPreferences, rememberPlayers, selectPlayerColor } from "@/lib/player-preferences";
+import { PLAYER_PALETTE, normalizeColors, readPlayerPreferences, rememberPlayers, selectPlayerColor } from "@/lib/player-preferences";
 
 interface StartScreenProps {
   title: string;
@@ -31,9 +31,9 @@ export function StartScreen({
   useEffect(() => () => { if (launchTimer.current) clearTimeout(launchTimer.current); }, []);
   const [count, setCount] = useState(2);
   const [names, setNames] = useState<string[]>(["", "", "", ""]);
-  const [colors,setColors]=useState<string[]>([...DEFAULT_PLAYER_COLORS]);
+  const [colors,setColors]=useState<string[]>(["", "", "", ""]);
   const [colorPicker,setColorPicker]=useState<number|null>(null);
-  useEffect(()=>{const prefs=readPlayerPreferences();setNames(prefs.names);setColors(prefs.colors);setCount(prefs.count);},[]);
+  useEffect(()=>{const prefs=readPlayerPreferences();setNames(prefs.names);setCount(prefs.count);},[]);
   const chooseColor=(index:number,color:string)=>{const next=selectPlayerColor(colors,index,color,count);setColors(next);rememberPlayers({names,colors:next,count});setColorPicker(null);};
   const defaultCats = Math.min(6, maxCategories);
   const [localCatCount, setLocalCatCount] = useState(defaultCats);
@@ -54,12 +54,13 @@ export function StartScreen({
       .map((n, i) => n.trim() || `Spieler ${i + 1}`);
 
     rememberPlayers({names,colors,count});
+    const gameColors = normalizeColors(colors.slice(0,count)).slice(0,count);
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      onStart(final, Math.min(catCount, maxCategories), colors.slice(0,count));
+      onStart(final, Math.min(catCount, maxCategories), gameColors);
       return;
     }
     setLaunching(true);
-    launchTimer.current = setTimeout(() => onStart(final, Math.min(catCount, maxCategories), colors.slice(0,count)), 220);
+    launchTimer.current = setTimeout(() => onStart(final, Math.min(catCount, maxCategories), gameColors), 220);
   };
 
   const catOptions = Array.from(
@@ -186,8 +187,8 @@ export function StartScreen({
                   </Label>
 
                   <div className="flex items-center gap-3 mt-1">
-                  <button type="button" className="shrink-0 h-11 w-11 rounded-xl border border-white/25 flex items-center justify-center focus-visible:outline-2 focus-visible:outline-primary" aria-label={`Farbe für Spieler ${i+1}: ${PLAYER_PALETTE.find(p=>p.color===colors[i])?.name}`} aria-expanded={colorPicker===i} onClick={()=>setColorPicker(colorPicker===i?null:i)}>
-                    <span className="quiz-color-gem h-6 w-6 rounded-full border border-white/40" style={{backgroundColor:colors[i]}} />
+                  <button type="button" className="shrink-0 h-11 w-11 rounded-xl border border-white/25 flex items-center justify-center focus-visible:outline-2 focus-visible:outline-primary" aria-label={`Farbe für Spieler ${i+1}: ${PLAYER_PALETTE.find(p=>p.color===colors[i])?.name ?? 'Nicht ausgewählt'}`} aria-expanded={colorPicker===i} onClick={()=>setColorPicker(colorPicker===i?null:i)}>
+                    <span className={`h-6 w-6 rounded-full border border-white/40 ${colors[i] ? "quiz-color-gem" : "border-dashed"}`} style={colors[i] ? {backgroundColor:colors[i]} : undefined} />
                   </button>
                   <Input
                     id={`p${i}`}

@@ -3,19 +3,36 @@ export const PLAYER_PALETTE = [
   { name:'Orange', color:'#fb923c' }, { name:'Türkis', color:'#22d3ee' },
   { name:'Pink', color:'#f472b6' }, { name:'Gelb', color:'#fde047' },
   { name:'Indigo', color:'#818cf8' }, { name:'Koralle', color:'#fdba8c' },
+  { name:'Eisblau', color:'#a5e3ff' }, { name:'Violett', color:'#a78bfa' },
+  { name:'Magenta', color:'#e879f9' }, { name:'Rosé', color:'#f9b8d2' },
+  { name:'Gold', color:'#e9b44c' }, { name:'Kupfer', color:'#d99568' },
+  { name:'Silber', color:'#cbd5e1' }, { name:'Perlmutt', color:'#f7eed7' },
 ] as const;
 export const DEFAULT_PLAYER_COLORS = PLAYER_PALETTE.slice(0,4).map(p=>p.color);
 export function playerColor(index:number, selected?:string) {
   return PLAYER_PALETTE.some(p=>p.color===selected) ? selected! : DEFAULT_PLAYER_COLORS[index % 4];
 }
 export function normalizeColors(input: unknown): string[] {
-  const values=Array.isArray(input)?input:[]; const used=new Set<string>();
-  return Array.from({length:4},(_,i)=>{const candidate=values[i];const color=PLAYER_PALETTE.some(p=>p.color===candidate)&&!used.has(candidate) ? candidate : PLAYER_PALETTE.find(p=>!used.has(p.color))!.color;used.add(color);return color;});
+  const values=Array.isArray(input)?input:[];
+  const used=new Set<string>();
+  // Reserve explicit choices first, including those belonging to later players.
+  const result=Array.from({length:4},(_,i)=>{
+    const candidate=values[i];
+    if(PLAYER_PALETTE.some(p=>p.color===candidate)&&!used.has(candidate)) {
+      used.add(candidate);return candidate as string;
+    }
+    return '';
+  });
+  return result.map(color=>{
+    if(color)return color;
+    const free=PLAYER_PALETTE.find(p=>!used.has(p.color))!.color;
+    used.add(free);return free;
+  });
 }
 export function selectPlayerColor(colors:string[], index:number, color:string, count:number) {
   if(!PLAYER_PALETTE.some(p=>p.color===color)||colors.some((c,i)=>i!==index&&i<count&&c===color))return colors;
   const next=[...colors];next[index]=color;
-  for(let i=count;i<4;i++)if(next.slice(0,i).includes(next[i]))next[i]=PLAYER_PALETTE.find(p=>!next.slice(0,i).includes(p.color))!.color;
+  for(let i=count;i<4;i++)if(next.slice(0,i).includes(next[i]))next[i]='';
   return next;
 }
 export interface PlayerPreferences { names:string[]; colors:string[]; count:number }
