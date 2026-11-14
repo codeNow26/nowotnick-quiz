@@ -211,12 +211,12 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 .quiz-card-active:not(:disabled):active { transform:scale(.99); }
 @keyframes card-glint { to { transform:translateX(60%); } }
 /* Radix Presence keeps the question mounted through the matching exit animation. */
-.question-dialog[data-state="open"] { animation:question-arrive 260ms cubic-bezier(.2,.7,.2,1) both; }
+.question-dialog[data-state="open"] { animation:question-arrive 300ms cubic-bezier(.16,1,.3,1) both; }
 .question-dialog[data-state="closed"] { animation:question-depart 220ms ease-in both; pointer-events:none; }
 .question-overlay { background:rgb(3 3 14 / .68); backdrop-filter:blur(4px); }
-.question-overlay[data-state="open"] { animation:question-dim 260ms ease-out both; }
+.question-overlay[data-state="open"] { animation:question-dim 300ms ease-out both; }
 .question-overlay[data-state="closed"] { animation:question-dim 220ms ease-in reverse both; pointer-events:none; }
-@keyframes question-arrive { from {opacity:0;transform:translateY(7px) scale(.96);} to {opacity:1;transform:translateY(0) scale(1);} }
+@keyframes question-arrive { from {opacity:0;transform:translateY(9px) scale(.97);} to {opacity:1;transform:translateY(0) scale(1);} }
 @keyframes question-depart { from {opacity:1;transform:translateY(0) scale(1);} to {opacity:0;transform:translateY(5px) scale(.96);} }
 @keyframes question-dim { from {opacity:0;} to {opacity:1;} }
 
@@ -267,11 +267,11 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
    The entrance runs on the wrapper; the inner light remains static after reveal. */
 .question-dialog-body {isolation:isolate;}
 .question-stage-light {position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none;
-  animation:question-light-arrive 700ms cubic-bezier(.2,.65,.25,1) both;}
+  animation:question-light-arrive 300ms cubic-bezier(.16,1,.3,1) both;}
 .question-stage-light > span {position:absolute;inset:5% 2%;pointer-events:none;
   background:radial-gradient(ellipse 45% 40% at 44% 47%,rgba(110,66,193,.31),rgba(75,43,142,.13) 55%,transparent 100%),radial-gradient(ellipse 32% 33% at 65% 59%,rgba(54,96,179,.22),transparent 100%);
   opacity:.94;}
-@keyframes question-light-arrive {from {opacity:0;transform:scale(.93);}to {opacity:1;transform:scale(1);}}
+@keyframes question-light-arrive {from {opacity:0;}to {opacity:1;}}
 @media(prefers-reduced-motion:reduce) {
   .question-stage-light, .question-stage-light > span {animation:none;transform:none;opacity:1;}
 }
@@ -279,6 +279,31 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 /* Static fine ring segments only; no broad blurred light bands. */
 .question-light-forms {position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;}
 .question-light-rings {opacity:.9;}
+
+/* One brief galaxy reveal, entirely behind the question. Gradients are painted
+   once; only transform and opacity animate, then all decoration stays still. */
+.question-stage-light::after {
+  content:""; position:absolute; inset:-5%; pointer-events:none; opacity:0;
+  background:radial-gradient(ellipse 34% 30% at 38% 43%,rgba(151,104,242,.25),rgba(105,70,188,.10) 48%,transparent 78%),
+    radial-gradient(ellipse 28% 33% at 65% 55%,rgba(117,179,243,.18),transparent 75%);
+}
+.question-dialog[data-state="open"] .question-stage-light::after {animation:question-galaxy-reveal 340ms ease-out both;}
+.question-dialog[data-state="open"] .question-light-forms {
+  transform-origin:50% 50%; animation:question-orbit-reveal 340ms cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes question-galaxy-reveal {
+  0% {opacity:0;transform:scale(.78) translateX(-1%);}
+  40% {opacity:1;}
+  100% {opacity:0;transform:scale(1.12) translateX(1%);}
+}
+@keyframes question-orbit-reveal {
+  from {opacity:0;transform:rotate(-1.5deg) scale(.99);}
+  to {opacity:1;transform:none;}
+}
+@media(prefers-reduced-motion:reduce) {
+  .question-dialog[data-state="open"] .question-stage-light::after {display:none;animation:none;}
+  .question-dialog[data-state="open"] .question-light-forms {animation:none;transform:none;opacity:1;}
+}
 
 /* A fixed pale metal base with one text-clipped sweep, then a long rest.
    18% of 14s = 2.52s sweep; the remaining 11.48s stays outside the letters. */
