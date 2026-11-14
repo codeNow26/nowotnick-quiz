@@ -7,6 +7,7 @@ interface HighlightedQuestion {
 }
 
 interface BoardProps {
+  selected?: HighlightedQuestion | null;
   categories: Category[];
   answered: boolean[][];
   results: Record<string, QuestionResult>;
@@ -20,6 +21,7 @@ interface BoardProps {
 }
 
 export function Board({
+  selected,
   categories,
   answered,
   results,
@@ -145,6 +147,8 @@ export function Board({
                 onSelect(cIdx, qIdx)
               }
               disabled={isRandomizing}
+              data-quiz-cell={`${cIdx}-${qIdx}`}
+              data-opening={selected?.category === cIdx && selected.question === qIdx || undefined}
               data-review={done || undefined}
               title={description}
               aria-label={description}

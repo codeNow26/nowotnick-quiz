@@ -1,6 +1,6 @@
 import { QuestionVideo } from "./QuestionVideo";
 import { QuestionAtmosphere } from "./QuestionAtmosphere";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { hasValidChoices, playerColor, type QuestionResult, type Question } from "@/lib/jeopardy-data";
 interface QuestionModalProps {
+  origin: { x: number; y: number };
   open: boolean;
   review?: QuestionResult;
   question: Question | null;
@@ -53,6 +54,7 @@ export function QuestionModal(props: QuestionModalProps) {
   return <QuestionModalContent {...content} open={props.open} onClose={props.onClose} onResolve={props.onResolve} />;
 }
 function QuestionModalContent({
+  origin,
   open,
   review,
   question,
@@ -358,6 +360,7 @@ function QuestionModalContent({
     >
       <DialogContent
         motion="question"
+        style={{ "--tile-x": `${origin.x}px`, "--tile-y": `${origin.y}px` } as CSSProperties}
         aria-describedby={undefined}
         onEscapeKeyDown={(event) => {
           if (imageExpanded) {
