@@ -60,7 +60,7 @@ export function StartScreen({
       return;
     }
     setLaunching(true);
-    launchTimer.current = setTimeout(() => onStart(final, Math.min(catCount, maxCategories), gameColors), 220);
+    launchTimer.current = setTimeout(() => onStart(final, Math.min(catCount, maxCategories), gameColors), 350);
   };
 
   const catOptions = Array.from(
