@@ -1,6 +1,7 @@
 import { QuestionVideo } from "./QuestionVideo";
 import { QuestionAtmosphere } from "./QuestionAtmosphere";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { gsap } from "gsap";
 import { createPortal } from "react-dom";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ import {
 } from "lucide-react";
 import { hasValidChoices, playerColor, type QuestionResult, type Question } from "@/lib/jeopardy-data";
 interface QuestionModalProps {
-  origin: { x: number; y: number };
+  origin: { x: number; y: number; width: number; height: number };
   open: boolean;
   review?: QuestionResult;
   question: Question | null;
@@ -65,6 +66,36 @@ function QuestionModalContent({
   onClose,
 }: QuestionModalProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!open || review || origin.width <= 0 || origin.height <= 0 ||
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const bounds = dialog.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+    const sourceCenterX = innerWidth / 2 + origin.x;
+    const sourceCenterY = innerHeight / 2 + origin.y;
+    const dx = sourceCenterX - (bounds.left + bounds.width / 2);
+    const dy = sourceCenterY - (bounds.top + bounds.height / 2);
+    const children = Array.from(dialog.children).filter(child => child instanceof HTMLElement) as HTMLElement[];
+    const context = gsap.context(() => {
+      // Unfold the actual dialog from the selected tile's exact geometry.
+      // Bring in the question contents only once the surface has expanded.
+      gsap.set(dialog, {
+        x: dx, y: dy,
+        scaleX: Math.min(1, origin.width / bounds.width),
+        scaleY: Math.min(1, origin.height / bounds.height),
+        transformOrigin: "center center",
+        opacity: 1,
+      });
+      gsap.set(children, { opacity: 0 });
+      gsap.timeline()
+        .to(dialog, { x: 0, y: 0, scaleX: 1, scaleY: 1, duration: 0.55, ease: "power4.out" }, 0)
+        .to(children, { opacity: 1, duration: 0.29, ease: "power2.out" }, 0.22);
+    }, dialog);
+    return () => context.revert();
+  }, [open, review, origin.x, origin.y, origin.width, origin.height]);
   useEffect(() => {
     if (open) contentRef.current?.scrollTo({ top: 0 });
   }, [open, question]);
@@ -200,7 +231,7 @@ function QuestionModalContent({
   const timerClass =
     timeLeft !== null &&
     timeLeft <= 5
-      ? "text-destructive scale-110"
+      ? "text-destructive"
       : timeLeft !== null &&
           timeLeft <= 10
         ? "text-orange-400"
@@ -359,6 +390,8 @@ function QuestionModalContent({
       }}
     >
       <DialogContent
+        ref={dialogRef}
+        data-morph={(!review && origin.width > 0 && origin.height > 0) || undefined}
         motion="question"
         style={{ "--tile-x": `${origin.x}px`, "--tile-y": `${origin.y}px` } as CSSProperties}
         aria-describedby={undefined}
@@ -455,6 +488,7 @@ function QuestionModalContent({
             "
           >
             <span
+              data-points-flight-origin
               className="
                 font-display
                 text-xl md:text-2xl
@@ -883,6 +917,7 @@ function QuestionModalContent({
                         transition-all
                         duration-300
                         ${timerClass}
+                        ${timeLeft === 0 ? "quiz-timer-ended" : timeLeft <= 5 ? "quiz-timer-urgent" : ""}
                       `}
                     >
                       {timeLeft === 0
