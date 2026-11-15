@@ -213,7 +213,21 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 /* Radix owns mounting/unmounting: CSS animations always start when the
    portal opens. No dependency on a ref that may not exist on the first frame. */
 .question-dialog[data-state="open"] {
-  animation:question-arrive 560ms cubic-bezier(.16,1,.3,1) both;
+  animation:question-arrive 740ms cubic-bezier(.18,.75,.2,1) both;
+  transform-origin:50% 50%;
+}
+/* A brief luminous bloom inside the panel, never a travelling white line. */
+.question-dialog[data-state="open"]::before {
+  content:"";
+  position:absolute; inset:0; border-radius:inherit;
+  pointer-events:none; z-index:8;
+  background:radial-gradient(ellipse 60% 42% at 50% 20%,rgba(195,171,255,.30),rgba(115,97,229,.11) 47%,transparent 80%);
+  animation:question-panel-bloom 920ms ease-out both;
+}
+@keyframes question-panel-bloom {
+  0% {opacity:0;}
+  24% {opacity:1;}
+  100% {opacity:0;}
 }
 .question-dialog[data-state="closed"] {
   animation:question-depart 230ms cubic-bezier(.4,0,.65,1) both;
@@ -224,8 +238,10 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 .question-overlay[data-state="closed"] { animation:question-dim 230ms ease-in reverse both; pointer-events:none; }
 /* The card lends a small directional cue, not an enormous elastic resize. */
 @keyframes question-arrive {
-  0% {opacity:0;transform:translate(var(--tile-x,0px),var(--tile-y,16px)) scale(.92);}
-  48% {opacity:1;}
+  0% {opacity:0;transform:translate(var(--tile-x,0px),var(--tile-y,16px)) scale(.70);}
+  38% {opacity:1;}
+  68% {opacity:1;transform:translate(0,0) scale(1.025);}
+  83% {opacity:1;transform:translate(0,0) scale(.995);}
   100% {opacity:1;transform:translate(0,0) scale(1);}
 }
 @keyframes question-depart {
@@ -235,13 +251,13 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 @keyframes question-dim { from {opacity:0;} to {opacity:1;} }
 /* Introduce the contents one beat after the frame begins to unfold. */
 .question-dialog[data-state="open"] .question-dialog-header {
-  animation:question-content-arrive 440ms cubic-bezier(.16,1,.3,1) 90ms both;
+  animation:question-content-arrive 420ms cubic-bezier(.16,1,.3,1) 170ms both;
 }
 .question-dialog[data-state="open"] .question-dialog-body {
-  animation:question-content-arrive 440ms cubic-bezier(.16,1,.3,1) 140ms both;
+  animation:question-content-arrive 470ms cubic-bezier(.16,1,.3,1) 250ms both;
 }
 .question-dialog[data-state="open"] .question-dialog-controls {
-  animation:question-content-arrive 420ms cubic-bezier(.16,1,.3,1) 200ms both;
+  animation:question-content-arrive 430ms cubic-bezier(.16,1,.3,1) 330ms both;
 }
 @keyframes question-content-arrive {
   from {opacity:0;transform:translateY(8px);}
@@ -258,6 +274,7 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
   .quiz-card-active:not(:disabled):hover, .quiz-card-active:not(:disabled):active { transform:none; }
   .quiz-card-edge { display:none; }
   .question-dialog[data-state], .question-overlay[data-state],
+  .question-dialog[data-state="open"]::before,
   .question-dialog[data-state="open"] .question-dialog-header,
   .question-dialog[data-state="open"] .question-dialog-body,
   .question-dialog[data-state="open"] .question-dialog-controls { animation:none; }
