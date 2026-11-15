@@ -61,13 +61,12 @@ export function Board({
       };
       magneticTweens.current.set(button, setters);
     }
-    button.style.willChange = "transform";
     button.style.setProperty("--magnet-light-x", `${(dx + 1) * 50}%`);
     button.style.setProperty("--magnet-light-y", `${(dy + 1) * 50}%`);
-    setters.x(dx * 3);
-    setters.y(dy * 2 - 2);
-    setters.rx(-dy * 2.1);
-    setters.ry(dx * 2.1);
+    setters.x(dx * 1.7);
+    setters.y(dy * 1.5 - 1.5);
+    setters.rx(-dy * 1.25);
+    setters.ry(dx * 1.25);
   };
 
   const resetMagnet = (button: HTMLButtonElement) => {
@@ -214,7 +213,7 @@ export function Board({
                 rounded-2xl
                 border
                 font-display
-                transition-all
+                transition-colors
                 duration-200
                 ease-out
 
@@ -284,8 +283,6 @@ export function Board({
                   "
                 />
               )}
-
-              {!done && !isRandomizing && <span aria-hidden="true" className="quiz-card-edge" />}
 
               {/* Hover-Glow */}
               {!done && !highlighted && (
