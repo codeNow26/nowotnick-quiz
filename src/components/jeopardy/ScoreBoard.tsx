@@ -142,7 +142,6 @@ export function ScoreBoard({
           <div
             key={i}
             data-leading={isLeader || undefined}
-            data-score-target={i}
             style={{"--entry-delay": `${i * 35}ms`, "--player-color": playerColor(i,p.color)} as CSSProperties}
             className={`
               quiz-player-card group/player
