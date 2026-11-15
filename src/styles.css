@@ -210,19 +210,59 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 .quiz-card-active:focus-visible { outline:2px solid #b6a4ed; outline-offset:3px; }
 .quiz-card-active:not(:disabled):active { transform:scale(.99); }
 @keyframes card-glint { to { transform:translateX(60%); } }
-/* Radix Presence keeps the question mounted through the matching exit animation. */
-.question-dialog[data-state="open"] { animation:question-arrive 300ms cubic-bezier(.16,1,.3,1) both; }
-.question-dialog[data-state="closed"] { animation:question-depart 220ms ease-in both; pointer-events:none; }
-.question-overlay { background:rgb(3 3 14 / .68); backdrop-filter:blur(4px); }
-.question-overlay[data-state="open"] { animation:question-dim 300ms ease-out both; }
-.question-overlay[data-state="closed"] { animation:question-dim 220ms ease-in reverse both; pointer-events:none; }
-@keyframes question-arrive {
-  from {opacity:0; transform:translate(var(--tile-x,0px),var(--tile-y,8px)) scale(.34);}
-  20% {opacity:.15;}
-  to {opacity:1; transform:translate(0,0) scale(1);}
+/* Radix owns mounting/unmounting: CSS animations always start when the
+   portal opens. No dependency on a ref that may not exist on the first frame. */
+.question-dialog[data-state="open"] {
+  animation:question-arrive 740ms cubic-bezier(.18,.75,.2,1) both;
+  transform-origin:50% 50%;
 }
-@keyframes question-depart { from {opacity:1;transform:translateY(0) scale(1);} to {opacity:0;transform:translateY(5px) scale(.96);} }
+/* A brief luminous bloom inside the panel, never a travelling white line. */
+.question-dialog[data-state="open"]::before {
+  content:"";
+  position:absolute; inset:0; border-radius:inherit;
+  pointer-events:none; z-index:8;
+  background:radial-gradient(ellipse 60% 42% at 50% 20%,rgba(195,171,255,.30),rgba(115,97,229,.11) 47%,transparent 80%);
+  animation:question-panel-bloom 920ms ease-out both;
+}
+@keyframes question-panel-bloom {
+  0% {opacity:0;}
+  24% {opacity:1;}
+  100% {opacity:0;}
+}
+.question-dialog[data-state="closed"] {
+  animation:question-depart 230ms cubic-bezier(.4,0,.65,1) both;
+  pointer-events:none;
+}
+.question-overlay { background:rgb(3 3 14 / .68); backdrop-filter:blur(4px); }
+.question-overlay[data-state="open"] { animation:question-dim 360ms ease-out both; }
+.question-overlay[data-state="closed"] { animation:question-dim 230ms ease-in reverse both; pointer-events:none; }
+/* The card lends a small directional cue, not an enormous elastic resize. */
+@keyframes question-arrive {
+  0% {opacity:0;transform:translate(var(--tile-x,0px),var(--tile-y,16px)) scale(.70);}
+  38% {opacity:1;}
+  68% {opacity:1;transform:translate(0,0) scale(1.025);}
+  83% {opacity:1;transform:translate(0,0) scale(.995);}
+  100% {opacity:1;transform:translate(0,0) scale(1);}
+}
+@keyframes question-depart {
+  from {opacity:1;transform:translateY(0) scale(1);}
+  to {opacity:0;transform:translateY(9px) scale(.97);}
+}
 @keyframes question-dim { from {opacity:0;} to {opacity:1;} }
+/* Introduce the contents one beat after the frame begins to unfold. */
+.question-dialog[data-state="open"] .question-dialog-header {
+  animation:question-content-arrive 420ms cubic-bezier(.16,1,.3,1) 170ms both;
+}
+.question-dialog[data-state="open"] .question-dialog-body {
+  animation:question-content-arrive 470ms cubic-bezier(.16,1,.3,1) 250ms both;
+}
+.question-dialog[data-state="open"] .question-dialog-controls {
+  animation:question-content-arrive 430ms cubic-bezier(.16,1,.3,1) 330ms both;
+}
+@keyframes question-content-arrive {
+  from {opacity:0;transform:translateY(8px);}
+  to {opacity:1;transform:translateY(0);}
+}
 
 /* Viewport-wide gradients have no transformed tile edges to expose.
    Both lobes reach transparency at their natural boundaries, without blur. */
@@ -233,7 +273,11 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
   .quiz-card-active { transition:none; }
   .quiz-card-active:not(:disabled):hover, .quiz-card-active:not(:disabled):active { transform:none; }
   .quiz-card-edge { display:none; }
-  .question-dialog[data-state], .question-overlay[data-state] { animation:none; }
+  .question-dialog[data-state], .question-overlay[data-state],
+  .question-dialog[data-state="open"]::before,
+  .question-dialog[data-state="open"] .question-dialog-header,
+  .question-dialog[data-state="open"] .question-dialog-body,
+  .question-dialog[data-state="open"] .question-dialog-controls { animation:none; }
 }
 
 /* Shared affordances cover native buttons, Radix controls, links and uploads.
@@ -399,6 +443,13 @@ html.quiz-launch-scroll-lock body {
 .quiz-game-launching .quiz-board-viewport {
   overflow: hidden;
 }
+/* No browser hover/layout transition may compete with GSAP's tile positions
+   during the entrance or create a delayed snap on its final frame. */
+.quiz-game-launching .quiz-question-card,
+.quiz-game-launching .quiz-category-card,
+.quiz-game-launching .quiz-player-card {
+  transition: none !important;
+}
 
 /* Cinematic launch: the light artwork is static, GSAP animates transforms/opacity only. */
 .quiz-start-depart { animation:quiz-start-depart 350ms cubic-bezier(.32,0,.67,0) both; pointer-events:none; }
@@ -410,25 +461,13 @@ html.quiz-launch-scroll-lock body {
 .quiz-intro-fx {
   position:fixed; inset:0; z-index:40; pointer-events:none; overflow:hidden;
 }
-.quiz-intro-halo, .quiz-intro-ring {
+.quiz-intro-halo {
   position:absolute; top:43%; left:50%; width:70vmin; height:70vmin;
   border-radius:50%; will-change:transform,opacity;
 }
 .quiz-intro-halo {
   background:radial-gradient(circle,rgba(221,209,255,.72) 0%,rgba(155,114,255,.47) 15%,rgba(86,114,240,.20) 39%,transparent 70%);
   mix-blend-mode:screen;
-}
-.quiz-intro-ring {
-  width:57vmin; height:57vmin;
-  border:1px solid rgba(199,184,255,.72);
-  box-shadow:0 0 22px rgba(165,143,255,.28),inset 0 0 24px rgba(98,143,255,.18);
-}
-.quiz-intro-sweep {
-  position:absolute; top:52%; left:0; width:100%; height:2px;
-  background:linear-gradient(90deg,transparent 6%,rgba(121,155,255,.10) 29%,rgba(238,232,255,.92) 50%,rgba(151,119,255,.16) 72%,transparent 94%);
-  box-shadow:0 0 18px rgba(167,140,255,.4);
-  transform:rotate(-7deg);
-  will-change:transform,opacity;
 }
 @media (prefers-reduced-motion:reduce) {
   .quiz-start-depart { animation:none; }
@@ -466,4 +505,79 @@ html.quiz-launch-scroll-lock body {
 @media(prefers-reduced-motion:reduce) {
   .quiz-question-card[data-opening]::after,.quiz-flying-crown::before {display:none;}
   .quiz-score-popup,.quiz-rank,.quiz-podium::before {animation:none;}
+}
+
+/* Brief light seal, only on a question that was just scored. */
+.quiz-question-card[data-sealing="true"]::after {
+  content:""; position:absolute; inset:0; z-index:5; pointer-events:none;
+  border:1px solid rgba(190,172,255,.55);
+  border-radius:inherit;
+  background:linear-gradient(120deg,transparent 20%,rgba(197,184,255,.20) 49%,transparent 78%);
+  animation:quiz-tile-seal 820ms cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes quiz-tile-seal {
+  0% {opacity:0;transform:scale(1.07);}
+  28% {opacity:1;transform:scale(1);}
+  100% {opacity:0;transform:scale(.99);}
+}
+
+/* Hologram scan arrives once as each category settles at game start. */
+.quiz-game-launching .quiz-category-card::after {
+  content:""; position:absolute; inset:0; border-radius:inherit;
+  pointer-events:none; z-index:5;
+  background:linear-gradient(180deg,transparent 10%,rgba(178,165,255,.05) 35%,rgba(198,220,255,.24) 49%,transparent 65%);
+  animation:quiz-category-hologram 550ms ease-in-out calc(750ms + var(--entry-delay, 0ms)) both;
+}
+@keyframes quiz-category-hologram {
+  from {opacity:0;transform:translateY(-65%);}
+  33% {opacity:.85;}
+  to {opacity:0;transform:translateY(65%);}
+}
+
+/* The old beat scaled a full-width block, creating a scrollbar/"axis".
+   Only the compact number is transformed, inside a clipped stable row. */
+.quiz-timer-display {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:3.65rem;
+  overflow:clip;
+  padding-block:.35rem;
+}
+.quiz-timer-value {
+  display:inline-block;
+  flex:none;
+  line-height:1.12;
+  transform-origin:center;
+}
+.question-dialog-controls:has(.quiz-timer-display) {
+  overflow-x:hidden;
+  scrollbar-width:none;
+}
+.question-dialog-controls:has(.quiz-timer-display)::-webkit-scrollbar {
+  display:none;
+}
+
+/* Only the countdown pulses; the rest of the question remains calm. */
+.quiz-timer-urgent {
+  transform-origin:center;
+  animation:quiz-timer-beat 930ms cubic-bezier(.45,0,.55,1) infinite;
+}
+.quiz-timer-ended {
+  animation:quiz-timer-finish 730ms cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes quiz-timer-beat {
+  0%,100% {transform:scale(1);text-shadow:0 0 8px rgba(238,87,105,.18);}
+  47% {transform:scale(1.13);text-shadow:0 0 24px rgba(238,87,105,.55);}
+  62% {transform:scale(1.035);}
+}
+@keyframes quiz-timer-finish {
+  0% {opacity:.25;transform:scale(.83);}
+  38% {opacity:1;transform:scale(1.24);text-shadow:0 0 25px rgba(238,87,105,.8);}
+  100% {opacity:1;transform:scale(1);}
+}
+@media(prefers-reduced-motion:reduce) {
+  .quiz-question-card[data-sealing="true"]::after,
+  .quiz-game-launching .quiz-category-card::after {display:none;animation:none;}
+  .quiz-timer-urgent,.quiz-timer-ended {animation:none;}
 }

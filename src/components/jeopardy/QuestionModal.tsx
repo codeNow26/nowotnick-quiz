@@ -200,7 +200,7 @@ function QuestionModalContent({
   const timerClass =
     timeLeft !== null &&
     timeLeft <= 5
-      ? "text-destructive scale-110"
+      ? "text-destructive"
       : timeLeft !== null &&
           timeLeft <= 10
         ? "text-orange-400"
@@ -360,7 +360,10 @@ function QuestionModalContent({
     >
       <DialogContent
         motion="question"
-        style={{ "--tile-x": `${origin.x}px`, "--tile-y": `${origin.y}px` } as CSSProperties}
+        style={{
+          "--tile-x": `${Math.max(-160, Math.min(160, origin.x * 0.48))}px`,
+          "--tile-y": `${Math.max(-120, Math.min(120, origin.y * 0.42))}px`,
+        } as CSSProperties}
         aria-describedby={undefined}
         onEscapeKeyDown={(event) => {
           if (imageExpanded) {
@@ -874,20 +877,19 @@ function QuestionModalContent({
                 </div>
                 {timeLeft !== null && (
                   <div className="space-y-2">
-                    <div
-                      className={`
-                        text-center
-                        font-display
-                        text-4xl md:text-5xl
-                        font-bold
-                        transition-all
-                        duration-300
-                        ${timerClass}
-                      `}
-                    >
-                      {timeLeft === 0
-                        ? "ZEIT!"
-                        : timeLeft}
+                    {/* Pulse only the text, never the full-width layout element. */}
+                    <div className="quiz-timer-display">
+                      <span
+                        className={`
+                          quiz-timer-value
+                          font-display text-4xl md:text-5xl font-bold
+                          transition-colors duration-300
+                          ${timerClass}
+                          ${timeLeft === 0 ? "quiz-timer-ended" : timeLeft <= 5 ? "quiz-timer-urgent" : ""}
+                        `}
+                      >
+                        {timeLeft === 0 ? "ZEIT!" : timeLeft}
+                      </span>
                     </div>
                     {/* rein visuelle Timer-Linie */}
                     <div

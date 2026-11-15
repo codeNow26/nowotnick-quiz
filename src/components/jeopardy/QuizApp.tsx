@@ -107,6 +107,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const popupTimerRef = useRef<
     ReturnType<typeof setTimeout> | null
   >(null);
+  const sealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const popupIdRef = useRef(0);
   const [musicPlaying, setMusicPlaying] =
     useState(false);
@@ -128,6 +129,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     useState(false);
   const [scorePopups, setScorePopups] =
     useState<ScorePopup[]>([]);
+  const [sealingQuestion, setSealingQuestion] = useState<Active | null>(null);
   const toggleMusic = () => {
     if (!audioRef.current) {
       audioRef.current =
@@ -388,7 +390,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       ref.current?.pause();
       if (ref.current) ref.current.src = '';
     }
-    for (const ref of [randomTimerRef, popupTimerRef]) {
+    for (const ref of [randomTimerRef, popupTimerRef, sealTimerRef]) {
       if (ref.current) clearTimeout(ref.current);
     }
   }, []);
@@ -463,6 +465,11 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
             setIsRandomizing(false);
             setShowStats(false);
             setScorePopups([]);
+            setSealingQuestion(null);
+            if (sealTimerRef.current) {
+              clearTimeout(sealTimerRef.current);
+              sealTimerRef.current = null;
+            }
             if (
               randomTimerRef.current
             ) {
@@ -551,6 +558,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         x: Math.min(innerWidth, Math.max(0, rect.left + rect.width / 2)) - innerWidth / 2,
         y: Math.min(innerHeight, Math.max(0, rect.top + rect.height / 2)) - innerHeight / 2,
       };
+    } else {
+      revealOrigin.current = { x: 0, y: 8 };
     }
     setActive(questionToOpen);
   };
@@ -949,6 +958,12 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       ] = true;
       return next;
     });
+    setSealingQuestion(active);
+    if (sealTimerRef.current) clearTimeout(sealTimerRef.current);
+    sealTimerRef.current = setTimeout(() => {
+      setSealingQuestion(null);
+      sealTimerRef.current = null;
+    }, 850);
     setActive(null);
   };
   const handleManualScoreChange = (
@@ -991,8 +1006,6 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       {gameEntering && (
         <div className="quiz-intro-fx" aria-hidden="true">
           <span className="quiz-intro-halo" />
-          <span className="quiz-intro-ring" />
-          <span className="quiz-intro-sweep" />
         </div>
       )}
       {showStats && (
@@ -1093,6 +1106,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         categories={categories}
         answered={answered}
         selected={active}
+        sealing={sealingQuestion}
         results={results}
         players={players}
         highlightedQuestion={

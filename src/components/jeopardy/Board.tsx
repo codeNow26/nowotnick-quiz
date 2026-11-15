@@ -8,6 +8,7 @@ interface HighlightedQuestion {
 
 interface BoardProps {
   selected?: HighlightedQuestion | null;
+  sealing?: HighlightedQuestion | null;
   categories: Category[];
   answered: boolean[][];
   results: Record<string, QuestionResult>;
@@ -22,6 +23,7 @@ interface BoardProps {
 
 export function Board({
   selected,
+  sealing = null,
   categories,
   answered,
   results,
@@ -149,6 +151,7 @@ export function Board({
               disabled={isRandomizing}
               data-quiz-cell={`${cIdx}-${qIdx}`}
               data-opening={selected?.category === cIdx && selected.question === qIdx || undefined}
+              data-sealing={sealing?.category === cIdx && sealing.question === qIdx || undefined}
               data-review={done || undefined}
               title={description}
               aria-label={description}
