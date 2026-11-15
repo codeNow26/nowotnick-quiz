@@ -1006,7 +1006,6 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       {gameEntering && (
         <div className="quiz-intro-fx" aria-hidden="true">
           <span className="quiz-intro-halo" />
-          <span className="quiz-intro-ring" />
         </div>
       )}
       {showStats && (
