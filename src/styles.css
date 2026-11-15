@@ -464,23 +464,16 @@ html.quiz-launch-scroll-lock body {
   transition: none !important;
 }
 
-/* Cinematic launch: the light artwork is static, GSAP animates transforms/opacity only. */
-.quiz-start-depart { animation:quiz-start-depart 350ms cubic-bezier(.32,0,.67,0) both; pointer-events:none; }
+/* The artwork sits in the gap above the categories, including on narrow boards. */
+.quiz-start-depart { animation:quiz-start-depart ease-in both; pointer-events:none; }
 @keyframes quiz-start-depart {
-  0% { opacity:1; transform:scale(1) translateY(0); }
-  43% { opacity:1; transform:scale(1.012) translateY(-3px); }
-  100% { opacity:0; transform:scale(.92) translateY(18px); }
+  from { opacity:1; transform:scale(1); }
+  to { opacity:0; transform:translateY(5px) scale(.974); }
 }
-.quiz-intro-fx {
-  position:fixed; inset:0; z-index:40; pointer-events:none; overflow:hidden;
-}
-.quiz-intro-halo {
-  position:absolute; top:43%; left:50%; width:70vmin; height:70vmin;
-  border-radius:50%; will-change:transform,opacity;
-}
-.quiz-intro-halo {
-  background:radial-gradient(circle,rgba(221,209,255,.72) 0%,rgba(155,114,255,.47) 15%,rgba(86,114,240,.20) 39%,transparent 70%);
-  mix-blend-mode:screen;
+.quiz-intro-fx { position:relative; height:0; z-index:4; pointer-events:none; }
+.quiz-intro-fx svg {
+  position:absolute; top:0; left:0; width:100%; height:clamp(64px,14vw,174px);
+  transform:translateY(-54%); overflow:hidden;
 }
 @media (prefers-reduced-motion:reduce) {
   .quiz-start-depart { animation:none; }
@@ -539,7 +532,7 @@ html.quiz-launch-scroll-lock body {
   content:""; position:absolute; inset:0; border-radius:inherit;
   pointer-events:none; z-index:5;
   background:linear-gradient(180deg,transparent 10%,rgba(178,165,255,.05) 35%,rgba(198,220,255,.24) 49%,transparent 65%);
-  animation:quiz-category-hologram 550ms ease-in-out calc(750ms + var(--entry-delay, 0ms)) both;
+  animation:quiz-category-hologram 370ms ease-in-out calc(110ms + var(--entry-delay, 0ms)) both;
 }
 @keyframes quiz-category-hologram {
   from {opacity:0;transform:translateY(-65%);}
