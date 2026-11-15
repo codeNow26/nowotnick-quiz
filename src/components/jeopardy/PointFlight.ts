@@ -27,6 +27,7 @@ export function animatePointFlights(amounts: number[], colors: (string | undefin
     flight.style.left = `${fromX}px`;
     flight.style.top = `${fromY}px`;
     document.body.appendChild(flight);
+    gsap.set(flight, { xPercent: -50, yPercent: -50 });
 
     gsap.timeline({ onComplete: () => flight.remove() })
       .fromTo(flight,
