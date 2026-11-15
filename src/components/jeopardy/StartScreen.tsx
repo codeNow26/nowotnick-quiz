@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { gsap } from "gsap";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SelectionTrack } from "./SelectionTrack";
 
 import { PLAYER_PALETTE, normalizeColors, readPlayerPreferences, rememberPlayers, selectPlayerColor } from "@/lib/player-preferences";
 
@@ -30,6 +32,65 @@ export function StartScreen({
   const launchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (launchTimer.current) clearTimeout(launchTimer.current); }, []);
   const [count, setCount] = useState(2);
+  const playerFieldsRef = useRef<HTMLDivElement>(null);
+  const priorCount = useRef(count);
+  const pendingPlayerHeight = useRef<number | null>(null);
+
+  const changePlayerCount = (nextCount: number) => {
+    if (nextCount === count) return;
+    const fields = playerFieldsRef.current;
+    pendingPlayerHeight.current = fields?.getBoundingClientRect().height ?? null;
+    // The gliding selection can update immediately while fields follow
+    // in a coordinated, height-based transition.
+    setColorPicker(null);
+    setCount(nextCount);
+    rememberPlayers({ names, colors, count: nextCount });
+  };
+
+  useLayoutEffect(() => {
+    const oldCount = priorCount.current;
+    priorCount.current = count;
+    const fields = playerFieldsRef.current;
+    const fromHeight = pendingPlayerHeight.current;
+    pendingPlayerHeight.current = null;
+    // First mount / stored preferences should never start an animation.
+    if (!fields || fromHeight === null || oldCount === count) return;
+
+    gsap.killTweensOf(fields);
+    gsap.set(fields, { height: "auto", overflow: "visible" });
+    const toHeight = fields.getBoundingClientRect().height;
+    const shouldAnimate = Math.abs(fromHeight - toHeight) > 1 &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!shouldAnimate) {
+      gsap.set(fields, { clearProps: "height,overflow" });
+      return;
+    }
+
+    gsap.fromTo(fields,
+      { height: fromHeight, overflow: "hidden" },
+      {
+        height: toHeight, duration: 0.46, ease: "power3.inOut",
+        onComplete: () => gsap.set(fields, { clearProps: "height,overflow" }),
+      }
+    );
+    if (count > oldCount) {
+      const rows = Array.from(fields.querySelectorAll<HTMLElement>(".quiz-player-entry"))
+        .slice(oldCount);
+      gsap.fromTo(rows, { autoAlpha: 0, y: 11 },
+        { autoAlpha: 1, y: 0, duration: 0.34, delay: 0.10,
+          stagger: 0.055, ease: "power3.out", overwrite: "auto" });
+    }
+  }, [count]);
+
+  useEffect(() => {
+    const fields = playerFieldsRef.current;
+    return () => {
+      if (fields) {
+        gsap.killTweensOf(fields);
+        gsap.killTweensOf(fields.querySelectorAll(".quiz-player-entry"));
+      }
+    };
+  }, []);
   const [names, setNames] = useState<string[]>(["", "", "", ""]);
   const [colors,setColors]=useState<string[]>(["", "", "", ""]);
   const [colorPicker,setColorPicker]=useState<number|null>(null);
@@ -69,13 +130,13 @@ export function StartScreen({
   );
 
   const pillBase =
-    "quiz-selection rounded-xl font-display transition-all duration-200 border";
+    "quiz-selection relative z-10 rounded-xl font-display transition-colors duration-200 border";
 
   const pillIdle =
     "glass text-foreground/80 hover:text-foreground hover:bg-white/10";
 
   const pillActive =
-    "bg-primary text-primary-foreground border-transparent scale-105 shadow-[0_0_30px_-5px_var(--indigo-glow)]";
+    "quiz-selection-active text-primary-foreground border-white/25";
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 pt-28 pb-8">
@@ -107,9 +168,10 @@ export function StartScreen({
               Quiz auswählen
             </Label>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <SelectionTrack value={activeQuiz} className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {([1, 2, 3, 4] as const).map((quiz) => (
                 <button
+                  data-selection-value={quiz}
                   key={quiz}
                   aria-pressed={activeQuiz === quiz}
                   onClick={() => onQuizChange(quiz)}
@@ -122,7 +184,7 @@ export function StartScreen({
                   Quiz {quiz}
                 </button>
               ))}
-            </div>
+            </SelectionTrack>
           </div>}
 
           {/* SPIELERANZAHL */}
@@ -132,12 +194,13 @@ export function StartScreen({
               Anzahl der Spieler
             </Label>
 
-            <div className="flex gap-2 justify-center">
+            <SelectionTrack value={count} className="flex gap-2 justify-center">
               {[1, 2, 3, 4].map((n) => (
                 <button
+                  data-selection-value={n}
                   key={n}
                   aria-pressed={count === n}
-                  onClick={() => {setCount(n);rememberPlayers({names,colors,count:n});}}
+                  onClick={() => changePlayerCount(n)}
                   className={`${pillBase} w-14 h-14 text-2xl ${
                     count === n
                       ? pillActive
@@ -147,7 +210,7 @@ export function StartScreen({
                   {n}
                 </button>
               ))}
-            </div>
+            </SelectionTrack>
           </div>
 
           {/* KATEGORIEN */}
@@ -157,9 +220,10 @@ export function StartScreen({
               Anzahl der Kategorien
             </Label>
 
-            <div className="flex flex-wrap gap-2 justify-center">
+            <SelectionTrack value={catCount} className="flex flex-wrap gap-2 justify-center">
               {catOptions.map((n) => (
                 <button
+                  data-selection-value={n}
                   key={n}
                   aria-pressed={catCount === n}
                   onClick={() => setCatCount(n)}
@@ -172,15 +236,15 @@ export function StartScreen({
                   {n}
                 </button>
               ))}
-            </div>
+            </SelectionTrack>
           </div>
 
           {/* SPIELERNAMEN */}
 
-          <div className="quiz-entry-step space-y-3 mb-8">
+          <div ref={playerFieldsRef} className="quiz-entry-step space-y-3 mb-8">
             {Array.from({ length: count }).map(
               (_, i) => (
-                <div key={i} className="text-left">
+                <div key={i} className="quiz-player-entry text-left">
                   <Label
                     htmlFor={`p${i}`}
                     className="text-xs text-muted-foreground uppercase tracking-[0.18em]"

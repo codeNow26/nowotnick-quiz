@@ -1,6 +1,7 @@
 import { AwardCeremony } from "./AwardCeremony";
 import { ensureCategoryCount, MAX_CATEGORIES } from "@/lib/quiz-repository";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { gsap } from "gsap";
 import { Link } from "@tanstack/react-router";
 import { CreateQuiz } from "./CreateQuiz";
 import { StartScreen } from "@/components/jeopardy/StartScreen";
@@ -80,6 +81,19 @@ function getSoleLeaderIndex(
 export function QuizApp({ customId, editInitially = false }: { customId?: string; editInitially?: boolean }) {
   const [gameEntering, setGameEntering] = useState(false);
   const gameStageRef = useGameStartAnimation(gameEntering, setGameEntering);
+  const ambientEventRef = useRef<HTMLDivElement>(null);
+
+  const pulseBackground = (color: string, x = 50, y = 50) => {
+    const glow = ambientEventRef.current;
+    if (!glow || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    glow.style.setProperty("--quiz-pulse-x", `${x}%`);
+    glow.style.setProperty("--quiz-pulse-y", `${y}%`);
+    glow.style.setProperty("--quiz-pulse-color", color);
+    gsap.killTweensOf(glow);
+    gsap.timeline()
+      .fromTo(glow, { opacity: 0 }, { opacity: 0.7, duration: 0.22, ease: "power2.out" })
+      .to(glow, { opacity: 0, duration: 0.75, ease: "power2.inOut" });
+  };
 
   const {
     categories: allCategories,
@@ -534,6 +548,10 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           active.category
         ].name
       : "";
+  const highStakes = active !== null && !activeResult &&
+    activeValue >= Math.max(1, ...categories[active.category].questions.map(
+      (q, index) => q.value ?? POINT_VALUES[index] ?? 0
+    ));
   const openQuestion = (
     questionToOpen: Active
   ) => {
@@ -554,6 +572,10 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     const cell = document.querySelector<HTMLButtonElement>(`[data-quiz-cell="${questionToOpen.category}-${questionToOpen.question}"]`);
     const rect = cell?.getBoundingClientRect();
     if (rect) {
+      pulseBackground("rgba(143,111,245,.35)",
+        Math.min(100, Math.max(0, 100 * (rect.left + rect.width / 2) / innerWidth)),
+        Math.min(100, Math.max(0, 100 * (rect.top + rect.height / 2) / innerHeight))
+      );
       revealOrigin.current = {
         x: Math.min(innerWidth, Math.max(0, rect.left + rect.width / 2)) - innerWidth / 2,
         y: Math.min(innerHeight, Math.max(0, rect.top + rect.height / 2)) - innerHeight / 2,
@@ -695,6 +717,9 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     if (!active || answered[active.category]?.[active.question]) return;
     // Bossmusik beenden und normale Hintergrundmusik fortsetzen.
     stopFinalQuestionAudio();
+    if (playerIndex !== null) {
+      pulseBackground(correct ? (players[playerIndex]?.color || "rgba(134,109,241,.35)") : "rgba(235,111,144,.26)", 50, 26);
+    }
     const wrongSounds = [
       {
         path: "/sounds/Wrong/Dummkopf.WAV",
@@ -1003,6 +1028,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       : null;
   return (
     <div ref={gameStageRef} className={`relative isolate min-h-screen p-3 md:p-6 mx-auto ${gameEntering ? "quiz-game-launching" : ""} ${categories.length >= 8 ? "max-w-[1920px]" : "max-w-7xl"}`}>
+      <div ref={ambientEventRef} aria-hidden="true" className="quiz-ambient-event" />
       {gameEntering && (
         <div className="quiz-intro-fx" aria-hidden="true">
           <span className="quiz-intro-halo" />
@@ -1128,6 +1154,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       <QuestionModal
         origin={revealOrigin.current}
         open={active !== null}
+        highStakes={highStakes}
         question={
           activeQuestion
         }

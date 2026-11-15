@@ -21,6 +21,7 @@ interface QuestionModalProps {
   origin: { x: number; y: number };
   open: boolean;
   review?: QuestionResult;
+  highStakes?: boolean;
   question: Question | null;
   value: number;
   category: string;
@@ -57,6 +58,7 @@ function QuestionModalContent({
   origin,
   open,
   review,
+  highStakes = false,
   question,
   value,
   category,
@@ -360,9 +362,12 @@ function QuestionModalContent({
     >
       <DialogContent
         motion="question"
+        data-high-stakes={highStakes && !review || undefined}
         style={{
           "--tile-x": `${Math.max(-160, Math.min(160, origin.x * 0.48))}px`,
           "--tile-y": `${Math.max(-120, Math.min(120, origin.y * 0.42))}px`,
+          "--tile-return-x": `${origin.x}px`,
+          "--tile-return-y": `${origin.y}px`,
         } as CSSProperties}
         aria-describedby={undefined}
         onEscapeKeyDown={(event) => {
@@ -540,7 +545,7 @@ function QuestionModalContent({
             <div className="relative z-10 w-full max-w-2xl space-y-6">
               {renderQuestionImage()}
               {open && question.videoUrl && <QuestionVideo key={question.videoUrl} src={question.videoUrl} />}
-              <p className="font-sans font-bold text-2xl md:text-4xl leading-snug whitespace-pre-line">
+              <p className="quiz-question-ink font-sans font-bold text-2xl md:text-4xl leading-snug whitespace-pre-line">
                 {question.question}
               </p>
               {!validChoices ? (
@@ -601,10 +606,7 @@ function QuestionModalContent({
                       whitespace-pre-line
                       text-2xl md:text-4xl
                       text-foreground
-                      animate-in
-                      fade-in
-                      zoom-in-95
-                      duration-300
+                      quiz-question-ink
                     "
                     style={{
                       textShadow:
@@ -751,10 +753,7 @@ function QuestionModalContent({
                   leading-snug
                   whitespace-pre-line
                   max-w-2xl
-                  animate-in
-                  fade-in
-                  zoom-in-95
-                  duration-300
+                  ${!revealed ? "quiz-question-ink" : "animate-in fade-in zoom-in-95 duration-300"}
                   ${
                     revealed
                       ? "text-2xl md:text-4xl text-foreground"
