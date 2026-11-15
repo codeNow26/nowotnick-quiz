@@ -6,7 +6,6 @@ import { CreateQuiz } from "./CreateQuiz";
 import { StartScreen } from "@/components/jeopardy/StartScreen";
 import { Board } from "@/components/jeopardy/Board";
 import { useGameStartAnimation } from "./GameStartSequence";
-import { animatePointFlights } from "./PointFlight";
 import { QuestionModal } from "@/components/jeopardy/QuestionModal";
 import {
   ScoreBoard,
@@ -309,7 +308,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       ),
     [answered]
   );
-  const revealOrigin = useRef({ x: 0, y: 8, width: 0, height: 0 });
+  const revealOrigin = useRef({ x: 0, y: 8 });
   const ceremonyPlayed = useRef(false);
   const [ceremonyOpen, setCeremonyOpen] = useState(false);
   useEffect(() => {
@@ -558,11 +557,9 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       revealOrigin.current = {
         x: Math.min(innerWidth, Math.max(0, rect.left + rect.width / 2)) - innerWidth / 2,
         y: Math.min(innerHeight, Math.max(0, rect.top + rect.height / 2)) - innerHeight / 2,
-        width: rect.right > 0 && rect.left < innerWidth ? rect.width : 0,
-        height: rect.bottom > 0 && rect.top < innerHeight ? rect.height : 0,
       };
     } else {
-      revealOrigin.current = { x: 0, y: 8, width: 0, height: 0 };
+      revealOrigin.current = { x: 0, y: 8 };
     }
     setActive(questionToOpen);
   };
@@ -813,7 +810,6 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           return scoreChange;
         }
       );
-    animatePointFlights(scoreChanges, players.map(player => player.color));
     const nextPlayers =
       players.map(
         (
@@ -861,7 +857,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         setScorePopups([]);
         popupTimerRef.current =
           null;
-      }, 2000);
+      }, 1600);
     const newLeader =
       getSoleLeaderIndex(
         nextPlayers
@@ -1011,7 +1007,6 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         <div className="quiz-intro-fx" aria-hidden="true">
           <span className="quiz-intro-halo" />
           <span className="quiz-intro-ring" />
-          <span className="quiz-intro-sweep" />
         </div>
       )}
       {showStats && (
