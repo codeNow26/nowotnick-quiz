@@ -8,6 +8,7 @@ interface HighlightedQuestion {
 }
 
 interface BoardProps {
+  launching: boolean;
   selected?: HighlightedQuestion | null;
   sealing?: HighlightedQuestion | null;
   categories: Category[];
@@ -23,6 +24,7 @@ interface BoardProps {
 }
 
 export function Board({
+  launching,
   selected,
   sealing = null,
   categories,
@@ -105,7 +107,6 @@ export function Board({
       {categories.map((cat, categoryIndex) => (
         <div
           key={`${cat.name}-${categoryIndex}`}
-          style={{ "--entry-delay": `${80 + categoryIndex * 12}ms` } as CSSProperties}
           className={`
             quiz-category-card relative overflow-hidden
             rounded-2xl
@@ -131,6 +132,7 @@ export function Board({
             shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]
           `}
         >
+          {launching && <span className="quiz-launch-edge" aria-hidden="true" />}
           {/* dezenter Lichtschein */}
           <div
             className="

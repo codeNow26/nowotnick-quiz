@@ -7,6 +7,8 @@ import { SelectionTrack } from "./SelectionTrack";
 
 import { PLAYER_PALETTE, normalizeColors, readPlayerPreferences, rememberPlayers, selectPlayerColor } from "@/lib/player-preferences";
 
+const departureMs = 180;
+
 interface StartScreenProps {
   title: string;
   subtitle: string;
@@ -121,7 +123,7 @@ export function StartScreen({
       return;
     }
     setLaunching(true);
-    launchTimer.current = setTimeout(() => onStart(final, Math.min(catCount, maxCategories), gameColors), 350);
+    launchTimer.current = setTimeout(() => onStart(final, Math.min(catCount, maxCategories), gameColors), departureMs);
   };
 
   const catOptions = Array.from(
@@ -140,7 +142,7 @@ export function StartScreen({
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 pt-28 pb-8">
-      <div className={`w-full max-w-2xl text-center ${launching ? "quiz-start-depart" : ""}`} inert={launching || undefined}>
+      <div className={`w-full max-w-2xl text-center ${launching ? "quiz-start-depart" : ""}`} style={launching ? { animationDuration: `${departureMs}ms` } : undefined} inert={launching || undefined}>
         <div className="quiz-entry-title">
         <h1
           className="quiz-title font-display text-5xl md:text-7xl text-foreground tracking-tight mb-3 uppercase"

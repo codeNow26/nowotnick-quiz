@@ -1,10 +1,6 @@
 import { useLayoutEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import { gsap } from "gsap";
 
-/**
- * One-shot cinematic launch. Every tween is scoped to the game board and
- * reverted on exit, so normal hover and scoring styles remain untouched.
- */
 export function useGameStartAnimation(
   entering: boolean,
   setEntering: Dispatch<SetStateAction<boolean>>,
@@ -12,84 +8,78 @@ export function useGameStartAnimation(
   const stageRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    if (!entering || !stageRef.current) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setEntering(false);
+    const stage = stageRef.current;
+    if (!entering || !stage) return;
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const finish = () => setEntering(false);
+    if (motion.matches) {
+      finish();
       return;
     }
 
-    const stage = stageRef.current;
-    // Lock the page scrollbar only for the launch; restore normal scrolling
-    // immediately after the timeline or if React unmounts the game.
+    const players = Array.from(stage.querySelectorAll<HTMLElement>(".quiz-player-card"));
+    const headers = Array.from(stage.querySelectorAll<HTMLElement>(".quiz-category-card"));
+    const questions = Array.from(stage.querySelectorAll<HTMLElement>(".quiz-question-card"));
+    const viewport = stage.querySelector(".quiz-board-viewport");
+    if (!viewport || !headers.length || !questions.length) {
+      finish();
+      return;
+    }
+
     document.documentElement.classList.add("quiz-launch-scroll-lock");
+    // Schedule the reflection across the part of the header row that is on screen.
+    const board = viewport.getBoundingClientRect();
+    const phases = headers.map((header) => {
+      const rect = header.getBoundingClientRect();
+      return Math.max(
+        0,
+        Math.min(1, (rect.left + rect.width / 2 - board.left) / Math.max(board.width, 1)),
+      );
+    });
+    const lastRow = Math.max(1, Math.ceil(questions.length / headers.length) - 1);
     const context = gsap.context(() => {
-      const playerCards = gsap.utils.toArray<HTMLElement>(".quiz-player-card", stage);
-      const categoryCards = gsap.utils.toArray<HTMLElement>(".quiz-category-card", stage);
-      const questionCards = gsap.utils.toArray<HTMLElement>(".quiz-question-card", stage);
-      const halo = stage.querySelector<HTMLElement>(".quiz-intro-halo");
+      const sequence = gsap.timeline({ onComplete: finish });
+      // Reveal the board as one surface first. The rows settle a few pixels later.
+      sequence
+        .from(stage.querySelector("header"), { opacity: 0, y: 3, duration: 0.23 }, 0)
+        .from(
+          players,
+          { opacity: 0, y: 4, duration: 0.26, stagger: { amount: 0.055 }, ease: "power2.out" },
+          0,
+        )
+        .from(viewport, { opacity: 0, duration: 0.24, ease: "sine.out" }, 0)
+        .from(headers, { y: 3, duration: 0.27, ease: "power2.out" }, 0.02)
+        .from(
+          questions,
+          {
+            opacity: 0.62,
+            y: 5,
+            duration: 0.33,
+            ease: "power2.out",
+            stagger: (i: number) =>
+              (0.15 * Math.floor(i / headers.length)) / lastRow +
+              0.022 * phases[i % headers.length],
+          },
+          0.045,
+        );
 
-      if (!categoryCards.length || !questionCards.length || !halo) {
-        setEntering(false);
-        return;
-      }
-
-      const columns = categoryCards.length;
-      const rows = Math.ceil(questionCards.length / columns);
-      const lastWave = Math.max(1, (rows - 1) * 0.7 + (columns - 1) * 0.45);
-
-      // The board stays at its normal layout geometry for the entire reveal.
-      // Scaling the scrollable parent caused a compositing jump on cleanup.
-      gsap.set(stage, { autoAlpha: 0 });
-      gsap.set(playerCards, { autoAlpha: 0, y: -28, scale: 0.88 });
-      gsap.set(categoryCards, { autoAlpha: 0, y: -47, scale: 0.90, rotationX: -25, transformPerspective: 950, transformOrigin: "50% 100%" });
-      gsap.set(questionCards, {
-        autoAlpha: 0,
-        scale: 0.92,
-        x: (i: number) => (i % columns - (columns - 1) / 2) * 7,
-        y: (i: number) => 42 + Math.floor(i / columns) * 7,
+      headers.forEach((header, i) => {
+        const glint = header.querySelector(".quiz-launch-edge");
+        if (!glint) return;
+        const at = 0.07 + 0.27 * phases[i];
+        sequence
+          .fromTo(glint, { xPercent: -18 }, { xPercent: 20, duration: 0.4, ease: "sine.inOut" }, at)
+          .to(glint, { opacity: 1, duration: 0.14, ease: "sine.inOut" }, at)
+          .to(glint, { opacity: 0, duration: 0.26, ease: "sine.inOut" }, at + 0.14);
       });
-      gsap.set(halo, { autoAlpha: 0, xPercent: -50, yPercent: -50 });
-
-      const sequence = gsap.timeline({
-        onComplete: () => setEntering(false),
-      });
-
-      // Stage reveal + concentrated cosmic impact.
-      sequence.to(stage, {
-        autoAlpha: 1, duration: 0.42, ease: "power2.out",
-      }, 0);
-      sequence.fromTo(halo,
-        { scale: 0.25, autoAlpha: 0 },
-        { scale: 1.45, autoAlpha: 0.82, duration: 0.40, ease: "power2.out" },
-        0.08,
-      ).to(halo, { scale: 2.15, autoAlpha: 0, duration: 0.49, ease: "power2.in" }, 0.40);
-
-      // Scoreboard first, then headers, then diagonal wave of cards.
-      sequence.to(playerCards, {
-        autoAlpha: 1, y: 0, scale: 1,
-        duration: 0.58, ease: "back.out(1.3)", stagger: 0.07,
-      }, 0.25);
-      sequence.to(categoryCards, {
-        autoAlpha: 1, y: 0, scale: 1, rotationX: 0,
-        duration: 0.66, ease: "back.out(1.25)",
-        stagger: { amount: 0.34, from: "start" },
-      }, 0.43);
-      sequence.to(questionCards, {
-        autoAlpha: 1, x: 0, y: 0, scale: 1,
-        duration: 0.64, ease: "power3.out",
-        stagger: (i: number) => {
-          const row = Math.floor(i / columns);
-          const column = i % columns;
-          return ((row * 0.7 + column * 0.45) / lastWave) * 0.53;
-        },
-      }, 0.65);
-
-      // Settle fully before removing the launch class, without an abrupt
-      // end-frame transform change on the parent or a white moving border.
-      sequence.to({}, { duration: 0.12 }, 1.81);
     }, stage);
 
+    const motionChanged = () => {
+      if (motion.matches) finish();
+    };
+    motion.addEventListener("change", motionChanged);
     return () => {
+      motion.removeEventListener("change", motionChanged);
       context.revert();
       document.documentElement.classList.remove("quiz-launch-scroll-lock");
     };

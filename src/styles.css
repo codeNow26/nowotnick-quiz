@@ -273,6 +273,16 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 .ambient-veils {position:fixed;inset:0;z-index:-2;pointer-events:none;
   background:radial-gradient(ellipse 82vw 58vh at 8% 18%,rgba(113,68,194,.34) 0%,rgba(92,54,163,.17) 35%,rgba(65,42,117,.06) 61%,transparent 83%),
     radial-gradient(ellipse 78vw 64vh at 96% 78%,rgba(57,103,188,.31) 0%,rgba(64,68,163,.15) 38%,rgba(63,43,126,.05) 65%,transparent 85%);}
+.ambient-veils { overflow:hidden; }
+.ambient-veils canvas { position:absolute; inset:-8px; width:calc(100% + 16px); height:calc(100% + 16px); }
+.ambient-veils::before {
+  content:""; position:absolute; inset:0;
+  background:radial-gradient(ellipse 44% 55% at 49% 40%,rgba(133,107,217,.22),rgba(89,88,183,.09) 54%,transparent 100%);
+  animation:quiz-stage-breathe 21s ease-in-out infinite;
+}
+@keyframes quiz-stage-breathe { 0%,100% {opacity:.50;} 55% {opacity:.92;} }
+body:has([role="dialog"][data-state="open"]) .ambient-veils::before {animation-play-state:paused;}
+@media(prefers-reduced-motion:reduce) { .ambient-veils::before {animation:none;opacity:.68;} }
 @media(prefers-reduced-motion:reduce) {
   .quiz-card-active { transition:none; }
   .quiz-card-active:not(:disabled):hover, .quiz-card-active:not(:disabled):active { transform:none; }
@@ -454,27 +464,27 @@ html.quiz-launch-scroll-lock body {
   transition: none !important;
 }
 
-/* Cinematic launch: the light artwork is static, GSAP animates transforms/opacity only. */
-.quiz-start-depart { animation:quiz-start-depart 350ms cubic-bezier(.32,0,.67,0) both; pointer-events:none; }
+.quiz-start-depart { animation:quiz-start-depart ease-in both; pointer-events:none; }
 @keyframes quiz-start-depart {
-  0% { opacity:1; transform:scale(1) translateY(0); }
-  43% { opacity:1; transform:scale(1.012) translateY(-3px); }
-  100% { opacity:0; transform:scale(.92) translateY(18px); }
+  from { opacity:1; transform:scale(1); }
+  to { opacity:0; transform:translateY(5px) scale(.974); }
 }
-.quiz-intro-fx {
-  position:fixed; inset:0; z-index:40; pointer-events:none; overflow:hidden;
-}
-.quiz-intro-halo {
-  position:absolute; top:43%; left:50%; width:70vmin; height:70vmin;
-  border-radius:50%; will-change:transform,opacity;
-}
-.quiz-intro-halo {
-  background:radial-gradient(circle,rgba(221,209,255,.72) 0%,rgba(155,114,255,.47) 15%,rgba(86,114,240,.20) 39%,transparent 70%);
-  mix-blend-mode:screen;
+/* The reflection grazes the existing lower rim. The upper letters stay clear. */
+.quiz-launch-edge {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  bottom: 0;
+  left: 15%;
+  width: 70%;
+  height: 14px;
+  background:
+    radial-gradient(ellipse 48% 1.25px at 50% 100%, #e3ecff 0%, #bec4ff 32%, #ac93f588 66%, transparent 100%),
+    radial-gradient(ellipse 46% 100% at 50% 112%, #9ea5ff55 0%, #937bec24 46%, transparent 100%);
 }
 @media (prefers-reduced-motion:reduce) {
   .quiz-start-depart { animation:none; }
-  .quiz-intro-fx { display:none; }
+  .quiz-launch-edge { display:none; }
 }
 
 /* Quiet, static point lettering; answered and roulette cells keep their states. */
@@ -524,19 +534,6 @@ html.quiz-launch-scroll-lock body {
   100% {opacity:0;transform:scale(.99);}
 }
 
-/* Hologram scan arrives once as each category settles at game start. */
-.quiz-game-launching .quiz-category-card::after {
-  content:""; position:absolute; inset:0; border-radius:inherit;
-  pointer-events:none; z-index:5;
-  background:linear-gradient(180deg,transparent 10%,rgba(178,165,255,.05) 35%,rgba(198,220,255,.24) 49%,transparent 65%);
-  animation:quiz-category-hologram 550ms ease-in-out calc(750ms + var(--entry-delay, 0ms)) both;
-}
-@keyframes quiz-category-hologram {
-  from {opacity:0;transform:translateY(-65%);}
-  33% {opacity:.85;}
-  to {opacity:0;transform:translateY(65%);}
-}
-
 /* The old beat scaled a full-width block, creating a scrollbar/"axis".
    Only the compact number is transformed, inside a clipped stable row. */
 .quiz-timer-display {
@@ -580,8 +577,7 @@ html.quiz-launch-scroll-lock body {
   100% {opacity:1;transform:scale(1);}
 }
 @media(prefers-reduced-motion:reduce) {
-  .quiz-question-card[data-sealing="true"]::after,
-  .quiz-game-launching .quiz-category-card::after {display:none;animation:none;}
+  .quiz-question-card[data-sealing="true"]::after {display:none;animation:none;}
   .quiz-timer-urgent,.quiz-timer-ended {animation:none;}
 }
 
