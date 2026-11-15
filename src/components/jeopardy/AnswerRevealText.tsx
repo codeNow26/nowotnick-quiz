@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 interface AnswerRevealTextProps {
   question: string;
   answer: string;
@@ -19,14 +21,24 @@ export function AnswerRevealText({
   revealed,
   highStakes,
 }: AnswerRevealTextProps) {
+  const [bloomFinished, setBloomFinished] = useState(false);
+
+  useEffect(() => {
+    if (!revealed) setBloomFinished(false);
+  }, [revealed]);
+
   return (
     <div
       className="quiz-grand-answer-stage relative isolate grid w-full place-items-center"
       data-revealed={revealed || undefined}
       data-high-stakes={highStakes || undefined}
     >
-      {revealed && (
-        <span className="quiz-grand-answer-bloom" aria-hidden="true" />
+      {revealed && !bloomFinished && (
+        <span
+          className="quiz-grand-answer-bloom"
+          aria-hidden="true"
+          onAnimationEnd={() => setBloomFinished(true)}
+        />
       )}
       <p
         className={`quiz-grand-answer-question font-sans text-2xl font-bold leading-snug whitespace-pre-line break-words md:text-4xl ${!revealed ? "quiz-question-ink" : ""}`}
