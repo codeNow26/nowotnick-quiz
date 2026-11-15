@@ -210,21 +210,43 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 .quiz-card-active:focus-visible { outline:2px solid #b6a4ed; outline-offset:3px; }
 .quiz-card-active:not(:disabled):active { transform:scale(.99); }
 @keyframes card-glint { to { transform:translateX(60%); } }
-/* Radix Presence keeps the question mounted through the matching exit animation. */
-.question-dialog[data-state="open"] { animation:question-arrive 300ms cubic-bezier(.16,1,.3,1) both; }
-/* GSAP owns the real tile-to-dialog transform on these openings. */
-.question-dialog[data-state="open"][data-morph="true"] { animation:none; }
-.question-dialog[data-state="closed"] { animation:question-depart 220ms ease-in both; pointer-events:none; }
-.question-overlay { background:rgb(3 3 14 / .68); backdrop-filter:blur(4px); }
-.question-overlay[data-state="open"] { animation:question-dim 300ms ease-out both; }
-.question-overlay[data-state="closed"] { animation:question-dim 220ms ease-in reverse both; pointer-events:none; }
-@keyframes question-arrive {
-  from {opacity:0; transform:translate(var(--tile-x,0px),var(--tile-y,8px)) scale(.34);}
-  20% {opacity:.15;}
-  to {opacity:1; transform:translate(0,0) scale(1);}
+/* Radix owns mounting/unmounting: CSS animations always start when the
+   portal opens. No dependency on a ref that may not exist on the first frame. */
+.question-dialog[data-state="open"] {
+  animation:question-arrive 560ms cubic-bezier(.16,1,.3,1) both;
 }
-@keyframes question-depart { from {opacity:1;transform:translateY(0) scale(1);} to {opacity:0;transform:translateY(5px) scale(.96);} }
+.question-dialog[data-state="closed"] {
+  animation:question-depart 230ms cubic-bezier(.4,0,.65,1) both;
+  pointer-events:none;
+}
+.question-overlay { background:rgb(3 3 14 / .68); backdrop-filter:blur(4px); }
+.question-overlay[data-state="open"] { animation:question-dim 360ms ease-out both; }
+.question-overlay[data-state="closed"] { animation:question-dim 230ms ease-in reverse both; pointer-events:none; }
+/* The card lends a small directional cue, not an enormous elastic resize. */
+@keyframes question-arrive {
+  0% {opacity:0;transform:translate(var(--tile-x,0px),var(--tile-y,16px)) scale(.92);}
+  48% {opacity:1;}
+  100% {opacity:1;transform:translate(0,0) scale(1);}
+}
+@keyframes question-depart {
+  from {opacity:1;transform:translateY(0) scale(1);}
+  to {opacity:0;transform:translateY(9px) scale(.97);}
+}
 @keyframes question-dim { from {opacity:0;} to {opacity:1;} }
+/* Introduce the contents one beat after the frame begins to unfold. */
+.question-dialog[data-state="open"] .question-dialog-header {
+  animation:question-content-arrive 440ms cubic-bezier(.16,1,.3,1) 90ms both;
+}
+.question-dialog[data-state="open"] .question-dialog-body {
+  animation:question-content-arrive 440ms cubic-bezier(.16,1,.3,1) 140ms both;
+}
+.question-dialog[data-state="open"] .question-dialog-controls {
+  animation:question-content-arrive 420ms cubic-bezier(.16,1,.3,1) 200ms both;
+}
+@keyframes question-content-arrive {
+  from {opacity:0;transform:translateY(8px);}
+  to {opacity:1;transform:translateY(0);}
+}
 
 /* Viewport-wide gradients have no transformed tile edges to expose.
    Both lobes reach transparency at their natural boundaries, without blur. */
@@ -235,7 +257,10 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
   .quiz-card-active { transition:none; }
   .quiz-card-active:not(:disabled):hover, .quiz-card-active:not(:disabled):active { transform:none; }
   .quiz-card-edge { display:none; }
-  .question-dialog[data-state], .question-overlay[data-state] { animation:none; }
+  .question-dialog[data-state], .question-overlay[data-state],
+  .question-dialog[data-state="open"] .question-dialog-header,
+  .question-dialog[data-state="open"] .question-dialog-body,
+  .question-dialog[data-state="open"] .question-dialog-controls { animation:none; }
 }
 
 /* Shared affordances cover native buttons, Radix controls, links and uploads.
@@ -425,13 +450,6 @@ html.quiz-launch-scroll-lock body {
   border:1px solid rgba(199,184,255,.72);
   box-shadow:0 0 22px rgba(165,143,255,.28),inset 0 0 24px rgba(98,143,255,.18);
 }
-.quiz-intro-sweep {
-  position:absolute; top:52%; left:0; width:100%; height:2px;
-  background:linear-gradient(90deg,transparent 6%,rgba(121,155,255,.10) 29%,rgba(238,232,255,.92) 50%,rgba(151,119,255,.16) 72%,transparent 94%);
-  box-shadow:0 0 18px rgba(167,140,255,.4);
-  transform:rotate(-7deg);
-  will-change:transform,opacity;
-}
 @media (prefers-reduced-motion:reduce) {
   .quiz-start-depart { animation:none; }
   .quiz-intro-fx { display:none; }
@@ -470,16 +488,6 @@ html.quiz-launch-scroll-lock body {
   .quiz-score-popup,.quiz-rank,.quiz-podium::before {animation:none;}
 }
 
-/* The score flight crosses the screen, followed by the existing score popup. */
-.quiz-flight-points {
-  position:fixed; z-index:110; pointer-events:none;
-  font-family:var(--font-display); font-size:clamp(22px,3vw,38px);
-  font-weight:900; white-space:nowrap; line-height:1;
-  text-shadow:0 0 22px currentColor,0 3px 10px rgba(4,3,22,.90);
-  will-change:transform,opacity;
-}
-.quiz-score-popup {animation-delay:410ms; opacity:0;}
-
 /* Brief light seal, only on a question that was just scored. */
 .quiz-question-card[data-sealing="true"]::after {
   content:""; position:absolute; inset:0; z-index:5; pointer-events:none;
@@ -507,6 +515,30 @@ html.quiz-launch-scroll-lock body {
   to {opacity:0;transform:translateY(65%);}
 }
 
+/* The old beat scaled a full-width block, creating a scrollbar/"axis".
+   Only the compact number is transformed, inside a clipped stable row. */
+.quiz-timer-display {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:3.65rem;
+  overflow:clip;
+  padding-block:.35rem;
+}
+.quiz-timer-value {
+  display:inline-block;
+  flex:none;
+  line-height:1.12;
+  transform-origin:center;
+}
+.question-dialog-controls:has(.quiz-timer-display) {
+  overflow-x:hidden;
+  scrollbar-width:none;
+}
+.question-dialog-controls:has(.quiz-timer-display)::-webkit-scrollbar {
+  display:none;
+}
+
 /* Only the countdown pulses; the rest of the question remains calm. */
 .quiz-timer-urgent {
   transform-origin:center;
@@ -526,8 +558,6 @@ html.quiz-launch-scroll-lock body {
   100% {opacity:1;transform:scale(1);}
 }
 @media(prefers-reduced-motion:reduce) {
-  .quiz-flight-points {display:none;}
-  .quiz-score-popup {animation-delay:0ms;}
   .quiz-question-card[data-sealing="true"]::after,
   .quiz-game-launching .quiz-category-card::after {display:none;animation:none;}
   .quiz-timer-urgent,.quiz-timer-ended {animation:none;}
