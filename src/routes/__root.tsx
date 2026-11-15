@@ -1,4 +1,3 @@
-import { AmbientVeils } from "@/components/jeopardy/AmbientVeils";
 import { AmbientStars } from "@/components/jeopardy/AmbientStars";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -113,7 +112,6 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body>
         <AmbientStars />
-        <AmbientVeils />
         {children}
         <Scripts />
       </body>

@@ -1,3 +1,6 @@
+import { createAurora } from "./sky-atmosphere";
+import { createSkyEvents } from "./sky-events";
+
 /** Seeded light events relocate only while fully invisible. No per-frame randomness. */
 export interface LightParticle {
   x: number;
@@ -83,7 +86,10 @@ export function canvasDpr(width: number, height: number, dpr: number) {
 }
 
 /** One rAF loop, paused when hidden, covered, or reduced-motion is requested. */
-export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
+export function startParticleCanvas(
+  canvas: HTMLCanvasElement,
+  aurora: HTMLCanvasElement | null = null,
+): () => void {
   const ctx = canvas.getContext("2d", { alpha: true });
   if (!ctx) return () => {};
   const particles = createLightParticles();
@@ -96,6 +102,32 @@ export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
     elapsed = 0,
     disposed = false,
     covered = false;
+  const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+  const skyEvents = createSkyEvents();
+  const paintAurora = aurora && createAurora(aurora);
+  let targetX = 0,
+    targetY = 0,
+    depthX = 0,
+    depthY = 0;
+  const center = () => {
+    targetX = 0;
+    targetY = 0;
+  };
+  const track = (event: PointerEvent) => {
+    if (reduced.matches || !finePointer.matches || covered || event.pointerType !== "mouse") return;
+    targetX = Math.max(-1, Math.min(1, (event.clientX * 2) / width - 1));
+    targetY = Math.max(-1, Math.min(1, (event.clientY * 2) / height - 1));
+  };
+  const updateDepth = (dt: number) => {
+    if (!finePointer.matches || reduced.matches) center();
+    const ease = reduced.matches || !finePointer.matches ? 1 : 1 - Math.exp(-dt * 6);
+    const nextX = depthX + (targetX - depthX) * ease;
+    const nextY = depthY + (targetY - depthY) * ease;
+    if (nextX === depthX && nextY === depthY) return;
+    depthX = Math.abs(targetX - nextX) < 0.001 ? targetX : nextX;
+    depthY = Math.abs(targetY - nextY) < 0.001 ? targetY : nextY;
+    if (aurora) aurora.style.transform = `translate3d(${depthX * 5}px,${depthY * 4}px,0)`;
+  };
   // Tiny offscreen sprites cache the soft kernels; no per-frame gradients/blur.
   const sprites = new Map<string, HTMLCanvasElement>();
   for (const tint of new Set(particles.map((p) => p.tint))) {
@@ -130,6 +162,7 @@ export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
     g.fillRect(6, 31, 52, 2);
   }
   const draw = () => {
+    paintAurora?.(elapsed, width, height);
     ctx.clearRect(0, 0, width, height);
     const special = Math.max(1, Math.round(count * 0.05));
     const soft = Math.round(count * 0.25);
@@ -141,8 +174,8 @@ export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
       const sparkle = reduced.matches ? 0 : s.sparkle;
       // Brighter stars fade to zero before the next event changes location.
       const relocating = softCore && !reduced.matches;
-      const x = (relocating ? s.x : p.x) * width;
-      const y = (relocating ? s.y : p.y) * height;
+      const x = (relocating ? s.x : p.x) * width + depthX * 2;
+      const y = (relocating ? s.y : p.y) * height + depthY * 1.5;
       ctx.globalAlpha = relocating ? sparkle : softCore ? 0.65 : 0.28 + sparkle * 0.55;
       const sprite = sprites.get(p.tint);
       const size = (highlight ? 11 : softCore ? 8 : 4.2) * (p.radius / 0.65);
@@ -153,6 +186,7 @@ export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
       }
     }
     ctx.globalAlpha = 1;
+    if (!reduced.matches) skyEvents(ctx, elapsed, width, height);
   };
   const stop = () => {
     if (frame) cancelAnimationFrame(frame);
@@ -166,7 +200,9 @@ export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
       return;
     }
     // Cap exceptionally delayed frames, avoiding a visible leap after a stall.
-    if (last !== null) elapsed += Math.min(Math.max(0, now - last), 50) / 1000;
+    const dt = last === null ? 0 : Math.min(Math.max(0, now - last), 50) / 1000;
+    elapsed += dt;
+    updateDepth(dt);
     last = now;
     draw();
     frame = requestAnimationFrame(tick);
@@ -174,6 +210,7 @@ export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
   const sync = () => {
     stop();
     if (disposed || document.hidden || covered) return;
+    updateDepth(0);
     draw();
     if (!reduced.matches) frame = requestAnimationFrame(tick);
   };
@@ -202,6 +239,9 @@ export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
     attributeFilter: ["data-state"],
   });
   covered = !!document.querySelector('[role="dialog"][data-state="open"]');
+  window.addEventListener("pointermove", track, { passive: true });
+  document.addEventListener("pointerleave", center);
+  window.addEventListener("blur", center);
   window.addEventListener("resize", resize);
   document.addEventListener("visibilitychange", sync);
   reduced.addEventListener("change", sync);
@@ -210,6 +250,9 @@ export function startParticleCanvas(canvas: HTMLCanvasElement): () => void {
     disposed = true;
     stop();
     observer.disconnect();
+    window.removeEventListener("pointermove", track);
+    document.removeEventListener("pointerleave", center);
+    window.removeEventListener("blur", center);
     window.removeEventListener("resize", resize);
     document.removeEventListener("visibilitychange", sync);
     reduced.removeEventListener("change", sync);
