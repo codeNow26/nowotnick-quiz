@@ -71,12 +71,13 @@ export function Board({
   };
 
   const resetMagnet = (button: HTMLButtonElement) => {
-    if (!magneticTweens.current.has(button)) return;
-    gsap.to(button, {
-      x: 0, y: 0, rotationX: 0, rotationY: 0,
-      duration: 0.40, ease: "power3.out", overwrite: "auto",
-      onComplete: () => { button.style.willChange = ""; },
-    });
+    const setters = magneticTweens.current.get(button);
+    if (!setters) return;
+    // Reuse the same GSAP quickTo tweens, without killing them between hovers.
+    setters.x(0);
+    setters.y(0);
+    setters.rx(0);
+    setters.ry(0);
   };
 
   const cols = categories.length;
