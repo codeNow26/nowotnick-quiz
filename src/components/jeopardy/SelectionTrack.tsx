@@ -56,11 +56,13 @@ export function SelectionTrack({ value, className, children }: SelectionTrackPro
     if (!root || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => position(false));
     observer.observe(root);
-    return () => {
-      observer.disconnect();
-      gsap.killTweensOf(indicatorRef.current);
-    };
+    return () => observer.disconnect();
   }, [position]);
+
+  useEffect(() => {
+    const indicator = indicatorRef.current;
+    return () => { if (indicator) gsap.killTweensOf(indicator); };
+  }, []);
 
   return (
     <div ref={rootRef} className={`quiz-selection-track relative isolate ${className}`}>
