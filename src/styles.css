@@ -607,6 +607,27 @@ html.quiz-launch-scroll-lock body {
   background:transparent; box-shadow:none; transform:none;
 }
 
+/* Selection changes used to flash because the pressed button switched
+   between a glass background and a transparent background while the shared
+   highlight was moving. Keep the button surface identical in every state;
+   only text color changes, while the glider provides the active lighting. */
+.quiz-selection-track .quiz-selection,
+.quiz-selection-track .quiz-selection[aria-pressed="true"],
+.quiz-selection-track .quiz-selection:hover,
+.quiz-selection-track .quiz-selection[aria-pressed="true"]:hover {
+  background:rgba(255,255,255,.045);
+  background-image:none;
+  border-color:rgba(221,211,255,.14);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045);
+  filter:none;
+  translate:none;
+  transform:none;
+  transition:color 150ms ease;
+}
+@media(prefers-reduced-motion:reduce) {
+  .quiz-selection-track .quiz-selection {transition:none;}
+}
+
 /* 9. A restrained reflection follows the pointer without changing layout. */
 .quiz-magnetic-reflection {
   position:absolute; inset:0; z-index:1; pointer-events:none; opacity:0;
