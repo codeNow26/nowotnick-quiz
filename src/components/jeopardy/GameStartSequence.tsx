@@ -41,7 +41,7 @@ export function useGameStartAnimation(
 
       gsap.set(stage, { autoAlpha: 0, scale: 0.955, y: 16, transformOrigin: "center 40%" });
       gsap.set(playerCards, { autoAlpha: 0, y: -28, scale: 0.88 });
-      gsap.set(categoryCards, { autoAlpha: 0, y: -42, scale: 0.84, rotationX: -13, transformPerspective: 850 });
+      gsap.set(categoryCards, { autoAlpha: 0, y: -47, scale: 0.90, rotationX: -25, transformPerspective: 950, transformOrigin: "50% 100%" });
       gsap.set(questionCards, {
         autoAlpha: 0,
         scale: 0.77,
@@ -80,7 +80,7 @@ export function useGameStartAnimation(
       }, 0.25);
       sequence.to(categoryCards, {
         autoAlpha: 1, y: 0, scale: 1, rotationX: 0,
-        duration: 0.59, ease: "back.out(1.4)",
+        duration: 0.66, ease: "back.out(1.25)",
         stagger: { amount: 0.34, from: "start" },
       }, 0.43);
       sequence.to(questionCards, {
