@@ -28,9 +28,8 @@ export function useGameStartAnimation(
       const questionCards = gsap.utils.toArray<HTMLElement>(".quiz-question-card", stage);
       const halo = stage.querySelector<HTMLElement>(".quiz-intro-halo");
       const ring = stage.querySelector<HTMLElement>(".quiz-intro-ring");
-      const sweep = stage.querySelector<HTMLElement>(".quiz-intro-sweep");
 
-      if (!categoryCards.length || !questionCards.length || !halo || !ring || !sweep) {
+      if (!categoryCards.length || !questionCards.length || !halo || !ring) {
         setEntering(false);
         return;
       }
@@ -50,7 +49,7 @@ export function useGameStartAnimation(
         x: (i: number) => (i % columns - (columns - 1) / 2) * 12,
         y: (i: number) => 60 + Math.floor(i / columns) * 11,
       });
-      gsap.set([halo, ring, sweep], { autoAlpha: 0 });
+      gsap.set([halo, ring], { autoAlpha: 0 });
       gsap.set([halo, ring], { xPercent: -50, yPercent: -50 });
 
       const sequence = gsap.timeline({
@@ -93,12 +92,8 @@ export function useGameStartAnimation(
         },
       }, 0.65);
 
-      // Final thin glint. Never animate filters or large shadows.
-      sequence.fromTo(sweep,
-        { xPercent: -115, autoAlpha: 0 },
-        { xPercent: 105, autoAlpha: 0.62, duration: 0.58, ease: "power2.inOut" },
-        1.20,
-      ).to(sweep, { autoAlpha: 0, duration: 0.20, ease: "power2.out" }, 1.55);
+      // Keep the overall rhythm without a diagonal light sweep:
+      // that full-screen streak resembled tearing on some displays.
       // Keep the total duration stable regardless of the number of categories.
       sequence.to({}, { duration: 0.05 }, 1.79);
     }, stage);
