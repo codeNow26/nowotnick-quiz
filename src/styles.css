@@ -197,17 +197,18 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 .quiz-player-card { background-color: #171039; }
 .quiz-category-card, .quiz-question-card, .quiz-player-card { background-clip: padding-box; }
 
-/* Hover: soft depth instead of a bright masked border or a moving white seam.
-   GSAP owns the tiny positional tilt; CSS only animates color and shadow. */
+/* Only a slow opacity- and shadow-led hover. The card background is identical
+   at rest and on hover, so no gradient is ever snapped in a single frame. */
 .quiz-card-active {
-  transition:border-color 230ms ease, box-shadow 300ms ease, background-color 240ms ease;
+  transition:border-color 520ms cubic-bezier(.2,.75,.2,1),
+    box-shadow 650ms cubic-bezier(.2,.75,.2,1);
 }
 @media (hover:hover) and (pointer:fine) {
   .quiz-card-active:not(:disabled):hover {
-    border-color:rgba(173,161,255,.30);
-    box-shadow:0 12px 30px -17px rgba(109,88,235,.68),
-      0 8px 23px -18px rgba(95,173,247,.50),
-      inset 0 1px 0 rgba(234,224,255,.12);
+    border-color:rgba(173,161,255,.18);
+    box-shadow:0 12px 35px -21px rgba(109,88,235,.42),
+      0 9px 28px -22px rgba(95,173,247,.30),
+      inset 0 1px 0 rgba(234,224,255,.055);
   }
 }
 .quiz-card-active:focus-visible { outline:2px solid #b6a4ed; outline-offset:3px; }
@@ -637,10 +638,10 @@ html.quiz-launch-scroll-lock body {
     rgba(198,188,255,.14) 0%,
     rgba(129,157,255,.065) 42%,
     rgba(115,130,223,.018) 68%,transparent 87%);
-  transition:opacity 260ms ease;
+  transition:opacity 570ms cubic-bezier(.2,.72,.2,1);
 }
 @media (hover:hover) and (pointer:fine) {
-  .quiz-question-card.quiz-card-active:hover .quiz-magnetic-reflection { opacity:1; }
+  .quiz-question-card.quiz-card-active:hover .quiz-magnetic-reflection { opacity:.78; }
 }
 
 /* 6. Fragetext reveals outwards from the central light, not letter by letter. */
@@ -717,42 +718,16 @@ html.quiz-launch-scroll-lock body {
 }
 .quiz-grand-answer-stage[data-revealed="true"] .quiz-grand-answer-result {
   animation:quiz-grand-answer-arrive 520ms cubic-bezier(.16,1,.3,1) 420ms both;
-  text-shadow:0 2px 26px rgba(139,117,244,.25);
+  text-shadow:0 0 12px rgba(139,117,244,.13);
 }
 @keyframes quiz-grand-answer-arrive {
-  0% {opacity:0;transform:translateY(18px) scale(.93);clip-path:inset(0 48% 0 48%);filter:blur(5px);}
-  45% {opacity:1;clip-path:inset(0 5% 0 5%);filter:blur(1px);}
-  82% {opacity:1;transform:translateY(-2px) scale(1.018);clip-path:inset(0);filter:blur(0);}
-  100% {opacity:1;transform:translateY(0) scale(1);clip-path:inset(0);filter:blur(0);}
+  0% {opacity:0;transform:translateY(18px) scale(.93);clip-path:inset(0 48% 0 48%);filter:blur(3px);text-shadow:0 0 0 transparent;}
+  45% {opacity:1;clip-path:inset(0 5% 0 5%);filter:blur(1px);text-shadow:0 0 24px rgba(162,143,255,.36);}
+  82% {opacity:1;transform:translateY(-2px) scale(1.018);clip-path:inset(0);filter:blur(0);text-shadow:0 0 17px rgba(139,117,244,.20);}
+  100% {opacity:1;transform:translateY(0) scale(1);clip-path:inset(0);filter:blur(0);text-shadow:0 0 12px rgba(139,117,244,.12);}
 }
-.quiz-grand-answer-bloom {
-  position:absolute;
-  width:min(145%,56rem);
-  height:clamp(7rem,26vw,18rem);
-  top:50%;left:50%;z-index:1;pointer-events:none;
-  border:0;border-radius:0;box-shadow:none;
-  background:radial-gradient(ellipse at center,
-    rgba(158,139,239,.15) 0%,rgba(125,114,222,.07) 37%,
-    rgba(115,98,211,.022) 59%,transparent 82%);
-  -webkit-mask-image:radial-gradient(ellipse at center,#000 8%,rgba(0,0,0,.76) 34%,transparent 76%);
-  mask-image:radial-gradient(ellipse at center,#000 8%,rgba(0,0,0,.76) 34%,transparent 76%);
-  animation:quiz-grand-answer-light 850ms cubic-bezier(.16,1,.3,1) 190ms both;
-}
-@keyframes quiz-grand-answer-light {
-  0% {opacity:0;transform:translate(-50%,-50%) scale(.66);}
-  34% {opacity:.84;transform:translate(-50%,-50%) scale(.99);}
-  68% {opacity:.48;transform:translate(-50%,-50%) scale(1.08);}
-  100% {opacity:0;visibility:hidden;transform:translate(-50%,-50%) scale(1.12);}
-}
-
 /* High stakes: champagne-gold replaces violet ONLY during the answer reveal.
    The original purple question opening and ordinary answers remain unchanged. */
-.quiz-grand-answer-stage[data-high-stakes="true"] .quiz-grand-answer-bloom {
-  background:radial-gradient(ellipse at center,
-    rgba(245,200,130,.20) 0%,rgba(205,160,203,.085) 36%,
-    rgba(145,109,208,.022) 62%,transparent 84%);
-  animation-duration:1080ms;
-}
 .quiz-grand-answer-stage[data-high-stakes="true"] .quiz-grand-answer-result {
   animation-name:quiz-grand-answer-gold;
   animation-duration:710ms;
@@ -760,10 +735,10 @@ html.quiz-launch-scroll-lock body {
   text-shadow:0 0 18px rgba(232,195,135,.16);
 }
 @keyframes quiz-grand-answer-gold {
-  0% {opacity:0;transform:translateY(16px) scale(.94);clip-path:inset(0 42% 0 42%);filter:blur(2px);}
-  50% {opacity:1;clip-path:inset(0 3% 0 3%);filter:blur(0);}
-  80% {opacity:1;transform:translateY(-3px) scale(1.016);clip-path:inset(0);filter:blur(0);}
-  100% {opacity:1;transform:translateY(0) scale(1);clip-path:inset(0);filter:blur(0);}
+  0% {opacity:0;transform:translateY(16px) scale(.94);clip-path:inset(0 42% 0 42%);filter:blur(2px);text-shadow:0 0 0 transparent;}
+  50% {opacity:1;clip-path:inset(0 3% 0 3%);filter:blur(0);text-shadow:0 0 26px rgba(246,214,158,.46);}
+  80% {opacity:1;transform:translateY(-3px) scale(1.016);clip-path:inset(0);filter:blur(0);text-shadow:0 0 17px rgba(232,195,135,.23);}
+  100% {opacity:1;transform:translateY(0) scale(1);clip-path:inset(0);filter:blur(0);text-shadow:0 0 12px rgba(232,195,135,.13);}
 }
 
 /* Multiple choice stays on the same board: dim the non-solutions, then
@@ -807,7 +782,6 @@ html.quiz-launch-scroll-lock body {
 @media (prefers-reduced-motion:reduce) {
   .quiz-grand-answer-stage[data-revealed="true"] .quiz-grand-answer-question {display:none;animation:none;}
   .quiz-grand-answer-stage[data-revealed="true"] .quiz-grand-answer-result {animation:none;opacity:1;filter:none;transform:none;clip-path:none;}
-  .quiz-grand-answer-bloom {display:none;animation:none;}
   .quiz-choice[data-grand-result="correct"],
   .quiz-choice[data-grand-gold="true"],
   .quiz-choice[data-grand-result="correct"] svg {animation:none;}
