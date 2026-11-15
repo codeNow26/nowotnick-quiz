@@ -361,8 +361,8 @@ function QuestionModalContent({
       <DialogContent
         motion="question"
         style={{
-          "--tile-x": `${Math.max(-76, Math.min(76, origin.x * 0.2))}px`,
-          "--tile-y": `${Math.max(-54, Math.min(54, origin.y * 0.18))}px`,
+          "--tile-x": `${Math.max(-160, Math.min(160, origin.x * 0.48))}px`,
+          "--tile-y": `${Math.max(-120, Math.min(120, origin.y * 0.42))}px`,
         } as CSSProperties}
         aria-describedby={undefined}
         onEscapeKeyDown={(event) => {
