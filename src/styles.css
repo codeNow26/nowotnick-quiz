@@ -426,6 +426,13 @@ html.quiz-launch-scroll-lock body {
 .quiz-game-launching .quiz-board-viewport {
   overflow: hidden;
 }
+/* No browser hover/layout transition may compete with GSAP's tile positions
+   during the entrance or create a delayed snap on its final frame. */
+.quiz-game-launching .quiz-question-card,
+.quiz-game-launching .quiz-category-card,
+.quiz-game-launching .quiz-player-card {
+  transition: none !important;
+}
 
 /* Cinematic launch: the light artwork is static, GSAP animates transforms/opacity only. */
 .quiz-start-depart { animation:quiz-start-depart 350ms cubic-bezier(.32,0,.67,0) both; pointer-events:none; }
@@ -437,18 +444,13 @@ html.quiz-launch-scroll-lock body {
 .quiz-intro-fx {
   position:fixed; inset:0; z-index:40; pointer-events:none; overflow:hidden;
 }
-.quiz-intro-halo, .quiz-intro-ring {
+.quiz-intro-halo {
   position:absolute; top:43%; left:50%; width:70vmin; height:70vmin;
   border-radius:50%; will-change:transform,opacity;
 }
 .quiz-intro-halo {
   background:radial-gradient(circle,rgba(221,209,255,.72) 0%,rgba(155,114,255,.47) 15%,rgba(86,114,240,.20) 39%,transparent 70%);
   mix-blend-mode:screen;
-}
-.quiz-intro-ring {
-  width:57vmin; height:57vmin;
-  border:1px solid rgba(199,184,255,.72);
-  box-shadow:0 0 22px rgba(165,143,255,.28),inset 0 0 24px rgba(98,143,255,.18);
 }
 @media (prefers-reduced-motion:reduce) {
   .quiz-start-depart { animation:none; }
