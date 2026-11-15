@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { CreateQuiz } from "./CreateQuiz";
 import { StartScreen } from "@/components/jeopardy/StartScreen";
 import { Board } from "@/components/jeopardy/Board";
+import { useGameStartAnimation } from "./GameStartSequence";
 import { QuestionModal } from "@/components/jeopardy/QuestionModal";
 import {
   ScoreBoard,
@@ -82,11 +83,7 @@ function getSoleLeaderIndex(
 }
 export function QuizApp({ customId, editInitially = false }: { customId?: string; editInitially?: boolean }) {
   const [gameEntering, setGameEntering] = useState(false);
-  useEffect(() => {
-    if (!gameEntering) return;
-    const timer = setTimeout(() => setGameEntering(false), 650);
-    return () => clearTimeout(timer);
-  }, [gameEntering]);
+  const gameStageRef = useGameStartAnimation(gameEntering, setGameEntering);
 
   const {
     categories: allCategories,
@@ -1022,7 +1019,14 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         )[0]
       : null;
   return (
-    <div className={`${gameEntering ? "quiz-game-enter" : ""} min-h-screen p-3 md:p-6 mx-auto ${categories.length >= 8 ? "max-w-[1920px]" : "max-w-7xl"}`}>
+    <div ref={gameStageRef} className={`relative isolate min-h-screen p-3 md:p-6 mx-auto ${categories.length >= 8 ? "max-w-[1920px]" : "max-w-7xl"}`}>
+      {gameEntering && (
+        <div className="quiz-intro-fx" aria-hidden="true">
+          <span className="quiz-intro-halo" />
+          <span className="quiz-intro-ring" />
+          <span className="quiz-intro-sweep" />
+        </div>
+      )}
       {showStats && (
         <GameStats
           players={players}
