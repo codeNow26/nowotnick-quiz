@@ -40,7 +40,7 @@ export function Board({
       role="region"
       aria-label="Quiz-Spielfeld, bei Bedarf seitlich scrollen"
       tabIndex={0}
-      className="overflow-x-auto overscroll-x-contain rounded-2xl p-2 -m-2 focus-visible:outline-2 focus-visible:outline-primary"
+      className="quiz-board-viewport overflow-x-auto overscroll-x-contain rounded-2xl p-2 -m-2 focus-visible:outline-2 focus-visible:outline-primary"
     >
     <div
       className={

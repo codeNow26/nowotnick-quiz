@@ -60,7 +60,7 @@ export function StartScreen({
       return;
     }
     setLaunching(true);
-    launchTimer.current = setTimeout(() => onStart(final, Math.min(catCount, maxCategories), gameColors), 220);
+    launchTimer.current = setTimeout(() => onStart(final, Math.min(catCount, maxCategories), gameColors), 350);
   };
 
   const catOptions = Array.from(
@@ -80,6 +80,7 @@ export function StartScreen({
   return (
     <div className="min-h-screen flex items-center justify-center px-4 pt-28 pb-8">
       <div className={`w-full max-w-2xl text-center ${launching ? "quiz-start-depart" : ""}`} inert={launching || undefined}>
+        <div className="quiz-entry-title">
         <h1
           className="quiz-title font-display text-5xl md:text-7xl text-foreground tracking-tight mb-3 uppercase"
           style={{
@@ -89,18 +90,19 @@ export function StartScreen({
         >
           {title}
         </h1>
+        </div>
 
         {subtitle && (
-          <p className="text-muted-foreground text-base md:text-lg mb-8 tracking-wide">
+          <p className="quiz-entry-subtitle text-muted-foreground text-base md:text-lg mb-8 tracking-wide">
             {subtitle}
           </p>
         )}
 
-        <div className="glass-strong rounded-3xl p-6 md:p-8 glow-primary">
+        <div className="quiz-entry-panel glass-strong rounded-3xl p-6 md:p-8 glow-primary">
 
           {/* QUIZ AUSWAHL */}
 
-          {activeQuiz !== undefined && <div className="mb-7">
+          {activeQuiz !== undefined && <div className="quiz-entry-step mb-7">
             <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-3 block">
               Quiz auswählen
             </Label>
@@ -125,7 +127,7 @@ export function StartScreen({
 
           {/* SPIELERANZAHL */}
 
-          <div className="mb-6">
+          <div className="quiz-entry-step mb-6">
             <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-3 block">
               Anzahl der Spieler
             </Label>
@@ -150,7 +152,7 @@ export function StartScreen({
 
           {/* KATEGORIEN */}
 
-          <div className="mb-6">
+          <div className="quiz-entry-step mb-6">
             <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-3 block">
               Anzahl der Kategorien
             </Label>
@@ -175,7 +177,7 @@ export function StartScreen({
 
           {/* SPIELERNAMEN */}
 
-          <div className="space-y-3 mb-8">
+          <div className="quiz-entry-step space-y-3 mb-8">
             {Array.from({ length: count }).map(
               (_, i) => (
                 <div key={i} className="text-left">
@@ -214,12 +216,12 @@ export function StartScreen({
             onClick={handleStart}
             disabled={launching}
             size="lg"
-            className="quiz-action w-full font-display text-xl md:text-2xl py-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider uppercase glow-primary border-0"
+            className="quiz-entry-cta quiz-action w-full font-display text-xl md:text-2xl py-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider uppercase glow-primary border-0"
           >
             Spiel starten
           </Button>
         </div>
-        {footer}
+        <div className="quiz-entry-footer">{footer}</div>
       </div>
     </div>
   );
