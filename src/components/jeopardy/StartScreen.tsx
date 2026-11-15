@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SelectionTrack } from "./SelectionTrack";
 
 import { PLAYER_PALETTE, normalizeColors, readPlayerPreferences, rememberPlayers, selectPlayerColor } from "@/lib/player-preferences";
 
@@ -69,13 +70,13 @@ export function StartScreen({
   );
 
   const pillBase =
-    "quiz-selection rounded-xl font-display transition-all duration-200 border";
+    "quiz-selection relative z-10 rounded-xl font-display transition-colors duration-200 border";
 
   const pillIdle =
     "glass text-foreground/80 hover:text-foreground hover:bg-white/10";
 
   const pillActive =
-    "bg-primary text-primary-foreground border-transparent scale-105 shadow-[0_0_30px_-5px_var(--indigo-glow)]";
+    "quiz-selection-active text-primary-foreground border-white/25";
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 pt-28 pb-8">
@@ -107,9 +108,10 @@ export function StartScreen({
               Quiz auswählen
             </Label>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <SelectionTrack value={activeQuiz} className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {([1, 2, 3, 4] as const).map((quiz) => (
                 <button
+                  data-selection-value={quiz}
                   key={quiz}
                   aria-pressed={activeQuiz === quiz}
                   onClick={() => onQuizChange(quiz)}
@@ -122,7 +124,7 @@ export function StartScreen({
                   Quiz {quiz}
                 </button>
               ))}
-            </div>
+            </SelectionTrack>
           </div>}
 
           {/* SPIELERANZAHL */}
@@ -132,9 +134,10 @@ export function StartScreen({
               Anzahl der Spieler
             </Label>
 
-            <div className="flex gap-2 justify-center">
+            <SelectionTrack value={count} className="flex gap-2 justify-center">
               {[1, 2, 3, 4].map((n) => (
                 <button
+                  data-selection-value={n}
                   key={n}
                   aria-pressed={count === n}
                   onClick={() => {setCount(n);rememberPlayers({names,colors,count:n});}}
@@ -147,7 +150,7 @@ export function StartScreen({
                   {n}
                 </button>
               ))}
-            </div>
+            </SelectionTrack>
           </div>
 
           {/* KATEGORIEN */}
@@ -157,9 +160,10 @@ export function StartScreen({
               Anzahl der Kategorien
             </Label>
 
-            <div className="flex flex-wrap gap-2 justify-center">
+            <SelectionTrack value={catCount} className="flex flex-wrap gap-2 justify-center">
               {catOptions.map((n) => (
                 <button
+                  data-selection-value={n}
                   key={n}
                   aria-pressed={catCount === n}
                   onClick={() => setCatCount(n)}
@@ -172,7 +176,7 @@ export function StartScreen({
                   {n}
                 </button>
               ))}
-            </div>
+            </SelectionTrack>
           </div>
 
           {/* SPIELERNAMEN */}
