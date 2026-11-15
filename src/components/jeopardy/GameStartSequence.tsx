@@ -19,6 +19,9 @@ export function useGameStartAnimation(
     }
 
     const stage = stageRef.current;
+    // Lock the page scrollbar only for the launch; restore normal scrolling
+    // immediately after the timeline or if React unmounts the game.
+    document.documentElement.classList.add("quiz-launch-scroll-lock");
     const context = gsap.context(() => {
       const playerCards = gsap.utils.toArray<HTMLElement>(".quiz-player-card", stage);
       const categoryCards = gsap.utils.toArray<HTMLElement>(".quiz-category-card", stage);
@@ -100,7 +103,10 @@ export function useGameStartAnimation(
       sequence.to({}, { duration: 0.05 }, 1.79);
     }, stage);
 
-    return () => context.revert();
+    return () => {
+      context.revert();
+      document.documentElement.classList.remove("quiz-launch-scroll-lock");
+    };
   }, [entering, setEntering]);
 
   return stageRef;
