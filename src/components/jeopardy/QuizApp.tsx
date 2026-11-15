@@ -6,7 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { CreateQuiz } from "./CreateQuiz";
 import { StartScreen } from "@/components/jeopardy/StartScreen";
 import { Board } from "@/components/jeopardy/Board";
-import { GameStartLight, useGameStartAnimation } from "./GameStartSequence";
+import { useGameStartAnimation } from "./GameStartSequence";
 import { QuestionModal } from "@/components/jeopardy/QuestionModal";
 import {
   ScoreBoard,
@@ -1123,8 +1123,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           </Button>
         </div>
       )}
-      {gameEntering && <GameStartLight />}
       <Board
+        launching={gameEntering}
         categories={categories}
         answered={answered}
         selected={active}

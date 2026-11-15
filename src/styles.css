@@ -464,20 +464,27 @@ html.quiz-launch-scroll-lock body {
   transition: none !important;
 }
 
-/* The artwork sits in the gap above the categories, including on narrow boards. */
 .quiz-start-depart { animation:quiz-start-depart ease-in both; pointer-events:none; }
 @keyframes quiz-start-depart {
   from { opacity:1; transform:scale(1); }
   to { opacity:0; transform:translateY(5px) scale(.974); }
 }
-.quiz-intro-fx { position:relative; height:0; z-index:4; pointer-events:none; }
-.quiz-intro-fx svg {
-  position:absolute; top:0; left:0; width:100%; height:clamp(64px,14vw,174px);
-  transform:translateY(-54%); overflow:hidden;
+/* The reflection grazes the existing lower rim. The upper letters stay clear. */
+.quiz-launch-edge {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  bottom: 0;
+  left: 15%;
+  width: 70%;
+  height: 14px;
+  background:
+    radial-gradient(ellipse 48% 1.25px at 50% 100%, #e3ecff 0%, #bec4ff 32%, #ac93f588 66%, transparent 100%),
+    radial-gradient(ellipse 46% 100% at 50% 112%, #9ea5ff55 0%, #937bec24 46%, transparent 100%);
 }
 @media (prefers-reduced-motion:reduce) {
   .quiz-start-depart { animation:none; }
-  .quiz-intro-fx { display:none; }
+  .quiz-launch-edge { display:none; }
 }
 
 /* Quiet, static point lettering; answered and roulette cells keep their states. */
@@ -527,19 +534,6 @@ html.quiz-launch-scroll-lock body {
   100% {opacity:0;transform:scale(.99);}
 }
 
-/* Hologram scan arrives once as each category settles at game start. */
-.quiz-game-launching .quiz-category-card::after {
-  content:""; position:absolute; inset:0; border-radius:inherit;
-  pointer-events:none; z-index:5;
-  background:linear-gradient(180deg,transparent 10%,rgba(178,165,255,.05) 35%,rgba(198,220,255,.24) 49%,transparent 65%);
-  animation:quiz-category-hologram 370ms ease-in-out calc(110ms + var(--entry-delay, 0ms)) both;
-}
-@keyframes quiz-category-hologram {
-  from {opacity:0;transform:translateY(-65%);}
-  33% {opacity:.85;}
-  to {opacity:0;transform:translateY(65%);}
-}
-
 /* The old beat scaled a full-width block, creating a scrollbar/"axis".
    Only the compact number is transformed, inside a clipped stable row. */
 .quiz-timer-display {
@@ -583,8 +577,7 @@ html.quiz-launch-scroll-lock body {
   100% {opacity:1;transform:scale(1);}
 }
 @media(prefers-reduced-motion:reduce) {
-  .quiz-question-card[data-sealing="true"]::after,
-  .quiz-game-launching .quiz-category-card::after {display:none;animation:none;}
+  .quiz-question-card[data-sealing="true"]::after {display:none;animation:none;}
   .quiz-timer-urgent,.quiz-timer-ended {animation:none;}
 }
 
