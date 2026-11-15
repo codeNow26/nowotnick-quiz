@@ -1019,7 +1019,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         )[0]
       : null;
   return (
-    <div ref={gameStageRef} className={`relative isolate min-h-screen p-3 md:p-6 mx-auto ${categories.length >= 8 ? "max-w-[1920px]" : "max-w-7xl"}`}>
+    <div ref={gameStageRef} className={`relative isolate min-h-screen p-3 md:p-6 mx-auto ${gameEntering ? "quiz-game-launching" : ""} ${categories.length >= 8 ? "max-w-[1920px]" : "max-w-7xl"}`}>
       {gameEntering && (
         <div className="quiz-intro-fx" aria-hidden="true">
           <span className="quiz-intro-halo" />
