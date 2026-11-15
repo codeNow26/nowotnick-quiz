@@ -7,13 +7,24 @@ interface SelectionTrackProps {
   children: ReactNode;
 }
 
-/** One shared indicator follows the selected button through rows and wraps.
- * The buttons keep their native accessible focus, click and pressed states.
+interface TrackBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** A single highlight follows the chosen button, including wrapped layouts.
+ * ResizeObserver is installed only once; a value change never reinstalls it
+ * and therefore cannot interrupt an in-flight GSAP tween with a snap.
  */
 export function SelectionTrack({ value, className, children }: SelectionTrackProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
   const positioned = useRef(false);
+  const selectedValue = useRef(value);
+  const lastBounds = useRef<TrackBounds | null>(null);
+  selectedValue.current = value;
 
   const position = useCallback((animated: boolean) => {
     const root = rootRef.current;
@@ -21,35 +32,39 @@ export function SelectionTrack({ value, className, children }: SelectionTrackPro
     if (!root || !indicator) return;
 
     const active = Array.from(root.querySelectorAll<HTMLElement>("[data-selection-value]"))
-      .find(button => button.dataset.selectionValue === String(value));
+      .find(button => button.dataset.selectionValue === String(selectedValue.current));
     if (!active) return;
 
-    // offsetLeft/Top are already relative to the positioned track. Unlike
-    // boundingClientRect they are unaffected by the start screen's own entrance.
-    const bounds = {
+    const next: TrackBounds = {
       x: active.offsetLeft,
       y: active.offsetTop,
       width: active.offsetWidth,
       height: active.offsetHeight,
     };
-    const canAnimate = animated && positioned.current &&
-      !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (canAnimate) {
+    const previous = lastBounds.current;
+    if (previous && Object.keys(next).every(key =>
+      previous[key as keyof TrackBounds] === next[key as keyof TrackBounds]
+    )) return;
+    lastBounds.current = next;
+
+    if (animated && positioned.current &&
+        !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       gsap.to(indicator, {
-        ...bounds,
-        duration: 0.48,
+        ...next,
+        duration: 0.46,
         ease: "power3.inOut",
-        overwrite: true,
+        overwrite: "auto",
       });
     } else {
-      gsap.set(indicator, bounds);
+      gsap.killTweensOf(indicator);
+      gsap.set(indicator, next);
     }
     positioned.current = true;
-  }, [value]);
+  }, []);
 
   useLayoutEffect(() => {
     position(true);
-  }, [position]);
+  }, [value, position]);
 
   useEffect(() => {
     const root = rootRef.current;
