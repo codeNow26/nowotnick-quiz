@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { gsap } from "gsap";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +32,65 @@ export function StartScreen({
   const launchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (launchTimer.current) clearTimeout(launchTimer.current); }, []);
   const [count, setCount] = useState(2);
+  const playerFieldsRef = useRef<HTMLDivElement>(null);
+  const priorCount = useRef(count);
+  const pendingPlayerHeight = useRef<number | null>(null);
+
+  const changePlayerCount = (nextCount: number) => {
+    if (nextCount === count) return;
+    const fields = playerFieldsRef.current;
+    pendingPlayerHeight.current = fields?.getBoundingClientRect().height ?? null;
+    // The gliding selection can update immediately while fields follow
+    // in a coordinated, height-based transition.
+    setColorPicker(null);
+    setCount(nextCount);
+    rememberPlayers({ names, colors, count: nextCount });
+  };
+
+  useLayoutEffect(() => {
+    const oldCount = priorCount.current;
+    priorCount.current = count;
+    const fields = playerFieldsRef.current;
+    const fromHeight = pendingPlayerHeight.current;
+    pendingPlayerHeight.current = null;
+    // First mount / stored preferences should never start an animation.
+    if (!fields || fromHeight === null || oldCount === count) return;
+
+    gsap.killTweensOf(fields);
+    gsap.set(fields, { height: "auto", overflow: "visible" });
+    const toHeight = fields.getBoundingClientRect().height;
+    const shouldAnimate = Math.abs(fromHeight - toHeight) > 1 &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!shouldAnimate) {
+      gsap.set(fields, { clearProps: "height,overflow" });
+      return;
+    }
+
+    gsap.fromTo(fields,
+      { height: fromHeight, overflow: "hidden" },
+      {
+        height: toHeight, duration: 0.46, ease: "power3.inOut",
+        onComplete: () => gsap.set(fields, { clearProps: "height,overflow" }),
+      }
+    );
+    if (count > oldCount) {
+      const rows = Array.from(fields.querySelectorAll<HTMLElement>(".quiz-player-entry"))
+        .slice(oldCount);
+      gsap.fromTo(rows, { autoAlpha: 0, y: 11 },
+        { autoAlpha: 1, y: 0, duration: 0.34, delay: 0.10,
+          stagger: 0.055, ease: "power3.out", overwrite: "auto" });
+    }
+  }, [count]);
+
+  useEffect(() => {
+    const fields = playerFieldsRef.current;
+    return () => {
+      if (fields) {
+        gsap.killTweensOf(fields);
+        gsap.killTweensOf(fields.querySelectorAll(".quiz-player-entry"));
+      }
+    };
+  }, []);
   const [names, setNames] = useState<string[]>(["", "", "", ""]);
   const [colors,setColors]=useState<string[]>(["", "", "", ""]);
   const [colorPicker,setColorPicker]=useState<number|null>(null);
@@ -140,7 +200,7 @@ export function StartScreen({
                   data-selection-value={n}
                   key={n}
                   aria-pressed={count === n}
-                  onClick={() => {setCount(n);rememberPlayers({names,colors,count:n});}}
+                  onClick={() => changePlayerCount(n)}
                   className={`${pillBase} w-14 h-14 text-2xl ${
                     count === n
                       ? pillActive
@@ -181,10 +241,10 @@ export function StartScreen({
 
           {/* SPIELERNAMEN */}
 
-          <div className="quiz-entry-step space-y-3 mb-8">
+          <div ref={playerFieldsRef} className="quiz-entry-step space-y-3 mb-8">
             {Array.from({ length: count }).map(
               (_, i) => (
-                <div key={i} className="text-left">
+                <div key={i} className="quiz-player-entry text-left">
                   <Label
                     htmlFor={`p${i}`}
                     className="text-xs text-muted-foreground uppercase tracking-[0.18em]"
