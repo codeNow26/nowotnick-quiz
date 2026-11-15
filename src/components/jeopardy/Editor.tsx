@@ -378,6 +378,8 @@ export function Editor({
             const imageEditorKey = `${activeCat}-${qIdx}`;
             const imageEditorOpen = Boolean(openImageEditors[imageEditorKey]);
             const hasImage = Boolean(q.imageUrl?.trim());
+            const hasVideo = Boolean(q.videoUrl?.trim());
+            const videoProcessing = Boolean(processingVideos[imageEditorKey]);
             const isUploadedImage = q.imageUrl?.startsWith("data:image/") ?? false;
             const imageProcessing = Boolean(processingImages[imageEditorKey]);
             return (
@@ -455,31 +457,31 @@ export function Editor({
                     }
                   />
                 </div>
-                <QuestionVideoEditor key={`video-${source.id}-${activeCat}-${qIdx}`} quizId={source.id} value={q.videoUrl}
-                  onChange={url => updateQuestion(qIdx, current => ({...current, videoUrl: url}))}
-                  onPending={pending => setProcessingVideos(prev => ({...prev, [`${activeCat}-${qIdx}`]: pending}))} />
                 <div className="space-y-2">
                   <button
                     type="button"
                     onClick={() => toggleImageEditor(qIdx)}
+                    disabled={videoProcessing}
+                    aria-expanded={imageEditorOpen}
+                    aria-controls={`media-${source.id}-${imageEditorKey}`}
                     className={`
-                      w-full
-                      flex items-center justify-between gap-3
+                      max-w-full
+                      inline-flex items-center gap-3
                       rounded-xl
                       border
-                      px-3 py-2.5
-                      text-sm
+                      px-3 py-2
+                      text-xs
                       transition-all
                       ${
-                        hasImage
-                          ? "border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-300 hover:bg-emerald-500/[0.10]"
-                          : "border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.07] hover:text-foreground"
+                        hasImage || hasVideo
+                          ? "border-primary/20 bg-primary/[0.04] text-foreground/80 hover:bg-primary/[0.08]"
+                          : "border-transparent bg-transparent text-muted-foreground hover:border-white/10 hover:bg-white/[0.04] hover:text-foreground"
                       }
                     `}
                   >
                     <span className="flex items-center gap-2">
                       <ImagePlus className="h-4 w-4" />
-                      {hasImage ? "Bild vorhanden ✓" : "Bild hinzufügen"}
+                      {hasImage && hasVideo ? "Bild und Video vorhanden" : hasImage ? "Bild vorhanden" : hasVideo ? "Video vorhanden" : "Medien hinzufügen · Bild oder Video"}
                     </span>
                     {imageEditorOpen ? (
                       <ChevronUp className="h-4 w-4" />
@@ -488,7 +490,7 @@ export function Editor({
                     )}
                   </button>
                   {imageEditorOpen && (
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-3 space-y-3">
+                    <div id={`media-${source.id}-${imageEditorKey}`} className="rounded-2xl border border-white/10 bg-black/10 p-3 space-y-3">
                       <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
                         <div>
                           <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
@@ -558,6 +560,9 @@ export function Editor({
                           )}
                         </div>
                       )}
+                <QuestionVideoEditor key={`video-${source.id}-${activeCat}-${qIdx}`} quizId={source.id} value={q.videoUrl}
+                  onChange={url => updateQuestion(qIdx, current => ({...current, videoUrl: url}))}
+                  onPending={pending => setProcessingVideos(prev => ({...prev, [`${activeCat}-${qIdx}`]: pending}))} />
                       <div className="flex gap-2">
                         {hasImage && (
                           <Button
@@ -565,7 +570,7 @@ export function Editor({
                             variant="outline"
                             onClick={() => {
                               updateQ(qIdx, "imageUrl", "");
-                              closeImageEditor(qIdx);
+
                             }}
                             className="glass border-destructive/20 text-destructive hover:bg-destructive/15 rounded-xl"
                           >
@@ -576,6 +581,7 @@ export function Editor({
                         <Button
                           type="button"
                           variant="outline"
+                          disabled={videoProcessing}
                           onClick={() => closeImageEditor(qIdx)}
                           className="ml-auto glass border-white/10 rounded-xl"
                         >

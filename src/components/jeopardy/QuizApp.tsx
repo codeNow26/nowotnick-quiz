@@ -1,3 +1,4 @@
+import { AwardCeremony } from "./AwardCeremony";
 import { ensureCategoryCount, MAX_CATEGORIES } from "@/lib/quiz-repository";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -20,7 +21,6 @@ import {
   VolumeX,
   Pencil,
   SlidersHorizontal,
-  Crown,
   Dices,
   BarChart3,
 } from "lucide-react";
@@ -34,10 +34,6 @@ interface Player {
 interface Active {
   category: number;
   question: number;
-}
-interface LeadershipChange {
-  playerName: string;
-  score: number;
 }
 type Screen = "start" | "game" | "editor";
 function makeAnswered(
@@ -108,9 +104,6 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     useRef<HTMLAudioElement | null>(null);
   const leaderRef =
     useRef<number | null>(null);
-  const leadershipTimerRef = useRef<
-    ReturnType<typeof setTimeout> | null
-  >(null);
   const randomTimerRef = useRef<
     ReturnType<typeof setTimeout> | null
   >(null);
@@ -124,10 +117,6 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     useState(0.3);
   const [showVolume, setShowVolume] =
     useState(false);
-  const [
-    leadershipChange,
-    setLeadershipChange,
-  ] = useState<LeadershipChange | null>(null);
   const [
     isRandomizing,
     setIsRandomizing,
@@ -320,6 +309,18 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       ),
     [answered]
   );
+  const revealOrigin = useRef({ x: 0, y: 8 });
+  const ceremonyPlayed = useRef(false);
+  const [ceremonyOpen, setCeremonyOpen] = useState(false);
+  useEffect(() => {
+    if (screen !== "game" || !allAnswered || active || showStats || ceremonyPlayed.current) return;
+    // Let the final score settle before entering the podium.
+    const timer = window.setTimeout(() => {
+      ceremonyPlayed.current = true;
+      setCeremonyOpen(true);
+    }, 1150);
+    return () => window.clearTimeout(timer);
+  }, [screen, allAnswered, active, showStats]);
   const MusicControls = () => (
     <div className="flex items-center gap-2">
       <Button
@@ -390,7 +391,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       ref.current?.pause();
       if (ref.current) ref.current.src = '';
     }
-    for (const ref of [leadershipTimerRef, randomTimerRef, popupTimerRef]) {
+    for (const ref of [randomTimerRef, popupTimerRef]) {
       if (ref.current) clearTimeout(ref.current);
     }
   }, []);
@@ -459,20 +460,12 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
               )
             );
             leaderRef.current = null;
-            setLeadershipChange(null);
+            ceremonyPlayed.current = false;
+            setCeremonyOpen(false);
             setHighlightedQuestion(null);
             setIsRandomizing(false);
             setShowStats(false);
             setScorePopups([]);
-            if (
-              leadershipTimerRef.current
-            ) {
-              clearTimeout(
-                leadershipTimerRef.current
-              );
-              leadershipTimerRef.current =
-                null;
-            }
             if (
               randomTimerRef.current
             ) {
@@ -553,6 +546,14 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       playFinalQuestionAudio();
     } else {
       stopFinalQuestionAudio();
+    }
+    const cell = document.querySelector<HTMLButtonElement>(`[data-quiz-cell="${questionToOpen.category}-${questionToOpen.question}"]`);
+    const rect = cell?.getBoundingClientRect();
+    if (rect) {
+      revealOrigin.current = {
+        x: Math.min(innerWidth, Math.max(0, rect.left + rect.width / 2)) - innerWidth / 2,
+        y: Math.min(innerHeight, Math.max(0, rect.top + rect.height / 2)) - innerHeight / 2,
+      };
     }
     setActive(questionToOpen);
   };
@@ -784,190 +785,157 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           error
         );
       });
-    setPlayers((prev) => {
-      const previousLeader =
-        leaderRef.current;
-      const scoreChanges =
-        prev.map(
-          (_, index) => {
-            let scoreChange = 0;
-            if (
-              index ===
-              playerIndex
-            ) {
-              scoreChange += correct
-                ? resolvedValue
-                : -Math.round(
-                    resolvedValue / 2
-                  );
-            }
-            return scoreChange;
+    const previousLeader =
+      leaderRef.current;
+    const scoreChanges =
+      players.map(
+        (_, index) => {
+          let scoreChange = 0;
+          if (
+            index ===
+            playerIndex
+          ) {
+            scoreChange += correct
+              ? resolvedValue
+              : -Math.round(
+                  resolvedValue / 2
+                );
           }
-        );
-      const nextPlayers =
-        prev.map(
+          return scoreChange;
+        }
+      );
+    const nextPlayers =
+      players.map(
+        (
+          player,
+          index
+        ) => ({
+          ...player,
+          score:
+            player.score +
+            scoreChanges[
+              index
+            ],
+        })
+      );
+    const newPopups: ScorePopup[] =
+      scoreChanges
+        .map(
           (
-            player,
+            amount,
             index
           ) => ({
-            ...player,
-            score:
-              player.score +
+            id:
+              ++popupIdRef.current,
+            playerIndex:
+              index,
+            amount,
+          })
+        )
+        .filter(
+          (popup) =>
+            popup.amount !== 0
+        );
+    setScorePopups(
+      newPopups
+    );
+    if (
+      popupTimerRef.current
+    ) {
+      clearTimeout(
+        popupTimerRef.current
+      );
+    }
+    popupTimerRef.current =
+      setTimeout(() => {
+        setScorePopups([]);
+        popupTimerRef.current =
+          null;
+      }, 1600);
+    const newLeader =
+      getSoleLeaderIndex(
+        nextPlayers
+      );
+    setGameStats(
+      (previousStats) =>
+        previousStats.map(
+          (
+            stat,
+            index
+          ) => {
+            const scoreChange =
               scoreChanges[
                 index
-              ],
-          })
-        );
-      const newPopups: ScorePopup[] =
-        scoreChanges
-          .map(
-            (
-              amount,
-              index
-            ) => ({
-              id:
-                ++popupIdRef.current,
-              playerIndex:
-                index,
-              amount,
-            })
-          )
-          .filter(
-            (popup) =>
-              popup.amount !== 0
-          );
-      setScorePopups(
-        newPopups
-      );
-      if (
-        popupTimerRef.current
-      ) {
-        clearTimeout(
-          popupTimerRef.current
-        );
-      }
-      popupTimerRef.current =
-        setTimeout(() => {
-          setScorePopups([]);
-          popupTimerRef.current =
-            null;
-        }, 1600);
-      const newLeader =
-        getSoleLeaderIndex(
-          nextPlayers
-        );
-      setGameStats(
-        (previousStats) =>
-          previousStats.map(
-            (
-              stat,
-              index
-            ) => {
-              const scoreChange =
-                scoreChanges[
-                  index
-                ];
-              const isMainPlayer =
-                index ===
-                playerIndex;
-              const becameLeader =
-                newLeader ===
-                  index &&
-                newLeader !==
-                  previousLeader;
-              return {
-                ...stat,
-                mainCorrect:
-                  stat.mainCorrect +
-                  (isMainPlayer &&
-                  correct
-                    ? 1
-                    : 0),
-                mainWrong:
-                  stat.mainWrong +
-                  (isMainPlayer &&
-                  !correct
-                    ? 1
-                    : 0),
-                pointsWon:
-                  stat.pointsWon +
-                  (scoreChange > 0
+              ];
+            const isMainPlayer =
+              index ===
+              playerIndex;
+            const becameLeader =
+              newLeader ===
+                index &&
+              newLeader !==
+                previousLeader;
+            return {
+              ...stat,
+              mainCorrect:
+                stat.mainCorrect +
+                (isMainPlayer &&
+                correct
+                  ? 1
+                  : 0),
+              mainWrong:
+                stat.mainWrong +
+                (isMainPlayer &&
+                !correct
+                  ? 1
+                  : 0),
+              pointsWon:
+                stat.pointsWon +
+                (scoreChange > 0
+                  ? scoreChange
+                  : 0),
+              pointsLost:
+                stat.pointsLost +
+                (scoreChange < 0
+                  ? Math.abs(
+                      scoreChange
+                    )
+                  : 0),
+              highestScore:
+                Math.max(
+                  stat.highestScore,
+                  nextPlayers[
+                    index
+                  ].score
+                ),
+              biggestGain:
+                Math.max(
+                  stat.biggestGain,
+                  scoreChange > 0
                     ? scoreChange
-                    : 0),
-                pointsLost:
-                  stat.pointsLost +
-                  (scoreChange < 0
+                    : 0
+                ),
+              biggestLoss:
+                Math.max(
+                  stat.biggestLoss,
+                  scoreChange < 0
                     ? Math.abs(
                         scoreChange
                       )
-                    : 0),
-                highestScore:
-                  Math.max(
-                    stat.highestScore,
-                    nextPlayers[
-                      index
-                    ].score
-                  ),
-                biggestGain:
-                  Math.max(
-                    stat.biggestGain,
-                    scoreChange > 0
-                      ? scoreChange
-                      : 0
-                  ),
-                biggestLoss:
-                  Math.max(
-                    stat.biggestLoss,
-                    scoreChange < 0
-                      ? Math.abs(
-                          scoreChange
-                        )
-                      : 0
-                  ),
-                leadershipChanges:
-                  stat.leadershipChanges +
-                  (becameLeader
-                    ? 1
-                    : 0),
-              };
-            }
-          )
-      );
-      if (
-        newLeader !== null &&
-        newLeader !==
-          previousLeader
-      ) {
-        const leader =
-          nextPlayers[
-            newLeader
-          ];
-        setLeadershipChange({
-          playerName:
-            leader.name,
-          score:
-            leader.score,
-        });
-        if (
-          leadershipTimerRef.current
-        ) {
-          clearTimeout(
-            leadershipTimerRef.current
-          );
-        }
-        leadershipTimerRef.current =
-          setTimeout(() => {
-            setLeadershipChange(
-              null
-            );
-            leadershipTimerRef.current =
-              null;
-          }, 2500);
-      }
-      leaderRef.current =
-        newLeader;
-      return nextPlayers;
-    });
+                    : 0
+                ),
+              leadershipChanges:
+                stat.leadershipChanges +
+                (becameLeader
+                  ? 1
+                  : 0),
+            };
+          }
+        )
+    );
+    leaderRef.current =
+      newLeader;
+    setPlayers(nextPlayers);
     setResults(prev => ({ ...prev, [`${active.category}:${active.question}`]: {
       question: structuredClone(activeQuestion!), category: activeCategory,
       value: resolvedValue, playerIndex, correct, selectedChoice,
@@ -1037,31 +1005,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           }}
         />
       )}
-      {leadershipChange && (
-        <div className="fixed inset-0 z-[100] pointer-events-none flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px] animate-in fade-in duration-300" />
-          <div className="relative glass-strong border border-amber-400/40 rounded-3xl px-8 py-7 md:px-14 md:py-10 text-center shadow-2xl animate-in zoom-in-75 fade-in duration-300">
-            <Crown className="h-14 w-14 md:h-20 md:w-20 mx-auto mb-3 text-amber-400 drop-shadow-lg" />
-            <p className="font-display text-lg md:text-2xl uppercase tracking-[0.2em] text-amber-400 mb-2">
-              Neue Führung!
-            </p>
-            <p className="font-display text-3xl md:text-5xl uppercase text-foreground">
-              {
-                leadershipChange.playerName
-              }
-            </p>
-            <p className="mt-3 text-lg md:text-2xl text-muted-foreground">
-              übernimmt mit{" "}
-              <span className="text-foreground font-bold">
-                {
-                  leadershipChange.score
-                }
-              </span>{" "}
-              Punkten!
-            </p>
-          </div>
-        </div>
-      )}
+      {ceremonyOpen && <AwardCeremony players={players} onDismiss={() => setCeremonyOpen(false)} />}
       <div className="fixed top-4 right-4 z-50">
         <MusicControls />
       </div>
@@ -1125,8 +1069,9 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       {winner && (
         <div className="mb-4 md:mb-6 glass-strong rounded-3xl p-5 md:p-6 text-center glow-primary animate-in fade-in zoom-in">
           <p className="font-display text-2xl md:text-4xl uppercase text-foreground tracking-wide mb-4">
-            🏆 {winner.name} gewinnt
-            mit {winner.score}!
+            {players.filter(p => p.score === winner.score).length === 1
+              ? `🏆 ${winner.name} gewinnt mit ${winner.score} Punkten!`
+              : `Gemeinsamer Sieg mit ${winner.score} Punkten!`}
           </p>
           <Button
             onClick={() =>
@@ -1143,6 +1088,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       <Board
         categories={categories}
         answered={answered}
+        selected={active}
         results={results}
         players={players}
         highlightedQuestion={
@@ -1162,6 +1108,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         }
       />
       <QuestionModal
+        origin={revealOrigin.current}
         open={active !== null}
         question={
           activeQuestion

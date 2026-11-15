@@ -1,5 +1,5 @@
 import { playerColor } from "@/lib/jeopardy-data";
-import { useEffect, useState, useRef, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useState, useRef, type CSSProperties } from "react";
 import { Check, Crown, Pencil, X } from "lucide-react";
 interface Player {
   color?: string;
@@ -18,6 +18,33 @@ interface ScoreBoardProps {
     playerIndex: number,
     newScore: number
   ) => void;
+}
+function AnimatedScore({ score }: { score: number }) {
+  const number = useRef<HTMLSpanElement>(null);
+  const displayed = useRef(score);
+  useLayoutEffect(() => {
+    const node = number.current;
+    if (!node) return;
+    const from = displayed.current;
+    const paint = (value: number) => {
+      displayed.current = value;
+      node.textContent = String(value);
+    };
+    if (from === score || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      paint(score);
+      return;
+    }
+    const start = performance.now();
+    let frame: number;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / 540);
+      paint(Math.round(from + (score - from) * (1 - (1 - t) ** 3)));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [score]);
+  return <><span aria-hidden="true" className="tabular-nums" ref={number} /><span className="sr-only">{score}</span></>;
 }
 function ScoreFlash({score}: {score:number}) {
   const previous = useRef(score);
@@ -52,6 +79,30 @@ export function ScoreBoard({
       setEditValue("");
     }
   }, [players, editingPlayer]);
+  const grid = useRef<HTMLDivElement>(null);
+  const crown = useRef<HTMLDivElement>(null);
+  const lastSoleLeader = useRef<number | null>(null);
+  const leader = hasSingleLeader ? players.findIndex(p => p.score === highestScore) : null;
+  useLayoutEffect(() => {
+    if (leader === null) return;
+    const previous = lastSoleLeader.current;
+    lastSoleLeader.current = leader;
+    const badge = crown.current;
+    if (!badge || previous === null || previous === leader || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const source = grid.current?.children[previous]?.getBoundingClientRect();
+    const dest = badge.getBoundingClientRect();
+    if (!source) return;
+    const dx = source.left + source.width / 2 - (dest.left + dest.width / 2);
+    const dy = source.top - dest.top - 12;
+    badge.style.setProperty('--trail-angle', `${Math.atan2(-dy, -dx)}rad`);
+    badge.classList.add('quiz-flying-crown');
+    const flight = badge.animate([
+      { transform: `translate(${dx}px, ${dy}px)` },
+      { transform: `translate(${dx * .5}px, ${dy * .5 - 20}px)`, offset: .48 },
+      { transform: 'translate(0,0)' },
+    ], { duration: 600, easing: 'cubic-bezier(.32,0,.2,1)' });
+    return () => { flight.cancel(); badge.classList.remove('quiz-flying-crown'); };
+  }, [leader]);
   const startEditing = (playerIndex: number) => {
     if (!onScoreChange) return;
     setEditingPlayer(playerIndex);
@@ -78,7 +129,7 @@ export function ScoreBoard({
     setEditValue("");
   };
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+    <div ref={grid} className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
       {players.map((p, i) => {
         const isLeader =
           hasSingleLeader &&
@@ -90,6 +141,7 @@ export function ScoreBoard({
         return (
           <div
             key={i}
+            data-leading={isLeader || undefined}
             style={{"--entry-delay": `${i * 35}ms`, "--player-color": playerColor(i,p.color)} as CSSProperties}
             className={`
               quiz-player-card group/player
@@ -147,6 +199,7 @@ export function ScoreBoard({
             {/* Führungskrone */}
             {isLeader && (
               <div
+                ref={crown}
                 className="
                   absolute
                   -top-3
@@ -170,21 +223,8 @@ export function ScoreBoard({
               (popup, popupIndex) => (
                 <div
                   key={popup.id}
-                  className={`absolute left-1/2 -translate-x-1/2 z-50 pointer-events-none font-display font-bold whitespace-nowrap ${
-                    popup.amount > 0
-                      ? "text-emerald-400"
-                      : "text-destructive"
-                  }`}
-                  style={{
-                    top: `${-28 - popupIndex * 28}px`,
-                    fontSize: "1.4rem",
-                    textShadow:
-                      popup.amount > 0
-                        ? "0 0 18px rgba(52, 211, 153, 0.9)"
-                        : "0 0 18px rgba(248, 113, 113, 0.9)",
-                    animation:
-                      "score-popup 1.6s ease-out forwards",
-                  }}
+                  className="quiz-score-popup absolute left-1/2 -translate-x-1/2 z-50 pointer-events-none font-display font-bold whitespace-nowrap"
+                  style={{ top: `${-20 - popupIndex * 24}px` }}
                 >
                   {popup.amount > 0 ? "+" : "−"}
                   {Math.abs(popup.amount)}
@@ -328,7 +368,7 @@ export function ScoreBoard({
                         : undefined,
                   }}
                 >
-                  {p.score}
+                  <AnimatedScore score={p.score} />
                 </span>
                 {onScoreChange && (
                   <Pencil
@@ -362,30 +402,7 @@ export function ScoreBoard({
                 "
               />
             )}
-            <style>{`
-              @keyframes score-popup {
-                0% {
-                  opacity: 0;
-                  transform: translate(-50%, 12px) scale(0.7);
-                }
-                15% {
-                  opacity: 1;
-                  transform: translate(-50%, 0px) scale(1.2);
-                }
-                35% {
-                  opacity: 1;
-                  transform: translate(-50%, -8px) scale(1);
-                }
-                75% {
-                  opacity: 1;
-                  transform: translate(-50%, -18px) scale(1);
-                }
-                100% {
-                  opacity: 0;
-                  transform: translate(-50%, -35px) scale(0.9);
-                }
-              }
-            `}</style>
+
           </div>
         );
       })}
