@@ -343,6 +343,16 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 }
 .quiz-color-gem::after { content:""; position:absolute; top:15%; left:22%; width:30%; height:13%; border-radius:50%; background:rgba(255,255,255,.65); transform:rotate(-32deg); pointer-events:none; }
 
+/* During the cinematic launch there must be no horizontal or vertical scrollbar.
+   Restore both native scrolling behaviors as soon as the intro is finished. */
+html.quiz-launch-scroll-lock,
+html.quiz-launch-scroll-lock body {
+  overflow: hidden;
+}
+.quiz-game-launching .quiz-board-viewport {
+  overflow: hidden;
+}
+
 /* Cinematic launch: the light artwork is static, GSAP animates transforms/opacity only. */
 .quiz-start-depart { animation:quiz-start-depart 350ms cubic-bezier(.32,0,.67,0) both; pointer-events:none; }
 @keyframes quiz-start-depart {
