@@ -1,4 +1,5 @@
-import type { CSSProperties } from "react";
+import { useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { gsap } from "gsap";
 import { POINT_VALUES, playerColor, type QuestionResult, type Category } from "@/lib/jeopardy-data";
 
 interface HighlightedQuestion {
@@ -32,6 +33,52 @@ export function Board({
   highlightedQuestion = null,
   isRandomizing = false,
 }: BoardProps) {
+  const magneticTweens = useRef(new WeakMap<HTMLButtonElement, {
+    x: ReturnType<typeof gsap.quickTo>;
+    y: ReturnType<typeof gsap.quickTo>;
+    rx: ReturnType<typeof gsap.quickTo>;
+    ry: ReturnType<typeof gsap.quickTo>;
+  }>());
+
+  const onMagneticMove = (event: ReactPointerEvent<HTMLButtonElement>, done: boolean) => {
+    if (done || isRandomizing ||
+        event.currentTarget.closest(".quiz-game-launching") ||
+        !window.matchMedia("(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)").matches) return;
+
+    const button = event.currentTarget;
+    const rect = button.getBoundingClientRect();
+    const dx = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+    const dy = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+
+    let setters = magneticTweens.current.get(button);
+    if (!setters) {
+      setters = {
+        x: gsap.quickTo(button, "x", { duration: 0.28, ease: "power2.out" }),
+        y: gsap.quickTo(button, "y", { duration: 0.28, ease: "power2.out" }),
+        rx: gsap.quickTo(button, "rotationX", { duration: 0.30, ease: "power2.out" }),
+        ry: gsap.quickTo(button, "rotationY", { duration: 0.30, ease: "power2.out" }),
+      };
+      magneticTweens.current.set(button, setters);
+    }
+    button.style.willChange = "transform";
+    button.style.setProperty("--magnet-light-x", `${(dx + 1) * 50}%`);
+    button.style.setProperty("--magnet-light-y", `${(dy + 1) * 50}%`);
+    setters.x(dx * 3);
+    setters.y(dy * 2 - 2);
+    setters.rx(-dy * 2.1);
+    setters.ry(dx * 2.1);
+  };
+
+  const resetMagnet = (button: HTMLButtonElement) => {
+    if (!magneticTweens.current.has(button)) return;
+    gsap.to(button, {
+      x: 0, y: 0, rotationX: 0, rotationY: 0,
+      duration: 0.40, ease: "power3.out", overwrite: "auto",
+      onComplete: () => { button.style.willChange = ""; },
+    });
+  };
+
   const cols = categories.length;
 
   const manyCategories = cols >= 8;
@@ -148,6 +195,8 @@ export function Board({
                 !isRandomizing &&
                 onSelect(cIdx, qIdx)
               }
+              onPointerMove={(event) => onMagneticMove(event, done)}
+              onPointerLeave={(event) => resetMagnet(event.currentTarget)}
               disabled={isRandomizing}
               data-quiz-cell={`${cIdx}-${qIdx}`}
               data-opening={selected?.category === cIdx && selected.question === qIdx || undefined}
@@ -215,6 +264,8 @@ export function Board({
                 }
               `}
             >
+              {/* The cursor reacts locally; the page background is never animated. */}
+              {!done && !isRandomizing && <span aria-hidden="true" className="quiz-magnetic-reflection" />}
               {/* oberer Lichtreflex */}
               {!done && (
                 <div
