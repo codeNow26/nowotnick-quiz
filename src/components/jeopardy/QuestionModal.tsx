@@ -1,5 +1,6 @@
 import { QuestionVideo } from "./QuestionVideo";
 import { QuestionAtmosphere } from "./QuestionAtmosphere";
+import { AnswerRevealText } from "./AnswerRevealText";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -362,7 +363,8 @@ function QuestionModalContent({
     >
       <DialogContent
         motion="question"
-        data-high-stakes={highStakes && !review || undefined}
+        data-high-stakes={(highStakes && !review) || undefined}
+        data-answer-reveal={(revealed && !review && !isOrderQuestion) || undefined}
         style={{
           "--tile-x": `${Math.max(-160, Math.min(160, origin.x * 0.48))}px`,
           "--tile-y": `${Math.max(-120, Math.min(120, origin.y * 0.42))}px`,
@@ -558,6 +560,8 @@ function QuestionModalContent({
                     const wrong = revealed && chosen && !correct;
                     return (
                       <button key={index} type="button"
+                        data-grand-result={revealed ? (correct ? "correct" : "other") : undefined}
+                        data-grand-gold={(revealed && highStakes && correct) || undefined}
                         aria-pressed={chosen}
                         aria-label={`Antwort ${"ABCD"[index]}: ${option}`}
                         disabled={selectedChoice !== null || revealed}
@@ -745,33 +749,15 @@ function QuestionModalContent({
             <div className="relative z-10 w-full max-w-2xl">
               {renderQuestionImage()}
               {open && question.videoUrl && <QuestionVideo key={question.videoUrl} src={question.videoUrl} />}
-              <p
-                key={revealed ? "answer" : "question"}
-                className={`
-                  relative z-10
-                  font-sans font-bold
-                  leading-snug
-                  whitespace-pre-line
-                  max-w-2xl
-                  ${!revealed ? "quiz-question-ink" : "animate-in fade-in zoom-in-95 duration-300"}
-                  ${
-                    revealed
-                      ? "text-2xl md:text-4xl text-foreground"
-                      : "text-2xl md:text-4xl text-foreground"
-                  }
-                `}
-                style={{
-                  textShadow:
-                    "0 3px 30px rgba(0,0,0,0.35)",
-                }}
-              >
-                {revealed
-                  ? question.answer
-                  : question.question.replace(
-                      /\s+(?=[A-D](?::|\.{1,2}|\)))/g,
-                      "\n"
-                    )}
-              </p>
+              <AnswerRevealText
+                question={question.question.replace(
+                  /\s+(?=[A-D](?::|\.{1,2}|\)))/g,
+                  "\n"
+                )}
+                answer={question.answer}
+                revealed={revealed}
+                highStakes={highStakes}
+              />
               {!revealed && isHintQuestion && revealedHintCount > 0 && (
                 <div className="mt-6 space-y-2">
                   {availableHints.slice(0, revealedHintCount).map((hint, index) => (
