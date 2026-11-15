@@ -343,24 +343,37 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 }
 .quiz-color-gem::after { content:""; position:absolute; top:15%; left:22%; width:30%; height:13%; border-radius:50%; background:rgba(255,255,255,.65); transform:rotate(-32deg); pointer-events:none; }
 
-/* 220ms departure + 650ms arrival. Only opacity/transform are animated. */
-.quiz-start-depart { animation:quiz-start-depart 220ms ease-in both; pointer-events:none; }
-@keyframes quiz-start-depart { to {opacity:0;transform:scale(.97) translateY(5px);} }
-.quiz-game-enter { position:relative; isolation:isolate; animation:quiz-field-arrive 420ms cubic-bezier(.16,1,.3,1) both; }
-.quiz-game-enter::before {
-  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background:radial-gradient(ellipse 48% 42% at 50% 42%,rgba(137,94,241,.20),rgba(83,130,224,.10) 40%,transparent 72%);
-  animation:quiz-launch-light 600ms ease-out both;
+/* Cinematic launch: the light artwork is static, GSAP animates transforms/opacity only. */
+.quiz-start-depart { animation:quiz-start-depart 350ms cubic-bezier(.32,0,.67,0) both; pointer-events:none; }
+@keyframes quiz-start-depart {
+  0% { opacity:1; transform:scale(1) translateY(0); }
+  43% { opacity:1; transform:scale(1.012) translateY(-3px); }
+  100% { opacity:0; transform:scale(.92) translateY(18px); }
 }
-.quiz-game-enter .quiz-player-card,
-.quiz-game-enter .quiz-category-card,
-.quiz-game-enter .quiz-question-card {
-  animation:quiz-tile-arrive 230ms cubic-bezier(.16,1,.3,1) var(--entry-delay,0ms) both;
+.quiz-intro-fx {
+  position:fixed; inset:0; z-index:40; pointer-events:none; overflow:hidden;
 }
-@keyframes quiz-field-arrive { from {opacity:0;transform:scale(.985);} to {opacity:1;transform:none;} }
-@keyframes quiz-tile-arrive { from {opacity:0;transform:translateY(9px) scale(.98);} to {opacity:1;transform:none;} }
-@keyframes quiz-launch-light { 0% {opacity:0;transform:scale(.55);} 28% {opacity:1;} 100% {opacity:0;transform:scale(1.15);} }
-@media(prefers-reduced-motion:reduce) {
-  .quiz-start-depart, .quiz-game-enter, .quiz-game-enter .quiz-player-card, .quiz-game-enter .quiz-category-card, .quiz-game-enter .quiz-question-card {animation:none;}
-  .quiz-game-enter::before {display:none;animation:none;}
+.quiz-intro-halo, .quiz-intro-ring {
+  position:absolute; top:43%; left:50%; width:70vmin; height:70vmin;
+  border-radius:50%; will-change:transform,opacity;
+}
+.quiz-intro-halo {
+  background:radial-gradient(circle,rgba(221,209,255,.72) 0%,rgba(155,114,255,.47) 15%,rgba(86,114,240,.20) 39%,transparent 70%);
+  mix-blend-mode:screen;
+}
+.quiz-intro-ring {
+  width:57vmin; height:57vmin;
+  border:1px solid rgba(199,184,255,.72);
+  box-shadow:0 0 22px rgba(165,143,255,.28),inset 0 0 24px rgba(98,143,255,.18);
+}
+.quiz-intro-sweep {
+  position:absolute; top:52%; left:0; width:100%; height:2px;
+  background:linear-gradient(90deg,transparent 6%,rgba(121,155,255,.10) 29%,rgba(238,232,255,.92) 50%,rgba(151,119,255,.16) 72%,transparent 94%);
+  box-shadow:0 0 18px rgba(167,140,255,.4);
+  transform:rotate(-7deg);
+  will-change:transform,opacity;
+}
+@media (prefers-reduced-motion:reduce) {
+  .quiz-start-depart { animation:none; }
+  .quiz-intro-fx { display:none; }
 }
