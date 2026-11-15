@@ -54,20 +54,19 @@ export function Board({
     let setters = magneticTweens.current.get(button);
     if (!setters) {
       setters = {
-        x: gsap.quickTo(button, "x", { duration: 0.28, ease: "power2.out" }),
-        y: gsap.quickTo(button, "y", { duration: 0.28, ease: "power2.out" }),
-        rx: gsap.quickTo(button, "rotationX", { duration: 0.30, ease: "power2.out" }),
-        ry: gsap.quickTo(button, "rotationY", { duration: 0.30, ease: "power2.out" }),
+        x: gsap.quickTo(button, "x", { duration: 0.46, ease: "power3.out" }),
+        y: gsap.quickTo(button, "y", { duration: 0.46, ease: "power3.out" }),
+        rx: gsap.quickTo(button, "rotationX", { duration: 0.54, ease: "power3.out" }),
+        ry: gsap.quickTo(button, "rotationY", { duration: 0.54, ease: "power3.out" }),
       };
       magneticTweens.current.set(button, setters);
     }
-    button.style.willChange = "transform";
     button.style.setProperty("--magnet-light-x", `${(dx + 1) * 50}%`);
     button.style.setProperty("--magnet-light-y", `${(dy + 1) * 50}%`);
-    setters.x(dx * 3);
-    setters.y(dy * 2 - 2);
-    setters.rx(-dy * 2.1);
-    setters.ry(dx * 2.1);
+    setters.x(dx * 1.7);
+    setters.y(dy * 1.5 - 1.5);
+    setters.rx(-dy * 1.25);
+    setters.ry(dx * 1.25);
   };
 
   const resetMagnet = (button: HTMLButtonElement) => {
@@ -214,7 +213,7 @@ export function Board({
                 rounded-2xl
                 border
                 font-display
-                transition-all
+                transition-colors
                 duration-200
                 ease-out
 
@@ -257,10 +256,6 @@ export function Board({
                           text-foreground
                           shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]
                           hover:z-10
-                          hover:border-primary/45
-                          hover:from-primary/20
-                          hover:via-primary/15
-                          hover:to-primary/25
                         `
                 }
               `}
@@ -281,28 +276,6 @@ export function Board({
                     transition-opacity
                     duration-200
                     group-hover:opacity-100
-                  "
-                />
-              )}
-
-              {!done && !isRandomizing && <span aria-hidden="true" className="quiz-card-edge" />}
-
-              {/* Hover-Glow */}
-              {!done && !highlighted && (
-                <div
-                  className="
-                    absolute
-                    left-1/2 top-1/2
-                    h-20 w-32
-                    -translate-x-1/2
-                    -translate-y-1/2
-                    rounded-full
-                    bg-primary/0
-                    blur-2xl
-                    transition-all
-                    duration-300
-                    group-hover:bg-primary/20
-                    pointer-events-none
                   "
                 />
               )}
@@ -341,8 +314,9 @@ export function Board({
                   relative z-10 ${!done && !highlighted ? "quiz-point-value" : ""}
                   text-xl sm:text-2xl md:text-[2rem]
                   tracking-tight
-                  transition-all
-                  duration-200
+                  transition-[color,transform]
+                  duration-500
+                  ease-out
 
                   ${
                     highlighted
@@ -357,7 +331,7 @@ export function Board({
                           text-foreground
                           drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]
                           group-hover:text-white
-                          group-hover:scale-105
+                          group-hover:scale-[1.025]
                         `
                   }
                 `}

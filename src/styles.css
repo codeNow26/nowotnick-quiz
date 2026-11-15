@@ -197,19 +197,22 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 .quiz-player-card { background-color: #171039; }
 .quiz-category-card, .quiz-question-card, .quiz-player-card { background-clip: padding-box; }
 
-/* One-pass border glint only on an actionable hovered/focused card. */
-.quiz-card-active { transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease; }
-.quiz-card-edge { position:absolute; inset:0; padding:1px; border-radius:inherit; pointer-events:none; overflow:hidden; opacity:0;
-  mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite:exclude; }
-.quiz-card-edge::before { content:""; position:absolute; inset:-100%; background:linear-gradient(110deg,transparent 35%,rgba(212,202,255,.48) 50%,transparent 65%); transform:translateX(-60%); }
+/* Only a slow opacity- and shadow-led hover. The card background is identical
+   at rest and on hover, so no gradient is ever snapped in a single frame. */
+.quiz-card-active {
+  transition:border-color 520ms cubic-bezier(.2,.75,.2,1),
+    box-shadow 650ms cubic-bezier(.2,.75,.2,1);
+}
 @media (hover:hover) and (pointer:fine) {
-  .quiz-card-active:not(:disabled):hover { transform:translateY(-3px); border-color:rgb(163 153 250 / .46); box-shadow:-3px 6px 22px -11px rgb(153 112 244 / .60), 4px 7px 24px -12px rgb(103 168 245 / .48); }
-  .quiz-card-active:not(:disabled):hover .quiz-card-edge { opacity:1; }
-  .quiz-card-active:not(:disabled):hover .quiz-card-edge::before { animation:card-glint 850ms ease-out both; }
+  .quiz-card-active:not(:disabled):hover {
+    border-color:rgba(173,161,255,.18);
+    box-shadow:0 12px 35px -21px rgba(109,88,235,.42),
+      0 9px 28px -22px rgba(95,173,247,.30),
+      inset 0 1px 0 rgba(234,224,255,.055);
+  }
 }
 .quiz-card-active:focus-visible { outline:2px solid #b6a4ed; outline-offset:3px; }
-.quiz-card-active:not(:disabled):active { transform:scale(.99); }
-@keyframes card-glint { to { transform:translateX(60%); } }
+.quiz-card-active:not(:disabled):active { filter:brightness(.96); }
 /* Radix owns mounting/unmounting: CSS animations always start when the
    portal opens. No dependency on a ref that may not exist on the first frame. */
 .question-dialog[data-state="open"] {
@@ -273,7 +276,6 @@ body:has([role="dialog"][data-state="open"]) .ambient-stars {visibility:hidden;}
 @media(prefers-reduced-motion:reduce) {
   .quiz-card-active { transition:none; }
   .quiz-card-active:not(:disabled):hover, .quiz-card-active:not(:disabled):active { transform:none; }
-  .quiz-card-edge { display:none; }
   .question-dialog[data-state], .question-overlay[data-state],
   .question-dialog[data-state="open"]::before,
   .question-dialog[data-state="open"] .question-dialog-header,
@@ -628,15 +630,18 @@ html.quiz-launch-scroll-lock body {
   .quiz-selection-track .quiz-selection {transition:none;}
 }
 
-/* 9. A restrained reflection follows the pointer without changing layout. */
+/* 9. The pointer brings up a soft, borderless pool of light. */
 .quiz-magnetic-reflection {
   position:absolute; inset:0; z-index:1; pointer-events:none; opacity:0;
   border-radius:inherit;
-  background:radial-gradient(circle 95px at var(--magnet-light-x,50%) var(--magnet-light-y,50%),rgba(214,204,255,.19),rgba(130,156,255,.055) 48%,transparent 83%);
-  transition:opacity 200ms ease;
+  background:radial-gradient(ellipse 62% 62% at var(--magnet-light-x,50%) var(--magnet-light-y,50%),
+    rgba(198,188,255,.14) 0%,
+    rgba(129,157,255,.065) 42%,
+    rgba(115,130,223,.018) 68%,transparent 87%);
+  transition:opacity 570ms cubic-bezier(.2,.72,.2,1);
 }
 @media (hover:hover) and (pointer:fine) {
-  .quiz-question-card.quiz-card-active:hover .quiz-magnetic-reflection { opacity:1; }
+  .quiz-question-card.quiz-card-active:hover .quiz-magnetic-reflection { opacity:.78; }
 }
 
 /* 6. Fragetext reveals outwards from the central light, not letter by letter. */
@@ -659,19 +664,23 @@ html.quiz-launch-scroll-lock body {
   will-change:opacity;
 }
 
-/* 12. Highest value questions get a restrained one-shot gold-violet rim. */
+/* 12. High-value questions receive a diffuse top glow, never a solid
+   rectangular border that can linger around the opened answer. */
 .question-dialog[data-high-stakes="true"][data-state="open"]::after {
-  content:""; position:absolute; inset:1px; z-index:7;
-  border:2px solid rgba(236,195,119,.65); border-radius:inherit;
-  pointer-events:none;
-  box-shadow:inset 0 0 18px rgba(195,153,255,.22),inset 0 0 30px rgba(236,195,119,.12);
-  animation:quiz-high-stakes-entrance 1150ms cubic-bezier(.16,1,.3,1) both;
+  content:""; position:absolute; inset:0; z-index:7;
+  border:0; border-radius:inherit; pointer-events:none;
+  box-shadow:none;
+  background:radial-gradient(ellipse 45% 18% at 50% 0%,rgba(244,204,138,.24) 0%,
+    rgba(159,120,213,.08) 47%,transparent 88%);
+  animation:quiz-high-stakes-entrance 1050ms ease-out both;
+}
+.question-dialog[data-high-stakes="true"][data-answer-reveal="true"]::after {
+  display:none;
 }
 @keyframes quiz-high-stakes-entrance {
-  0% {opacity:0;transform:scale(.95);}
-  32% {opacity:.92;transform:scale(1);}
-  72% {opacity:.45;}
-  100% {opacity:0;transform:scale(1);}
+  0% {opacity:0;}
+  36% {opacity:1;}
+  100% {opacity:0;visibility:hidden;}
 }
 
 @media (prefers-reduced-motion:reduce) {
@@ -709,50 +718,27 @@ html.quiz-launch-scroll-lock body {
 }
 .quiz-grand-answer-stage[data-revealed="true"] .quiz-grand-answer-result {
   animation:quiz-grand-answer-arrive 520ms cubic-bezier(.16,1,.3,1) 420ms both;
-  text-shadow:0 2px 26px rgba(139,117,244,.25);
+  text-shadow:0 0 12px rgba(139,117,244,.13);
 }
 @keyframes quiz-grand-answer-arrive {
-  0% {opacity:0;transform:translateY(18px) scale(.93);clip-path:inset(0 48% 0 48%);filter:blur(5px);}
-  45% {opacity:1;clip-path:inset(0 5% 0 5%);filter:blur(1px);}
-  82% {opacity:1;transform:translateY(-2px) scale(1.018);clip-path:inset(0);filter:blur(0);}
-  100% {opacity:1;transform:translateY(0) scale(1);clip-path:inset(0);filter:blur(0);}
+  0% {opacity:0;transform:translateY(18px) scale(.93);clip-path:inset(0 48% 0 48%);filter:blur(3px);text-shadow:0 0 0 transparent;}
+  45% {opacity:1;clip-path:inset(0 5% 0 5%);filter:blur(1px);text-shadow:0 0 24px rgba(162,143,255,.36);}
+  82% {opacity:1;transform:translateY(-2px) scale(1.018);clip-path:inset(0);filter:blur(0);text-shadow:0 0 17px rgba(139,117,244,.20);}
+  100% {opacity:1;transform:translateY(0) scale(1);clip-path:inset(0);filter:blur(0);text-shadow:0 0 12px rgba(139,117,244,.12);}
 }
-.quiz-grand-answer-bloom {
-  position:absolute;
-  width:min(100%,32rem);
-  height:min(100%,13rem);
-  min-height:5.5rem;
-  top:50%;left:50%;
-  z-index:1;
-  pointer-events:none;
-  border-radius:50%;
-  background:radial-gradient(ellipse at center,rgba(177,139,255,.38) 0%,rgba(121,100,237,.17) 42%,transparent 78%);
-  animation:quiz-grand-answer-light 850ms cubic-bezier(.16,1,.3,1) 190ms both;
-}
-@keyframes quiz-grand-answer-light {
-  0% {opacity:0;transform:translate(-50%,-50%) scale(.42);}
-  33% {opacity:1;transform:translate(-50%,-50%) scale(.96);}
-  65% {opacity:.65;transform:translate(-50%,-50%) scale(1.13);}
-  100% {opacity:0;transform:translate(-50%,-50%) scale(1.20);}
-}
-
 /* High stakes: champagne-gold replaces violet ONLY during the answer reveal.
    The original purple question opening and ordinary answers remain unchanged. */
-.quiz-grand-answer-stage[data-high-stakes="true"] .quiz-grand-answer-bloom {
-  background:radial-gradient(ellipse at center,rgba(244,198,120,.42) 0%,rgba(194,140,239,.24) 42%,transparent 80%);
-  animation-duration:1180ms;
-}
 .quiz-grand-answer-stage[data-high-stakes="true"] .quiz-grand-answer-result {
   animation-name:quiz-grand-answer-gold;
   animation-duration:710ms;
   animation-delay:460ms;
-  text-shadow:0 0 26px rgba(232,195,135,.36);
+  text-shadow:0 0 18px rgba(232,195,135,.16);
 }
 @keyframes quiz-grand-answer-gold {
-  0% {opacity:0;transform:translateY(20px) scale(.92);clip-path:inset(0 48% 0 48%);filter:blur(5px);}
-  50% {opacity:1;clip-path:inset(0 4% 0 4%);filter:blur(1px);}
-  80% {opacity:1;transform:translateY(-3px) scale(1.016);clip-path:inset(0);filter:blur(0);}
-  100% {opacity:1;transform:translateY(0) scale(1);clip-path:inset(0);filter:blur(0);}
+  0% {opacity:0;transform:translateY(16px) scale(.94);clip-path:inset(0 42% 0 42%);filter:blur(2px);text-shadow:0 0 0 transparent;}
+  50% {opacity:1;clip-path:inset(0 3% 0 3%);filter:blur(0);text-shadow:0 0 26px rgba(246,214,158,.46);}
+  80% {opacity:1;transform:translateY(-3px) scale(1.016);clip-path:inset(0);filter:blur(0);text-shadow:0 0 17px rgba(232,195,135,.23);}
+  100% {opacity:1;transform:translateY(0) scale(1);clip-path:inset(0);filter:blur(0);text-shadow:0 0 12px rgba(232,195,135,.13);}
 }
 
 /* Multiple choice stays on the same board: dim the non-solutions, then
@@ -796,7 +782,6 @@ html.quiz-launch-scroll-lock body {
 @media (prefers-reduced-motion:reduce) {
   .quiz-grand-answer-stage[data-revealed="true"] .quiz-grand-answer-question {display:none;animation:none;}
   .quiz-grand-answer-stage[data-revealed="true"] .quiz-grand-answer-result {animation:none;opacity:1;filter:none;transform:none;clip-path:none;}
-  .quiz-grand-answer-bloom {display:none;animation:none;}
   .quiz-choice[data-grand-result="correct"],
   .quiz-choice[data-grand-gold="true"],
   .quiz-choice[data-grand-result="correct"] svg {animation:none;}
