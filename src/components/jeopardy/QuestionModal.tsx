@@ -87,7 +87,7 @@ function QuestionModalContent({
   const [draggedIndex, setDraggedIndex] =
     useState<number | null>(null);
   const [imageExpanded, setImageExpanded] =
-    useState(false);
+    useState<"question" | "answer" | null>(null);
   const [revealedHintCount, setRevealedHintCount] =
     useState(0);
   useEffect(() => {
@@ -101,7 +101,7 @@ function QuestionModalContent({
       lockedChoiceRef.current = null;
       resolvedRef.current = false;
       setDraggedIndex(null);
-      setImageExpanded(false);
+      setImageExpanded(null);
       setRevealedHintCount(0);
       if (
         question?.type === "order" &&
@@ -138,7 +138,7 @@ function QuestionModalContent({
     }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setImageExpanded(false);
+        setImageExpanded(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -223,7 +223,7 @@ function QuestionModalContent({
       <div className="mb-6">
         <button
           type="button"
-          onClick={() => setImageExpanded(true)}
+          onClick={() => setImageExpanded("question")}
           className="group relative mx-auto block max-w-full cursor-zoom-in"
           title="Bild vergrößern"
         >
@@ -278,9 +278,37 @@ function QuestionModalContent({
       </div>
     );
   };
+  const renderAnswerImage = () => {
+    const src = question.answerImageUrl?.trim();
+    if (!src) return null;
+    return (
+      <div className={`quiz-answer-image mx-auto mt-5 w-full text-center ${review ? "" : "quiz-answer-image-reveal"}`}>
+        <button
+          type="button"
+          onClick={() => setImageExpanded("answer")}
+          title="Antwortbild vergrößern"
+          aria-label="Antwortbild vergrößern"
+          className="group relative mx-auto block max-w-full rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <img
+            src={src}
+            alt="Bild zur Antwort"
+            loading="eager"
+            referrerPolicy="no-referrer"
+            className="mx-auto max-h-44 w-auto max-w-full rounded-xl border border-white/[0.08] object-contain md:max-h-52"
+            onError={event => { const button = event.currentTarget.parentElement; if(button) button.style.display = "none"; }}
+          />
+          <span className="pointer-events-none absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-black/45 text-white/75 opacity-65 transition-opacity duration-200 group-hover:opacity-100">
+            <Maximize2 className="h-3.5 w-3.5" />
+          </span>
+        </button>
+      </div>
+    );
+  };
+  const expandedImageUrl = imageExpanded === "answer" ? question.answerImageUrl : question.imageUrl;
   const imageOverlay =
     imageExpanded &&
-    question.imageUrl?.trim() &&
+    expandedImageUrl?.trim() &&
     typeof document !== "undefined"
       ? createPortal(
           <div
@@ -294,14 +322,14 @@ function QuestionModalContent({
               pointer-events-auto
             "
             onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => setImageExpanded(false)}
+            onClick={() => setImageExpanded(null)}
           >
             <button
               type="button"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
                 event.stopPropagation();
-                setImageExpanded(false);
+                setImageExpanded(null);
               }}
               className="
                 fixed top-4 right-4
@@ -324,9 +352,9 @@ function QuestionModalContent({
               role="button"
               tabIndex={0}
               aria-label="Vergrößertes Bild schließen"
-              onKeyDown={event => { if(event.key === 'Enter' || event.key === ' ') {event.preventDefault();setImageExpanded(false);} }}
-              src={question.imageUrl}
-              alt="Fragenbild vergrößert"
+              onKeyDown={event => { if(event.key === 'Enter' || event.key === ' ') {event.preventDefault();setImageExpanded(null);} }}
+              src={expandedImageUrl}
+              alt={imageExpanded === "answer" ? "Antwortbild vergrößert" : "Fragenbild vergrößert"}
               referrerPolicy="no-referrer"
               className="
                 max-h-[92vh]
@@ -340,7 +368,7 @@ function QuestionModalContent({
               "
               onClick={(event) => {
                 event.stopPropagation();
-                setImageExpanded(false);
+                setImageExpanded(null);
               }}
             />
           </div>,
@@ -353,7 +381,7 @@ function QuestionModalContent({
       open={open}
       onOpenChange={(o) => {
         if (!o && imageExpanded) {
-          setImageExpanded(false);
+          setImageExpanded(null);
           return;
         }
         if (!o) {
@@ -375,7 +403,7 @@ function QuestionModalContent({
         onEscapeKeyDown={(event) => {
           if (imageExpanded) {
             event.preventDefault();
-            setImageExpanded(false);
+            setImageExpanded(null);
           }
         }}
         onPointerDownOutside={(event) => {
@@ -542,6 +570,7 @@ function QuestionModalContent({
                   <p className="whitespace-pre-wrap break-words text-xl md:text-3xl">{question.type === "order" ? question.orderItems?.join(" → ") : question.answer}</p>
                 </section>
               )}
+              {renderAnswerImage()}
             </div>
           ) : isChoiceQuestion ? (
             <div className="relative z-10 w-full max-w-2xl space-y-6">
@@ -590,6 +619,7 @@ function QuestionModalContent({
                   : selectedChoice !== null ? `Antwort ${"ABCD"[selectedChoice]} ist eingeloggt.`
                   : "Klicke auf eine Antwort, um sie verbindlich einzuloggen."}
               </p>
+              {revealed && renderAnswerImage()}
             </div>
           ) : isOrderQuestion ? (
             <div
@@ -744,6 +774,7 @@ function QuestionModalContent({
                   </div>
                 </div>
               )}
+              {revealed && renderAnswerImage()}
             </div>
           ) : (
             <div className="relative z-10 w-full max-w-2xl">
@@ -758,6 +789,7 @@ function QuestionModalContent({
                 revealed={revealed}
                 highStakes={highStakes}
               />
+              {revealed && renderAnswerImage()}
               {!revealed && isHintQuestion && revealedHintCount > 0 && (
                 <div className="mt-6 space-y-2">
                   {availableHints.slice(0, revealedHintCount).map((hint, index) => (

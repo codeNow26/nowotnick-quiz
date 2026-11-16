@@ -783,3 +783,17 @@ html.quiz-launch-scroll-lock body {
   .quiz-choice[data-grand-result="correct"] svg {animation:none;}
   .quiz-choice[data-grand-result="other"] {animation:none;opacity:.52;}
 }
+
+
+/* Optional solution image. It joins the already-revealed answer without a
+   second glow, card shell or conspicuous border animation. */
+.quiz-answer-image-reveal {
+  animation:quiz-answer-image-enter 600ms cubic-bezier(.16,1,.3,1) 360ms both;
+}
+@keyframes quiz-answer-image-enter {
+  from { opacity:0; transform:translateY(9px) scale(.985); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .quiz-answer-image-reveal { animation:none; }
+}

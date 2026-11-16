@@ -1,4 +1,5 @@
 import { QuestionVideoEditor } from "./QuestionVideoEditor";
+import { AnswerImageEditor } from "./AnswerImageEditor";
 import { useEffect, useRef, useState, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,10 +106,10 @@ export function Editor({
       reader.readAsDataURL(file);
     });
   };
-  const handleImageUpload = async (qIdx: number, file: File | undefined) => {
+  const handleImageUpload = async (qIdx: number, file: File | undefined, field: "imageUrl" | "answerImageUrl" = "imageUrl") => {
     if (!file) return;
     const categoryIndex = activeCat;
-    const key = `${categoryIndex}-${qIdx}`;
+    const key = `${categoryIndex}-${qIdx}${field === "answerImageUrl" ? ":answer" : ""}`;
     const generation=(imageGeneration.current[key]??0)+1;imageGeneration.current[key]=generation;
     setProcessingImages((prev) => ({
       ...prev,
@@ -118,7 +119,7 @@ export function Editor({
       const imageDataUrl = await fileToOptimizedDataUrl(file);
       await autosave.prepareImage(imageDataUrl);
       if(imageGeneration.current[key]!==generation)return;
-      setDraft(prev=>prev.map((c,i)=>i===categoryIndex ? {...c,questions:c.questions.map((q,j)=>j===qIdx?{...q,imageUrl:imageDataUrl}:q)}:c));
+      setDraft(prev=>prev.map((c,i)=>i===categoryIndex ? {...c,questions:c.questions.map((q,j)=>j===qIdx?{...q,[field]:imageDataUrl}:q)}:c));
     } catch (error) {
       alert(error instanceof Error ? error.message : "Bild konnte nicht hochgeladen werden.");
     } finally {
@@ -140,9 +141,9 @@ export function Editor({
       )
     );
   };
-  const updateQ = (qIdx: number, field: "question" | "answer" | "imageUrl", value: string) => {
-    if(field==='imageUrl') {
-      const key=`${activeCat}-${qIdx}`;imageGeneration.current[key]=(imageGeneration.current[key]??0)+1;
+  const updateQ = (qIdx: number, field: "question" | "answer" | "imageUrl" | "answerImageUrl", value: string) => {
+    if(field==='imageUrl' || field==='answerImageUrl') {
+      const key=`${activeCat}-${qIdx}${field === "answerImageUrl" ? ":answer" : ""}`;imageGeneration.current[key]=(imageGeneration.current[key]??0)+1;
       setProcessingImages(prev=>({...prev,[key]:false}));
     }
     updateQuestion(qIdx, (q) => ({ ...q, [field]: value }));
@@ -382,6 +383,7 @@ export function Editor({
             const videoProcessing = Boolean(processingVideos[imageEditorKey]);
             const isUploadedImage = q.imageUrl?.startsWith("data:image/") ?? false;
             const imageProcessing = Boolean(processingImages[imageEditorKey]);
+            const answerImageProcessing = Boolean(processingImages[`${imageEditorKey}:answer`]);
             return (
               <div key={qIdx} className="glass rounded-2xl p-4 space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
@@ -732,6 +734,13 @@ export function Editor({
                     </div>
                   </div>
                 )}
+                <AnswerImageEditor
+                  key={`answer-media-${source.id}-${activeCat}-${qIdx}`}
+                  value={q.answerImageUrl}
+                  busy={answerImageProcessing}
+                  onChange={url => updateQ(qIdx, "answerImageUrl", url)}
+                  onUpload={file => { void handleImageUpload(qIdx, file, "answerImageUrl"); }}
+                />
               </div>
             );
           })}
