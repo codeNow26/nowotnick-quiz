@@ -158,6 +158,12 @@ export function Editor({
   const updateQValue = (qIdx: number, value: number | undefined) => {
     updateQuestion(qIdx, (q) => ({ ...q, value }));
   };
+  const adjustQValue = (qIdx: number, delta: -100 | -10 | 10 | 100) => {
+    updateQuestion(qIdx, q => ({
+      ...q,
+      value: Math.max(0, (q.value ?? POINT_VALUES[qIdx]) + delta),
+    }));
+  };
   const setQuestionType = (qIdx: number, type: NonNullable<Question["type"]>) => {
     updateQuestion(qIdx, (q) => {
       if (type === "choice") {
@@ -434,18 +440,46 @@ export function Editor({
                   <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
                     Punkte
                   </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={q.value ?? POINT_VALUES[qIdx]}
-                    onChange={(e) =>
-                      updateQValue(
-                        qIdx,
-                        e.target.value === "" ? undefined : Number(e.target.value)
-                      )
-                    }
-                    className="quiz-number-input glass border-white/10 text-foreground font-display text-lg h-11 rounded-xl w-28"
-                  />
+                  <div className="inline-flex max-w-full items-center gap-1 rounded-xl border border-white/[0.10] bg-black/[0.13] p-1">
+                    {([-100, -10] as const).map(delta => (
+                      <button
+                        key={delta}
+                        type="button"
+                        disabled={(q.value ?? POINT_VALUES[qIdx]) + delta < 0}
+                        onClick={() => adjustQValue(qIdx, delta)}
+                        aria-label={`${Math.abs(delta)} Punkte abziehen`}
+                        title={`${Math.abs(delta)} Punkte abziehen`}
+                        className="flex h-9 min-w-[42px] items-center justify-center rounded-lg px-1.5 text-xs font-semibold tabular-nums text-foreground/65 transition-[background-color,color,transform] duration-200 hover:bg-white/[0.08] hover:text-foreground active:scale-95 disabled:cursor-not-allowed disabled:opacity-25 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
+                      >
+                        {delta}
+                      </button>
+                    ))}
+                    <Input
+                      aria-label="Punktwert"
+                      type="number"
+                      min={0}
+                      value={q.value ?? POINT_VALUES[qIdx]}
+                      onChange={(e) =>
+                        updateQValue(
+                          qIdx,
+                          e.target.value === "" ? undefined : Number(e.target.value)
+                        )
+                      }
+                      className="quiz-number-input h-9 w-[74px] shrink-0 rounded-lg border-white/[0.12] bg-white/[0.09] px-1 text-center font-display text-base tabular-nums text-foreground md:w-[84px]"
+                    />
+                    {([10, 100] as const).map(delta => (
+                      <button
+                        key={delta}
+                        type="button"
+                        onClick={() => adjustQValue(qIdx, delta)}
+                        aria-label={`${delta} Punkte hinzufügen`}
+                        title={`${delta} Punkte hinzufügen`}
+                        className="flex h-9 min-w-[42px] items-center justify-center rounded-lg px-1.5 text-xs font-semibold tabular-nums text-foreground/65 transition-[background-color,color,transform] duration-200 hover:bg-white/[0.08] hover:text-foreground active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
+                      >
+                        +{delta}
+                      </button>
+                    ))}
+                  </div>
                   <div className="ml-auto flex flex-wrap rounded-xl border border-white/10 bg-white/[0.03] p-1">
                     <button
                       type="button"
