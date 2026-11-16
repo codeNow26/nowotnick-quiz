@@ -456,7 +456,7 @@ export function Editor({
             onDrop={event => {
               event.preventDefault();
               const source = event.dataTransfer.getData("text/plain");
-              const match = /^category:(\\d+)$/.exec(source);
+              const match = /^category:(\d+)$/.exec(source);
               if (match) moveCategory(Number(match[1]), i);
               setDraggedCategory(null);
               setOverCategory(null);
@@ -604,7 +604,7 @@ export function Editor({
                 }}
                 onDrop={event => {
                   event.preventDefault();
-                  const match = /^question:(\\d+)$/.exec(event.dataTransfer.getData("text/plain"));
+                  const match = /^question:(\d+)$/.exec(event.dataTransfer.getData("text/plain"));
                   if (match) moveQuestion(Number(match[1]), qIdx);
                   setDraggedQuestion(null);
                   setOverQuestion(null);
