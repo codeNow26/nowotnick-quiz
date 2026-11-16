@@ -291,6 +291,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const [screen, setScreen] =
     useState<Screen>(editInitially ? "editor" : "start");
   const [testSession, setTestSession] = useState(false);
+  const [lastEditorCategory, setLastEditorCategory] = useState(0);
   const [players, setPlayers] =
     useState<Player[]>([]);
   const [
@@ -485,11 +486,13 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         target={editorTarget}
         categoryCount={activeCategoryCount}
         onCategoryCountChange={setActiveCategoryCount}
+        initialCategory={Math.min(lastEditorCategory, Math.max(0, activeCategoryCount-1))}
         onSaved={applySaved}
         onBack={() =>
           setScreen("start")
         }
-        onTest={(rows) => {
+        onTest={(rows, categoryIndex) => {
+          setLastEditorCategory(categoryIndex);
           const prefs = readPlayerPreferences();
           const count = Math.max(1, Math.min(4, prefs.count));
           const names = prefs.names.slice(0,count).map((name,index) =>
