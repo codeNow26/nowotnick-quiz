@@ -5,6 +5,7 @@ import { gsap } from "gsap";
 import { Link } from "@tanstack/react-router";
 import { CreateQuiz } from "./CreateQuiz";
 import { StartScreen } from "@/components/jeopardy/StartScreen";
+import { FullscreenButton } from "./FullscreenButton";
 import { Board } from "@/components/jeopardy/Board";
 import { useGameStartAnimation } from "./GameStartSequence";
 import { QuestionModal } from "@/components/jeopardy/QuestionModal";
@@ -393,6 +394,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           </span>
         </div>
       )}
+      <FullscreenButton />
     </div>
   );
   useEffect(() => () => {
@@ -502,7 +504,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
             setScreen("game");
           }}
         />
-        <div className="fixed top-4 right-4 flex items-center gap-2 z-50">
+        <div className="fixed top-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap items-center justify-end gap-2">
           <MusicControls />
           <Button
             variant="outline"
@@ -1023,7 +1025,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         )[0]
       : null;
   return (
-    <div ref={gameStageRef} className={`relative isolate min-h-screen p-3 md:p-6 mx-auto ${gameEntering ? "quiz-game-launching" : ""} ${categories.length >= 8 ? "max-w-[1920px]" : "max-w-7xl"}`}>
+    <div ref={gameStageRef} className={`quiz-game-stage relative isolate min-h-screen p-3 md:p-6 mx-auto ${gameEntering ? "quiz-game-launching" : ""} ${categories.length >= 8 ? "quiz-game-stage-wide max-w-[1920px]" : "max-w-7xl"}`}>
       <div ref={ambientEventRef} aria-hidden="true" className="quiz-ambient-event" />
       {showStats && (
         <GameStats
@@ -1043,7 +1045,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       <div className="fixed top-4 right-4 z-50">
         <MusicControls />
       </div>
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6 pr-28">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6 pr-40">
         <h1
           className="quiz-title font-display text-3xl md:text-5xl text-foreground tracking-tight uppercase"
           style={{
