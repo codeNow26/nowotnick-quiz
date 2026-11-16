@@ -328,8 +328,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
 
   useEffect(() => {
     if (screen !== "game" || testSession || loading || !editorSource || players.length === 0) return;
-    const timer = window.setTimeout(() => {
-      const snapshot: SavedGame = {
+    const snapshot: SavedGame = {
         version: 1,
         quizId: editorSource.id,
         quizUpdatedAt: editorSource.updated_at,
@@ -343,9 +342,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       };
       const okay = writeSavedGame(snapshot);
       setGameSaveWarning(!okay);
-      if (okay) setSavedGame(snapshot);
-    }, 140);
-    return () => window.clearTimeout(timer);
+    if (okay) setSavedGame(snapshot);
   }, [
     screen, testSession, loading, editorSource?.id, editorSource?.updated_at,
     players, answered, results, gameStats, activeCategoryCount, questionRows,
@@ -597,7 +594,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           footer={<div className="mt-5 flex flex-wrap justify-center gap-3 text-sm">{!customId && <CreateQuiz />}{customId && <Link to="/" className="rounded-xl border border-white/15 px-4 py-2">Zur Startseite</Link>}<Link to="/verwaltung" className="rounded-xl border border-white/15 px-4 py-2">Quiz-Verwaltung</Link></div>}
           onQuizChange={loadQuiz}
           onStart={(names, count, colors) => launchGame(names, count, colors)}
-          savedGame={savedGame ? {
+          savedGame={savedGame && savedGame.quizId === editorSource?.id &&
+            savedGame.quizUpdatedAt === editorSource?.updated_at ? {
             savedAt: savedGame.savedAt,
             answered: savedGame.answered.flat().filter(Boolean).length,
             total: savedGame.categoryCount * savedGame.questionRows,
