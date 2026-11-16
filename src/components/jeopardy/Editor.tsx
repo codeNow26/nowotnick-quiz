@@ -351,7 +351,11 @@ export function Editor({
       <div className="mb-6 flex flex-wrap items-center gap-2.5">
         <Button type="button" variant="outline" disabled={imagePending || visibleCount >= MAX_CATEGORIES} onClick={() => {
           if(visibleCount >= MAX_CATEGORIES) return;
-          setDraft(v=>ensureCategoryCount(v,visibleCount+1));
+          // Unhide previously stored categories without generating a needless
+          // autosave write. Only create data if this slot truly does not exist.
+          if(draft.length < visibleCount+1) {
+            setDraft(v=>ensureCategoryCount(v,visibleCount+1));
+          }
           onCategoryCountChange?.(visibleCount+1);
           setActiveCat(visibleCount);
         }} className="rounded-xl border-white/15 bg-white/[0.035] text-foreground/85 hover:bg-white/[0.08]">
