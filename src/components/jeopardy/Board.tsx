@@ -1,6 +1,6 @@
 import { useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { gsap } from "gsap";
-import { POINT_VALUES, playerColor, type QuestionResult, type Category } from "@/lib/jeopardy-data";
+import { defaultQuestionValue, playerColor, type QuestionResult, type Category } from "@/lib/jeopardy-data";
 
 interface HighlightedQuestion {
   category: number;
@@ -8,6 +8,7 @@ interface HighlightedQuestion {
 }
 
 interface BoardProps {
+  questionRows: 5 | 6;
   launching: boolean;
   selected?: HighlightedQuestion | null;
   sealing?: HighlightedQuestion | null;
@@ -24,6 +25,7 @@ interface BoardProps {
 }
 
 export function Board({
+  questionRows,
   launching,
   selected,
   sealing = null,
@@ -174,7 +176,7 @@ export function Board({
       ))}
 
       {/* Fragen */}
-      {POINT_VALUES.map((value, qIdx) =>
+      {Array.from({ length: questionRows }, (_, qIdx) => defaultQuestionValue(qIdx)).map((value, qIdx) =>
         categories.map((cat, cIdx) => {
           const done = answered[cIdx][qIdx];
           const result = results[`${cIdx}:${qIdx}`];
