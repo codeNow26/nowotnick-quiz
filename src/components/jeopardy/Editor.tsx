@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Loader2, Minus, Play, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Loader2, Minus, Play, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import { useEditorAutosave } from "@/lib/autosave/use-editor-autosave";
 import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES, type LoadedQuiz, type QuizTarget } from "@/lib/quiz-repository";
 import type { Category, Question } from "@/lib/jeopardy-data";
@@ -63,6 +63,10 @@ export function Editor({
   const saving=manualSaving;
   const showSaveSuccess=saveConfirmed && !autosave.state.dirty && status==='saved';
   const [activeCat, setActiveCat] = useState(initialCategory);
+  const [draggedCategory, setDraggedCategory] = useState<number | null>(null);
+  const [overCategory, setOverCategory] = useState<number | null>(null);
+  const [draggedQuestion, setDraggedQuestion] = useState<number | null>(null);
+  const [overQuestion, setOverQuestion] = useState<number | null>(null);
   const [openImageEditors, setOpenImageEditors] = useState<Record<string, boolean>>({});
   const [processingImages, setProcessingImages] = useState<Record<string, boolean>>({});
   const imageGeneration=useRef<Record<string,number>>({});
@@ -151,6 +155,54 @@ export function Editor({
   };
   const updateCatName = (name: string) => {
     setDraft((prev) => prev.map((c, i) => (i === activeCat ? { ...c, name } : c)));
+  };
+  // Only visible categories may change positions; hidden categories stay intact.
+  const moveCategory = (from: number, to: number) => {
+    if (imagePending || from === to || from < 0 || to < 0 ||
+        from >= visibleCount || to >= visibleCount) return;
+    setDraft(previous => {
+      const categories = [...previous];
+      const [item] = categories.splice(from, 1);
+      categories.splice(to, 0, item);
+      return categories;
+    });
+    setActiveCat(current => {
+      if (current === from) return to;
+      if (from < current && current <= to) return current - 1;
+      if (to <= current && current < from) return current + 1;
+      return current;
+    });
+    setOpenImageEditors({});
+    setDraggedCategory(null);
+    setOverCategory(null);
+  };
+
+  // Reorder the whole question (including both images, video, ABCD choices,
+  // hints and order items). The point *slot* keeps its original value, so
+  // moving a question to a harder row does not scramble board point labels.
+  const moveQuestion = (from: number, to: number) => {
+    if (imagePending || from === to || from < 0 || to < 0 ||
+        from >= questionRows || to >= questionRows) return;
+    const selectedCategory = activeCat;
+    setDraft(previous => previous.map((category, categoryIndex) => {
+      if (categoryIndex !== selectedCategory) return category;
+      const questions = [...category.questions];
+      const values = questions.map((question,index) =>
+        question.value ?? defaultQuestionValue(index)
+      );
+      const [moving] = questions.splice(from, 1);
+      questions.splice(to, 0, moving);
+      return {
+        ...category,
+        questions: questions.map((question,index) => ({
+          ...question,
+          value: values[index],
+        })),
+      };
+    }));
+    setOpenImageEditors({});
+    setDraggedQuestion(null);
+    setOverQuestion(null);
   };
   const updateQuestion = (qIdx: number, updater: (q: Question) => Question) => {
     setDraft((prev) =>
@@ -384,22 +436,65 @@ export function Editor({
           </Button>
         </div>
       </header>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5 mb-3" aria-label="Kategorien zum Sortieren ziehen">
         {draft.slice(0,visibleCount).map((c, i) => (
-          <button
+          <div
             key={i}
-            disabled={videoPending}
-            onClick={() => setActiveCat(i)}
-            className={`px-2 py-3 rounded-xl font-display text-xs md:text-sm uppercase tracking-wider transition-all truncate border ${
-              activeCat === i
-                ? "bg-primary text-primary-foreground border-transparent scale-105 shadow-[0_0_24px_-6px_var(--indigo-glow)]"
-                : "glass text-foreground/80 hover:text-foreground hover:bg-white/10"
-            }`}
-            title={c.name}
+            draggable={!imagePending}
+            onDragStart={event => {
+              if (imagePending) { event.preventDefault(); return; }
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", `category:${i}`);
+              setDraggedCategory(i);
+            }}
+            onDragOver={event => {
+              if (draggedCategory === null) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setOverCategory(i);
+            }}
+            onDrop={event => {
+              event.preventDefault();
+              const source = event.dataTransfer.getData("text/plain");
+              const match = /^category:(\\d+)$/.exec(source);
+              if (match) moveCategory(Number(match[1]), i);
+              setDraggedCategory(null);
+              setOverCategory(null);
+            }}
+            onDragEnd={() => { setDraggedCategory(null); setOverCategory(null); }}
+            className={`min-w-0 rounded-xl transition-[opacity,box-shadow] duration-200
+              ${draggedCategory === i ? "opacity-50" : ""}
+              ${overCategory === i && draggedCategory !== i ? "ring-2 ring-primary/60 ring-offset-2 ring-offset-background" : ""}`}
           >
-            {c.name || `Kat. ${i + 1}`}
-          </button>
+            <button
+              type="button"
+              disabled={imagePending}
+              onClick={() => setActiveCat(i)}
+              className={`group flex w-full min-w-0 items-center justify-center gap-1 rounded-xl border px-2 py-3 font-display text-xs uppercase tracking-wider transition-[background-color,color,border-color,box-shadow] duration-200 md:text-sm ${
+                activeCat === i
+                  ? "bg-primary text-primary-foreground border-transparent shadow-[0_0_24px_-6px_var(--indigo-glow)]"
+                  : "glass text-foreground/80 hover:text-foreground hover:bg-white/10"
+              }`}
+              title={`${c.name || `Kat. ${i + 1}`} · zum Sortieren ziehen`}
+            >
+              <GripVertical className="h-3.5 w-3.5 shrink-0 opacity-40 transition-opacity group-hover:opacity-80" aria-hidden="true" />
+              <span className="truncate">{c.name || `Kat. ${i + 1}`}</span>
+            </button>
+          </div>
         ))}
+      </div>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>Kategorien ziehen oder ausgewählte Kategorie mit den Pfeilen verschieben.</span>
+        <div className="flex items-center gap-1">
+          <Button type="button" size="icon" variant="outline" disabled={imagePending || activeCat === 0}
+            onClick={() => moveCategory(activeCat, activeCat - 1)}
+            title="Kategorie nach links" aria-label="Kategorie nach links"
+            className="h-8 w-8 rounded-lg border-white/15"><ArrowLeft className="h-3.5 w-3.5" /></Button>
+          <Button type="button" size="icon" variant="outline" disabled={imagePending || activeCat >= visibleCount - 1}
+            onClick={() => moveCategory(activeCat, activeCat + 1)}
+            title="Kategorie nach rechts" aria-label="Kategorie nach rechts"
+            className="h-8 w-8 rounded-lg border-white/15"><ArrowRight className="h-3.5 w-3.5" /></Button>
+        </div>
       </div>
       <div className="mb-6 flex flex-wrap items-center gap-2.5">
         <Button type="button" variant="outline" disabled={imagePending || visibleCount >= MAX_CATEGORIES} onClick={() => {
@@ -500,8 +595,59 @@ export function Editor({
             const imageProcessing = Boolean(processingImages[imageEditorKey]);
             const answerImageProcessing = Boolean(processingImages[`${imageEditorKey}:answer`]);
             return (
-              <div key={qIdx} className="glass rounded-2xl p-4 space-y-4">
+              <div key={qIdx}
+                onDragOver={event => {
+                  if (draggedQuestion === null) return;
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  setOverQuestion(qIdx);
+                }}
+                onDrop={event => {
+                  event.preventDefault();
+                  const match = /^question:(\\d+)$/.exec(event.dataTransfer.getData("text/plain"));
+                  if (match) moveQuestion(Number(match[1]), qIdx);
+                  setDraggedQuestion(null);
+                  setOverQuestion(null);
+                }}
+                className={`glass rounded-2xl p-4 space-y-4 transition-[border-color,box-shadow,opacity] duration-200
+                  ${draggedQuestion === qIdx ? "opacity-55" : ""}
+                  ${overQuestion === qIdx && draggedQuestion !== qIdx ? "ring-2 ring-primary/55 ring-offset-2 ring-offset-background" : ""}`}
+              >
                 <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      draggable={!imagePending}
+                      disabled={imagePending}
+                      onDragStart={event => {
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", `question:${qIdx}`);
+                        setDraggedQuestion(qIdx);
+                      }}
+                      onDragEnd={() => { setDraggedQuestion(null); setOverQuestion(null); }}
+                      aria-label={`Frage ${qIdx + 1} zum Verschieben ziehen`}
+                      title="Ziehen, um die Frage zu verschieben"
+                      className="cursor-grab rounded-lg p-1.5 text-muted-foreground/65 hover:bg-white/[0.07] hover:text-foreground active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </button>
+                    <button type="button"
+                      disabled={imagePending || qIdx === 0}
+                      onClick={() => moveQuestion(qIdx, qIdx - 1)}
+                      title="Frage nach oben" aria-label={`Frage ${qIdx + 1} nach oben`}
+                      className="rounded-lg p-1.5 text-muted-foreground/65 transition-colors hover:bg-white/[0.07] hover:text-foreground disabled:opacity-20 focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </button>
+                    <button type="button"
+                      disabled={imagePending || qIdx >= questionRows - 1}
+                      onClick={() => moveQuestion(qIdx, qIdx + 1)}
+                      title="Frage nach unten" aria-label={`Frage ${qIdx + 1} nach unten`}
+                      className="rounded-lg p-1.5 text-muted-foreground/65 transition-colors hover:bg-white/[0.07] hover:text-foreground disabled:opacity-20 focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </button>
+                  </div>
                   <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
                     Punkte
                   </Label>
