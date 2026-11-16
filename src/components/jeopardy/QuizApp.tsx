@@ -546,8 +546,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         ].name
       : "";
   const highStakes = active !== null && !activeResult &&
-    activeValue >= Math.max(1, ...categories[active.category].questions.map(
-      (q, index) => q.value ?? defaultQuestionValue(index) ?? 0
+    activeValue >= Math.max(1, ...categories[active.category].questions.slice(0,questionRows).map(
+      (q, index) => q.value ?? defaultQuestionValue(index)
     ));
   const openQuestion = (
     questionToOpen: Active
@@ -556,8 +556,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       categories[
         questionToOpen.category
       ];
-    const lastQuestionIndex =
-      category.questions.length - 1;
+    const lastQuestionIndex = questionRows - 1;
     const isFinalQuestion =
       questionToOpen.question ===
       lastQuestionIndex;
