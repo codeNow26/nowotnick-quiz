@@ -256,7 +256,7 @@ export function ScoreBoard({
               <div className="relative z-10 flex items-center justify-center gap-1 mt-1">
                 <input
                   type="number"
-                  step="1"
+                  step="any"
                   value={editValue}
                   onChange={(e) =>
                     setEditValue(e.target.value)
@@ -271,6 +271,7 @@ export function ScoreBoard({
                   }}
                   autoFocus
                   className="
+                    quiz-number-input
                     w-24 md:w-28
                     h-9
                     rounded-xl
