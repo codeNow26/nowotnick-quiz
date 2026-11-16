@@ -94,11 +94,12 @@ export function readSavedGame(quizId: string, quizUpdatedAt: string | null): Sav
       if (!/^(\d+):(\d+)$/.test(key) || !isRecord(value) ||
           typeof value.category !== "string" || typeof value.value !== "number" ||
           !Number.isFinite(value.value) || typeof value.correct !== "boolean" ||
-          (value.playerIndex !== null && (!Number.isInteger(value.playerIndex) ||
-            (value.playerIndex as number) < 0 || (value.playerIndex as number) >= data.players.length)) ||
+          (value.playerIndex !== null && (typeof value.playerIndex !== "number" ||
+            !Number.isInteger(value.playerIndex) ||
+            value.playerIndex < 0 || value.playerIndex >= data.players.length)) ||
           (value.selectedChoice !== undefined && value.selectedChoice !== null &&
-            (!Number.isInteger(value.selectedChoice) || (value.selectedChoice as number) < 0 ||
-             (value.selectedChoice as number) > 3))) return null;
+            (typeof value.selectedChoice !== "number" || !Number.isInteger(value.selectedChoice) ||
+             value.selectedChoice < 0 || value.selectedChoice > 3))) return null;
     }
     return data as unknown as SavedGame;
   } catch {
