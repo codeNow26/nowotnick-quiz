@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { POINT_VALUES, type Category } from './jeopardy-data';
+import { POINT_VALUES, MAX_QUESTION_ROWS, DEFAULT_QUESTION_ROWS, defaultQuestionValue, type Category } from './jeopardy-data';
 
 export const QUIZ_IDS = {
   1: '2f167918-a027-44f0-a012-422e802a7bef',
@@ -9,7 +9,7 @@ export const QUIZ_IDS = {
 } as const;
 export type QuizSlot = keyof typeof QUIZ_IDS;
 export interface QuizMeta { title: string; subtitle: string }
-export interface QuizPayload { categories: Category[]; meta: QuizMeta; [key: string]: unknown }
+export interface QuizPayload { categories: Category[]; meta: QuizMeta; questionRows?: 5 | 6; [key: string]: unknown }
 export interface CustomQuiz { id: string; slug: string; title: string; data: QuizPayload; archived: boolean; revision: number; updated_at: string }
 export type QuizSummary = Omit<CustomQuiz, 'data'>;
 export type QuizTarget = { kind: 'legacy'; slot: QuizSlot } | { kind: 'custom'; id: string };
@@ -19,9 +19,11 @@ const CUSTOM_TABLE = 'custom_quizzes';
 export function validPayload(value: unknown): value is QuizPayload {
   const d = value as QuizPayload | null;
   return !!d && !!d.meta && typeof d.meta.title === 'string' && typeof d.meta.subtitle === 'string'
+    && (d.questionRows === undefined || d.questionRows === 5 || d.questionRows === 6)
     && Array.isArray(d.categories) && d.categories.length >= 1 && d.categories.length <= 10
     && d.categories.every(c => typeof c?.name === 'string' && Array.isArray(c.questions)
-      && c.questions.length === 5 && c.questions.every(q => typeof q?.question === 'string' && typeof q.answer === 'string'));
+      && c.questions.length >= DEFAULT_QUESTION_ROWS && c.questions.length <= MAX_QUESTION_ROWS
+      && c.questions.every(q => typeof q?.question === 'string' && typeof q.answer === 'string'));
 }
 export function slugify(name: string) {
   return name.trim().toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
@@ -33,6 +35,25 @@ export function emptyCategory(index: number): Category {
 }
 export function appendCategory(categories: Category[]): Category[] {
   return categories.length >= MAX_CATEGORIES ? categories : [...categories, emptyCategory(categories.length)];
+}
+/** Extend short categories, keeping all existing questions, values and answers.
+ * When switching back to five visible rows, do not truncate saved row six. */
+export function ensureQuestionRows(categories: Category[], count: 5 | 6): Category[] {
+  if (count === 5 || categories.every(c => c.questions.length >= count)) return categories;
+  return categories.map(category => (
+    category.questions.length >= count ? category : {
+      ...category,
+      questions: [
+        ...category.questions,
+        ...Array.from({ length: count - category.questions.length }, (_, index) => ({
+          question: '',
+          answer: '',
+          value: defaultQuestionValue(category.questions.length + index),
+          type: 'normal' as const,
+        })),
+      ],
+    }
+  ));
 }
 // Only append missing slots; lowering the round size never deletes stored content.
 export function ensureCategoryCount(categories: Category[], count: number): Category[] {

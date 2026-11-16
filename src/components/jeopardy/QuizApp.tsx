@@ -1,5 +1,5 @@
 import { AwardCeremony } from "./AwardCeremony";
-import { ensureCategoryCount, MAX_CATEGORIES } from "@/lib/quiz-repository";
+import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES } from "@/lib/quiz-repository";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { Link } from "@tanstack/react-router";
@@ -7,6 +7,7 @@ import { CreateQuiz } from "./CreateQuiz";
 import { StartScreen } from "@/components/jeopardy/StartScreen";
 import { Board } from "@/components/jeopardy/Board";
 import { useGameStartAnimation } from "./GameStartSequence";
+import { readPlayerPreferences, normalizeColors } from "@/lib/player-preferences";
 import { QuestionModal } from "@/components/jeopardy/QuestionModal";
 import {
   ScoreBoard,
@@ -26,7 +27,7 @@ import {
   Dices,
   BarChart3,
 } from "lucide-react";
-import { POINT_VALUES, type QuestionResult } from "@/lib/jeopardy-data";
+import { DEFAULT_QUESTION_ROWS, defaultQuestionValue, type QuestionResult } from "@/lib/jeopardy-data";
 import { useCategories } from "@/lib/use-categories";
 interface Player {
   color: string;
@@ -289,6 +290,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   };
   const [screen, setScreen] =
     useState<Screen>(editInitially ? "editor" : "start");
+  const [testSession, setTestSession] = useState(false);
+  const [lastEditorCategory, setLastEditorCategory] = useState(0);
   const [players, setPlayers] =
     useState<Player[]>([]);
   const [
@@ -297,15 +300,16 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   ] = useState(
     6
   );
+  const questionRows: 5 | 6 = editorSource?.data.questionRows === 6 ? 6 : 5;
   const categories = useMemo(
-    () => ensureCategoryCount(allCategories, activeCategoryCount).slice(0, activeCategoryCount),
-    [allCategories, activeCategoryCount]
+    () => ensureQuestionRows(ensureCategoryCount(allCategories,activeCategoryCount),questionRows).slice(0, activeCategoryCount),
+    [allCategories, activeCategoryCount, questionRows]
   );
   const [answered, setAnswered] =
     useState<boolean[][]>(() =>
       makeAnswered(
         activeCategoryCount,
-        POINT_VALUES.length
+        DEFAULT_QUESTION_ROWS
       )
     );
   const [results, setResults] = useState<Record<string, QuestionResult>>({});
@@ -404,47 +408,14 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       if (ref.current) clearTimeout(ref.current);
     }
   }, []);
-  if (loading || loadError) return <main className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
-    <h1 className="font-display text-2xl">{loading ? 'Quiz wird geladen …' : 'Quiz konnte nicht geladen werden'}</h1>
-    {loadError && <><p role="alert" className="max-w-xl text-muted-foreground">{loadError}</p><Button onClick={() => void loadQuiz(quizSlot)}>Erneut versuchen</Button>
-    {!customId && <div className="flex flex-wrap gap-2">{([1,2,3,4] as const).map(slot => <Button key={slot} variant="outline" onClick={() => void loadQuiz(slot)}>Quiz {slot}</Button>)}</div>}
-    <Link to="/">Zur Startseite</Link></>}
-  </main>;
-  if (screen === "editor") {
-    return (
-      <Editor
-        key={editorSource!.id}
-        source={editorSource!}
-        target={editorTarget}
-        categoryCount={activeCategoryCount}
-        onCategoryCountChange={setActiveCategoryCount}
-        onSaved={applySaved}
-        onBack={() =>
-          setScreen("start")
-        }
-      />
-    );
-  }
-  if (screen === "start") {
-    return (
-      <div className="relative">
-        <StartScreen
-          title={meta.title}
-          subtitle={meta.subtitle}
-          maxCategories={
-            customId ? MAX_CATEGORIES : allCategories.length
-          }
-          selectedCategoryCount={activeCategoryCount}
-          onCategoryCountChange={setActiveCategoryCount}
-          key={customId ?? quizSlot}
-          activeQuiz={customId ? undefined : quizSlot}
-          footer={<div className="mt-5 flex flex-wrap justify-center gap-3 text-sm">{!customId && <CreateQuiz />}{customId && <Link to="/" className="rounded-xl border border-white/15 px-4 py-2">Zur Startseite</Link>}<Link to="/verwaltung" className="rounded-xl border border-white/15 px-4 py-2">Quiz-Verwaltung</Link></div>}
-          onQuizChange={loadQuiz}
-          onStart={(
-            names,
-            catCount,
-            colors
-          ) => {
+  const launchGame = (
+    names: string[],
+    catCount: number,
+    colors: string[],
+    rows: 5 | 6 = questionRows,
+    fromEditor = false,
+  ) => {
+    setTestSession(fromEditor);
             stopFinalQuestionAudio(false);
             setPlayers(
               names.map((name, index) => ({
@@ -465,7 +436,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
             setAnswered(
               makeAnswered(
                 catCount,
-                POINT_VALUES.length
+                rows
               )
             );
             leaderRef.current = null;
@@ -500,7 +471,55 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
             }
             setGameEntering(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
             setScreen("game");
-          }}
+  };
+  if (loading || loadError) return <main className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
+    <h1 className="font-display text-2xl">{loading ? 'Quiz wird geladen …' : 'Quiz konnte nicht geladen werden'}</h1>
+    {loadError && <><p role="alert" className="max-w-xl text-muted-foreground">{loadError}</p><Button onClick={() => void loadQuiz(quizSlot)}>Erneut versuchen</Button>
+    {!customId && <div className="flex flex-wrap gap-2">{([1,2,3,4] as const).map(slot => <Button key={slot} variant="outline" onClick={() => void loadQuiz(slot)}>Quiz {slot}</Button>)}</div>}
+    <Link to="/">Zur Startseite</Link></>}
+  </main>;
+  if (screen === "editor") {
+    return (
+      <Editor
+        key={editorSource!.id}
+        source={editorSource!}
+        target={editorTarget}
+        categoryCount={activeCategoryCount}
+        onCategoryCountChange={setActiveCategoryCount}
+        initialCategory={Math.min(lastEditorCategory, Math.max(0, activeCategoryCount-1))}
+        onSaved={applySaved}
+        onBack={() =>
+          setScreen("start")
+        }
+        onTest={(rows, categoryIndex) => {
+          setLastEditorCategory(categoryIndex);
+          const prefs = readPlayerPreferences();
+          const count = Math.max(1, Math.min(4, prefs.count));
+          const names = prefs.names.slice(0,count).map((name,index) =>
+            name.trim() || `Spieler ${index+1}`
+          );
+          const colors = normalizeColors(prefs.colors).slice(0,count);
+          launchGame(names, activeCategoryCount, colors, rows, true);
+        }}
+      />
+    );
+  }
+  if (screen === "start") {
+    return (
+      <div className="relative">
+        <StartScreen
+          title={meta.title}
+          subtitle={meta.subtitle}
+          maxCategories={
+            customId ? MAX_CATEGORIES : allCategories.length
+          }
+          selectedCategoryCount={activeCategoryCount}
+          onCategoryCountChange={setActiveCategoryCount}
+          key={customId ?? quizSlot}
+          activeQuiz={customId ? undefined : quizSlot}
+          footer={<div className="mt-5 flex flex-wrap justify-center gap-3 text-sm">{!customId && <CreateQuiz />}{customId && <Link to="/" className="rounded-xl border border-white/15 px-4 py-2">Zur Startseite</Link>}<Link to="/verwaltung" className="rounded-xl border border-white/15 px-4 py-2">Quiz-Verwaltung</Link></div>}
+          onQuizChange={loadQuiz}
+          onStart={(names, count, colors) => launchGame(names, count, colors)}
         />
         <div className="fixed top-4 right-4 flex items-center gap-2 z-50">
           <MusicControls />
@@ -534,9 +553,9 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         ].questions[
           active.question
         ].value ??
-        POINT_VALUES[
+        defaultQuestionValue(
           active.question
-        ]
+        )
       : 0;
   const activeCategory =
     active !== null
@@ -545,8 +564,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         ].name
       : "";
   const highStakes = active !== null && !activeResult &&
-    activeValue >= Math.max(1, ...categories[active.category].questions.map(
-      (q, index) => q.value ?? POINT_VALUES[index] ?? 0
+    activeValue >= Math.max(1, ...categories[active.category].questions.slice(0,questionRows).map(
+      (q, index) => q.value ?? defaultQuestionValue(index)
     ));
   const openQuestion = (
     questionToOpen: Active
@@ -555,8 +574,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       categories[
         questionToOpen.category
       ];
-    const lastQuestionIndex =
-      category.questions.length - 1;
+    const lastQuestionIndex = questionRows - 1;
     const isFinalQuestion =
       questionToOpen.question ===
       lastQuestionIndex;
@@ -1053,7 +1071,24 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         >
           {meta.title}
         </h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {testSession && (
+            <Button
+              type="button"
+              onClick={() => {
+                stopFinalQuestionAudio(false);
+                setActive(null);
+                setShowStats(false);
+                setCeremonyOpen(false);
+                setTestSession(false);
+                setScreen("editor");
+              }}
+              className="rounded-xl border border-primary/35 bg-primary/[0.10] text-primary hover:bg-primary/[0.18] hover:text-foreground transition-colors duration-300"
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Zurück zum Editor
+            </Button>
+          )}
           <Button
             onClick={
               selectRandomQuestion
@@ -1120,6 +1155,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         </div>
       )}
       <Board
+        questionRows={questionRows}
         launching={gameEntering}
         categories={categories}
         answered={answered}

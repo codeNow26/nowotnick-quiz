@@ -5,40 +5,56 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Loader2, Minus, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Loader2, Minus, Play, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import { useEditorAutosave } from "@/lib/autosave/use-editor-autosave";
-import { ensureCategoryCount, MAX_CATEGORIES, type LoadedQuiz, type QuizTarget } from "@/lib/quiz-repository";
+import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES, type LoadedQuiz, type QuizTarget } from "@/lib/quiz-repository";
 import type { Category, Question } from "@/lib/jeopardy-data";
-import { POINT_VALUES, CATEGORIES } from "@/lib/jeopardy-data";
+import { CATEGORIES, defaultQuestionValue } from "@/lib/jeopardy-data";
 interface EditorProps {
   source: LoadedQuiz;
   target: QuizTarget;
   onSaved: (source:LoadedQuiz) => void;
   onBack: () => void;
+  onTest: (questionRows: 5 | 6, categoryIndex: number) => void;
+  initialCategory?: number;
   categoryCount?: number;
   onCategoryCountChange?: (count:number)=>void;
 }
 export function Editor({
   source, target, onSaved, categoryCount, onCategoryCountChange,
-  onBack,
+  onBack, onTest, initialCategory = 0,
 }: EditorProps) {
   const autosave = useEditorAutosave(target,source,onSaved);
   const { value, status, recovery } = autosave.state;
   const draft=value.categories;
   const titleDraft=value.meta.title;
   const subtitleDraft=value.meta.subtitle;
+  const questionRows: 5 | 6 = value.questionRows === 6 ? 6 : 5;
   const setDraft=(next:SetStateAction<Category[]>)=>autosave.update(v=>({...v,categories:typeof next==='function'?next(v.categories):next}));
   // Visible categories are a selection, not a destructive slice of saved data.
   const visibleCount = Math.min(MAX_CATEGORIES, Math.max(1, categoryCount ?? draft.length));
   useEffect(()=>{
-    if(autosave.state.ready && !recovery.length && draft.length < visibleCount) {
-      autosave.update(v=>({...v,categories:ensureCategoryCount(v.categories,visibleCount)}));
+    if(!autosave.state.ready || recovery.length) return;
+    if(draft.length < visibleCount || (questionRows === 6 && draft.some(c => c.questions.length < questionRows))) {
+      autosave.update(v=>({
+        ...v,
+        categories:ensureQuestionRows(ensureCategoryCount(v.categories,visibleCount),questionRows),
+      }));
     }
-  },[autosave.state.ready,recovery.length,draft.length,visibleCount]);
+  },[autosave.state.ready,recovery.length,draft,visibleCount,questionRows]);
+  const toggleSixthRow = () => {
+    const nextRows: 5 | 6 = questionRows === 5 ? 6 : 5;
+    autosave.update(v=>({
+      ...v,
+      questionRows:nextRows,
+      categories:ensureQuestionRows(v.categories,nextRows),
+    }));
+  };
   const setTitleDraft=(title:string)=>autosave.update(v=>({...v,meta:{...v.meta,title}}));
   const setSubtitleDraft=(subtitle:string)=>autosave.update(v=>({...v,meta:{...v.meta,subtitle}}));
   const [validationError,setValidationError]=useState('');
   const [manualSaving,setManualSaving]=useState(false);
+  const [testLaunching,setTestLaunching]=useState(false);
   const [saveConfirmed,setSaveConfirmed]=useState(false);
   const saveFeedbackTimer=useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
@@ -46,7 +62,7 @@ export function Editor({
   },[]);
   const saving=manualSaving;
   const showSaveSuccess=saveConfirmed && !autosave.state.dirty && status==='saved';
-  const [activeCat, setActiveCat] = useState(0);
+  const [activeCat, setActiveCat] = useState(initialCategory);
   const [openImageEditors, setOpenImageEditors] = useState<Record<string, boolean>>({});
   const [processingImages, setProcessingImages] = useState<Record<string, boolean>>({});
   const imageGeneration=useRef<Record<string,number>>({});
@@ -161,7 +177,7 @@ export function Editor({
   const adjustQValue = (qIdx: number, delta: -100 | -10 | 10 | 100) => {
     updateQuestion(qIdx, q => ({
       ...q,
-      value: Math.max(0, (q.value ?? POINT_VALUES[qIdx]) + delta),
+      value: Math.max(0, (q.value ?? defaultQuestionValue(qIdx)) + delta),
     }));
   };
   const setQuestionType = (qIdx: number, type: NonNullable<Question["type"]>) => {
@@ -279,9 +295,28 @@ export function Editor({
       setManualSaving(false);
     }
   };
+  const handleTestGame=async()=>{
+    if(testLaunching || manualSaving || imagePending || recovery.length) return;
+    setTestLaunching(true);
+    setValidationError('');
+    try {
+      // The editor owns the only current unsaved draft. Never leave it until
+      // the exact in-memory version has successfully reached Supabase.
+      const saved=await autosave.flush();
+      if(!saved){
+        setValidationError('Test nicht gestartet: Die Änderungen konnten nicht gespeichert werden. Bitte den Speicherstatus prüfen.');
+        return;
+      }
+      onTest(questionRows, activeCat);
+    }catch(error){
+      setValidationError(error instanceof Error ? error.message : 'Test konnte nicht gestartet werden.');
+    }finally{
+      setTestLaunching(false);
+    }
+  };
   const handleReset=()=>{
     if(!confirm('Alle Kategorien und Fragen dieses Quiz auf Standard zurücksetzen? Der neue Stand wird automatisch gespeichert.'))return;
-    setActiveCat(0);setDraft(structuredClone(CATEGORIES));
+    setActiveCat(0);setDraft(ensureQuestionRows(structuredClone(CATEGORIES),questionRows));
   };
   const goBack=async()=>{
     const localSafe=await autosave.localSettled();
@@ -315,9 +350,9 @@ export function Editor({
         <Button variant="outline" onClick={autosave.useOnline}>Online-Stand verwenden · Entwürfe behalten</Button>
       </section>}
       <fieldset disabled={recovery.length>0} className="min-w-0">
-      <header className="flex items-center justify-between gap-2 mb-6">
+      <header className="flex flex-wrap items-center justify-between gap-2 mb-6">
         <Button
-          disabled={saving || imagePending}
+          disabled={saving || testLaunching || imagePending}
           onClick={goBack}
           className="glass text-foreground hover:bg-white/15 border-white/15 rounded-xl"
         >
@@ -329,13 +364,25 @@ export function Editor({
         >
           Bearbeiten
         </h1>
-        <Button
-          disabled={saving || imagePending}
-          onClick={handleReset}
-          className="glass text-destructive hover:bg-destructive/20 border-destructive/30 rounded-xl"
-        >
-          <RotateCcw className="mr-2 h-4 w-4" /> Reset
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleTestGame}
+            disabled={saving || testLaunching || imagePending}
+            className="rounded-xl border-primary/35 bg-primary/[0.08] text-primary hover:bg-primary/[0.15] hover:text-foreground transition-colors duration-300"
+          >
+            {testLaunching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+            {testLaunching ? "Startet …" : "Spiel testen"}
+          </Button>
+          <Button
+            disabled={saving || testLaunching || imagePending}
+            onClick={handleReset}
+            className="glass text-destructive hover:bg-destructive/20 border-destructive/30 rounded-xl"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" /> Reset
+          </Button>
+        </div>
       </header>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-6">
         {draft.slice(0,visibleCount).map((c, i) => (
@@ -360,7 +407,7 @@ export function Editor({
           // Unhide previously stored categories without generating a needless
           // autosave write. Only create data if this slot truly does not exist.
           if(draft.length < visibleCount+1) {
-            setDraft(v=>ensureCategoryCount(v,visibleCount+1));
+            setDraft(v=>ensureQuestionRows(ensureCategoryCount(v,visibleCount+1),questionRows));
           }
           onCategoryCountChange?.(visibleCount+1);
           setActiveCat(visibleCount);
@@ -378,6 +425,24 @@ export function Editor({
         <span className="text-xs text-muted-foreground" role="status">
           {visibleCount} von {MAX_CATEGORIES} sichtbar
           {draft.length>visibleCount ? ` · ${draft.length-visibleCount} ausgeblendet, nicht gelöscht` : ''}
+        </span>
+      </div>
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={imagePending || saving}
+          aria-pressed={questionRows === 6}
+          onClick={toggleSixthRow}
+          title={questionRows === 6 ? "Sechste Reihe ausblenden – Fragen bleiben gespeichert" : "Eine sechste Frage für jede Kategorie hinzufügen"}
+          className={`rounded-xl transition-[color,border-color,background-color] duration-300
+            ${questionRows === 6 ? "border-primary/40 bg-primary/[0.12] text-foreground hover:bg-primary/[0.17]" : "border-white/15 bg-white/[0.035] text-foreground/85 hover:bg-white/[0.08]"}`}
+        >
+          {questionRows === 6 ? <Minus className="mr-1.5 h-4 w-4" /> : <Plus className="mr-1.5 h-4 w-4" />}
+          {questionRows === 6 ? "6. Fragenreihe ausblenden" : "6. Fragenreihe hinzufügen"}
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          {questionRows} Fragen pro Kategorie · {questionRows === 6 ? "Zum Ausblenden klicken, vorhandene Fragen bleiben erhalten" : "Optional, Standard sind fünf"}
         </span>
       </div>
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-4 glow-primary mb-4">
@@ -422,7 +487,7 @@ export function Editor({
           />
         </div>
         <div className="space-y-5">
-          {draft[activeCat].questions.map((q, qIdx) => {
+          {draft[activeCat].questions.slice(0,questionRows).map((q, qIdx) => {
             const isOrder = q.type === "order";
             const isChoice = q.type === "choice";
             const isHint = q.type === "hint";
@@ -445,7 +510,7 @@ export function Editor({
                       <button
                         key={delta}
                         type="button"
-                        disabled={(q.value ?? POINT_VALUES[qIdx]) + delta < 0}
+                        disabled={(q.value ?? defaultQuestionValue(qIdx)) + delta < 0}
                         onClick={() => adjustQValue(qIdx, delta)}
                         aria-label={`${Math.abs(delta)} Punkte abziehen`}
                         title={`${Math.abs(delta)} Punkte abziehen`}
@@ -458,7 +523,7 @@ export function Editor({
                       aria-label="Punktwert"
                       type="number"
                       min={0}
-                      value={q.value ?? POINT_VALUES[qIdx]}
+                      value={q.value ?? defaultQuestionValue(qIdx)}
                       onChange={(e) =>
                         updateQValue(
                           qIdx,
@@ -826,7 +891,7 @@ export function Editor({
         {validationError && <p role="alert" className="text-destructive">{validationError}</p>}
         <Button
           type="button"
-          disabled={saving || imagePending}
+          disabled={saving || testLaunching || imagePending}
           onClick={handleSave}
           size="lg"
           aria-live="polite"
@@ -840,6 +905,16 @@ export function Editor({
             {showSaveSuccess && <Check className="h-5 w-5 quiz-save-check" />}
             {saving ? "Wird gespeichert …" : showSaveSuccess ? "Gespeichert!" : "Jetzt speichern"}
           </span>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={saving || testLaunching || imagePending}
+          onClick={handleTestGame}
+          className="mt-3 w-full rounded-2xl border-primary/30 bg-primary/[0.055] py-5 font-display text-base tracking-wide text-primary hover:bg-primary/[0.12] hover:text-foreground transition-colors duration-300"
+        >
+          {testLaunching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+          {testLaunching ? "Speichert und startet …" : "Spiel testen"}
         </Button>
       </div>
       </fieldset>
