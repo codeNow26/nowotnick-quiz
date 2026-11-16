@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Loader2, Minus, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import { useEditorAutosave } from "@/lib/autosave/use-editor-autosave";
 import { ensureCategoryCount, MAX_CATEGORIES, type LoadedQuiz, type QuizTarget } from "@/lib/quiz-repository";
 import type { Category, Question } from "@/lib/jeopardy-data";
@@ -28,7 +28,8 @@ export function Editor({
   const titleDraft=value.meta.title;
   const subtitleDraft=value.meta.subtitle;
   const setDraft=(next:SetStateAction<Category[]>)=>autosave.update(v=>({...v,categories:typeof next==='function'?next(v.categories):next}));
-  const visibleCount = categoryCount ?? draft.length;
+  // Visible categories are a selection, not a destructive slice of saved data.
+  const visibleCount = Math.min(MAX_CATEGORIES, Math.max(1, categoryCount ?? draft.length));
   useEffect(()=>{
     if(autosave.state.ready && !recovery.length && draft.length < visibleCount) {
       autosave.update(v=>({...v,categories:ensureCategoryCount(v.categories,visibleCount)}));
@@ -38,7 +39,13 @@ export function Editor({
   const setSubtitleDraft=(subtitle:string)=>autosave.update(v=>({...v,meta:{...v.meta,subtitle}}));
   const [validationError,setValidationError]=useState('');
   const [manualSaving,setManualSaving]=useState(false);
+  const [saveConfirmed,setSaveConfirmed]=useState(false);
+  const saveFeedbackTimer=useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if(saveFeedbackTimer.current) clearTimeout(saveFeedbackTimer.current);
+  },[]);
   const saving=manualSaving;
+  const showSaveSuccess=saveConfirmed && !autosave.state.dirty && status==='saved';
   const [activeCat, setActiveCat] = useState(0);
   const [openImageEditors, setOpenImageEditors] = useState<Record<string, boolean>>({});
   const [processingImages, setProcessingImages] = useState<Record<string, boolean>>({});
@@ -244,8 +251,27 @@ export function Editor({
     });
   };
   const handleSave=async()=>{
-    setManualSaving(true);setValidationError('');
-    try { await autosave.flush(); } finally {setManualSaving(false);}
+    if(manualSaving)return;
+    if(saveFeedbackTimer.current)clearTimeout(saveFeedbackTimer.current);
+    setSaveConfirmed(false);
+    setManualSaving(true);
+    setValidationError('');
+    try {
+      const success=await autosave.flush();
+      if(success) {
+        setSaveConfirmed(true);
+        saveFeedbackTimer.current=setTimeout(()=>{
+          setSaveConfirmed(false);
+          saveFeedbackTimer.current=null;
+        },2200);
+      } else {
+        setValidationError('Speichern nicht abgeschlossen. Bitte den Hinweis oben prüfen.');
+      }
+    } catch(error) {
+      setValidationError(error instanceof Error?error.message:'Speichern fehlgeschlagen.');
+    } finally {
+      setManualSaving(false);
+    }
   };
   const handleReset=()=>{
     if(!confirm('Alle Kategorien und Fragen dieses Quiz auf Standard zurücksetzen? Der neue Stand wird automatisch gespeichert.'))return;
@@ -253,7 +279,7 @@ export function Editor({
   };
   const goBack=async()=>{
     const localSafe=await autosave.localSettled();
-    if(!localSafe && !confirm('Die lokale Sicherung ist fehlgeschlagen. Bitte den Entwurf exportieren. Trotzdem verlassen?'))return;
+    if(!localSafe && !confirm('Die lokale Sicherung ist fehlgeschlagen. Nutze bei Bedarf „Backup herunterladen“. Trotzdem verlassen?'))return;
     onBack();
   };
   const statusText={loading:'Lokaler Speicher wird vorbereitet …',saved:'Gespeichert',dirty:'Ungespeicherte Änderungen',saving:'Speichert …',error:'Speichern fehlgeschlagen',conflict:'Online-Konflikt · Entwurf bleibt lokal'}[status];
@@ -263,9 +289,9 @@ export function Editor({
       <div className="mb-4 rounded-xl border border-white/10 bg-background/90 p-3 text-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p role="status" aria-live="polite" className={status==='error'||status==='conflict'?'text-amber-200':'text-muted-foreground'}>{statusText}{autosave.state.dirty && !autosave.state.localError && !autosave.state.localPending ? ' · lokal gesichert' : ''}</p>
-          <button type="button" className="text-primary underline underline-offset-4" onClick={autosave.exportDraft}>Entwurf exportieren</button>
         </div>
         {(autosave.state.error||autosave.state.localError||validationError) && <p role="alert" className="mt-2 text-amber-200">{autosave.state.localError || autosave.state.error || validationError}</p>}
+        {(autosave.state.localError || status==='conflict') && <button type="button" className="mt-2 text-xs text-primary underline underline-offset-4" onClick={autosave.exportDraft}>Backup herunterladen</button>}
         {status==='error' && <Button variant="outline" size="sm" onClick={handleSave} className="mt-2">Erneut speichern</Button>}
         {status==='conflict' && <Button variant="outline" size="sm" className="mt-2" onClick={async()=>{
           if(!confirm('Deinen lokalen Entwurf ausdrücklich anstelle des aktuellen Online-Stands speichern? Andere Änderungen können dabei ersetzt werden. Exportiere deinen Entwurf, wenn du zuerst vergleichen möchtest.'))return;
@@ -322,13 +348,27 @@ export function Editor({
           </button>
         ))}
       </div>
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Button type="button" variant="outline" disabled={videoPending || visibleCount >= MAX_CATEGORIES} onClick={() => {
+      <div className="mb-6 flex flex-wrap items-center gap-2.5">
+        <Button type="button" variant="outline" disabled={imagePending || visibleCount >= MAX_CATEGORIES} onClick={() => {
           if(visibleCount >= MAX_CATEGORIES) return;
           setDraft(v=>ensureCategoryCount(v,visibleCount+1));
-          onCategoryCountChange?.(visibleCount+1); setActiveCat(visibleCount);
-        }}><Plus className="h-4 w-4" /> Kategorie hinzufügen</Button>
-        <span className="text-sm text-muted-foreground" role="status">{visibleCount} von {MAX_CATEGORIES} Kategorien{draft.length > visibleCount ? ` · ${draft.length-visibleCount} weitere bleiben gespeichert` : ''}</span>
+          onCategoryCountChange?.(visibleCount+1);
+          setActiveCat(visibleCount);
+        }} className="rounded-xl border-white/15 bg-white/[0.035] text-foreground/85 hover:bg-white/[0.08]">
+          <Plus className="mr-1.5 h-4 w-4" /> Kategorie hinzufügen
+        </Button>
+        <Button type="button" variant="outline" disabled={imagePending || visibleCount <= 1} onClick={() => {
+          if(visibleCount <= 1) return;
+          const nextCount=visibleCount-1;
+          onCategoryCountChange?.(nextCount);
+          setActiveCat(current=>Math.min(current,nextCount-1));
+        }} className="rounded-xl border-white/10 bg-white/[0.025] text-foreground/65 hover:bg-white/[0.07] hover:text-foreground" title="Letzte sichtbare Kategorie ausblenden, ohne ihre Fragen zu löschen">
+          <Minus className="mr-1.5 h-4 w-4" /> Kategorie entfernen
+        </Button>
+        <span className="text-xs text-muted-foreground" role="status">
+          {visibleCount} von {MAX_CATEGORIES} sichtbar
+          {draft.length>visibleCount ? ` · ${draft.length-visibleCount} ausgeblendet, nicht gelöscht` : ''}
+        </span>
       </div>
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-4 glow-primary mb-4">
         <div className="text-xs text-muted-foreground uppercase tracking-[0.2em]">
@@ -400,7 +440,7 @@ export function Editor({
                         e.target.value === "" ? undefined : Number(e.target.value)
                       )
                     }
-                    className="glass border-white/10 text-foreground font-display text-lg h-11 rounded-xl w-28"
+                    className="quiz-number-input glass border-white/10 text-foreground font-display text-lg h-11 rounded-xl w-28"
                   />
                   <div className="ml-auto flex flex-wrap rounded-xl border border-white/10 bg-white/[0.03] p-1">
                     <button
@@ -747,12 +787,21 @@ export function Editor({
         </div>
         {validationError && <p role="alert" className="text-destructive">{validationError}</p>}
         <Button
+          type="button"
           disabled={saving || imagePending}
           onClick={handleSave}
           size="lg"
-          className="w-full font-display text-lg md:text-xl py-6 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 tracking-wider uppercase glow-primary border-0"
+          aria-live="polite"
+          className={`quiz-editor-save w-full font-display text-lg md:text-xl py-6 rounded-2xl tracking-wider uppercase border-0 transition-[background-color,box-shadow,color] duration-500
+            ${showSaveSuccess
+              ? "quiz-editor-save-success bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/20"
+              : "bg-primary text-primary-foreground hover:bg-primary/90 glow-primary"}`}
         >
-          {saving ? "Wird gespeichert …" : "Jetzt speichern"}
+          <span className="inline-flex items-center justify-center gap-2.5">
+            {saving && <Loader2 className="h-5 w-5 animate-spin" />}
+            {showSaveSuccess && <Check className="h-5 w-5 quiz-save-check" />}
+            {saving ? "Wird gespeichert …" : showSaveSuccess ? "Gespeichert!" : "Jetzt speichern"}
+          </span>
         </Button>
       </div>
       </fieldset>
