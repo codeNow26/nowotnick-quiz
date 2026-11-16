@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SelectionTrack } from "./SelectionTrack";
+import { RotateCcw } from "lucide-react";
 
 import { PLAYER_PALETTE, normalizeColors, readPlayerPreferences, rememberPlayers, selectPlayerColor } from "@/lib/player-preferences";
 
@@ -17,6 +18,9 @@ interface StartScreenProps {
   onCategoryCountChange?: (count:number)=>void;
   activeQuiz?: number;
   footer?: ReactNode;
+  savedGame?: { savedAt: number; answered: number; total: number };
+  onResume?: () => void;
+  onDiscardSaved?: () => void;
   onQuizChange: (quiz: 1 | 2 | 3 | 4) => void;
   onStart: (playerNames: string[], categoryCount: number, colors:string[]) => void;
 }
@@ -27,6 +31,7 @@ export function StartScreen({
   maxCategories, selectedCategoryCount, onCategoryCountChange,
   activeQuiz,
   footer,
+  savedGame, onResume, onDiscardSaved,
   onQuizChange,
   onStart,
 }: StartScreenProps) {
@@ -162,6 +167,38 @@ export function StartScreen({
         )}
 
         <div className="quiz-entry-panel glass-strong rounded-3xl p-6 md:p-8 glow-primary">
+
+          {savedGame && (
+            <section className="quiz-entry-step mb-7 rounded-2xl border border-primary/30 bg-primary/[0.07] px-4 py-4" aria-label="Gespeichertes Spiel">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-display text-base text-foreground">Spiel fortsetzen</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {savedGame.answered} von {savedGame.total} Fragen gespielt ·
+                    {" "}{new Date(savedGame.savedAt).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onDiscardSaved}
+                  className="rounded-lg px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  Verwerfen
+                </button>
+              </div>
+              <Button
+                type="button"
+                onClick={onResume}
+                className="w-full rounded-xl border border-primary/35 bg-primary/[0.18] py-5 font-semibold text-foreground hover:bg-primary/[0.29] transition-colors duration-300"
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Gespeichertes Spiel öffnen
+              </Button>
+              <p className="mt-2 text-[11px] text-muted-foreground/75">
+                Nur auf diesem Gerät und in diesem Browser gesichert.
+              </p>
+            </section>
+          )}
 
           {/* QUIZ AUSWAHL */}
 
