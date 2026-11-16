@@ -7,9 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Loader2, Minus, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import { useEditorAutosave } from "@/lib/autosave/use-editor-autosave";
-import { ensureCategoryCount, MAX_CATEGORIES, type LoadedQuiz, type QuizTarget } from "@/lib/quiz-repository";
+import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES, type LoadedQuiz, type QuizTarget } from "@/lib/quiz-repository";
 import type { Category, Question } from "@/lib/jeopardy-data";
-import { POINT_VALUES, CATEGORIES } from "@/lib/jeopardy-data";
+import { CATEGORIES, defaultQuestionValue } from "@/lib/jeopardy-data";
 interface EditorProps {
   source: LoadedQuiz;
   target: QuizTarget;
@@ -27,14 +27,27 @@ export function Editor({
   const draft=value.categories;
   const titleDraft=value.meta.title;
   const subtitleDraft=value.meta.subtitle;
+  const questionRows: 5 | 6 = value.questionRows === 6 ? 6 : 5;
   const setDraft=(next:SetStateAction<Category[]>)=>autosave.update(v=>({...v,categories:typeof next==='function'?next(v.categories):next}));
   // Visible categories are a selection, not a destructive slice of saved data.
   const visibleCount = Math.min(MAX_CATEGORIES, Math.max(1, categoryCount ?? draft.length));
   useEffect(()=>{
-    if(autosave.state.ready && !recovery.length && draft.length < visibleCount) {
-      autosave.update(v=>({...v,categories:ensureCategoryCount(v.categories,visibleCount)}));
+    if(!autosave.state.ready || recovery.length) return;
+    if(draft.length < visibleCount || (questionRows === 6 && draft.some(c => c.questions.length < questionRows))) {
+      autosave.update(v=>({
+        ...v,
+        categories:ensureQuestionRows(ensureCategoryCount(v.categories,visibleCount),questionRows),
+      }));
     }
-  },[autosave.state.ready,recovery.length,draft.length,visibleCount]);
+  },[autosave.state.ready,recovery.length,draft,visibleCount,questionRows]);
+  const toggleSixthRow = () => {
+    const nextRows: 5 | 6 = questionRows === 5 ? 6 : 5;
+    autosave.update(v=>({
+      ...v,
+      questionRows:nextRows,
+      categories:ensureQuestionRows(v.categories,nextRows),
+    }));
+  };
   const setTitleDraft=(title:string)=>autosave.update(v=>({...v,meta:{...v.meta,title}}));
   const setSubtitleDraft=(subtitle:string)=>autosave.update(v=>({...v,meta:{...v.meta,subtitle}}));
   const [validationError,setValidationError]=useState('');
@@ -161,7 +174,7 @@ export function Editor({
   const adjustQValue = (qIdx: number, delta: -100 | -10 | 10 | 100) => {
     updateQuestion(qIdx, q => ({
       ...q,
-      value: Math.max(0, (q.value ?? POINT_VALUES[qIdx]) + delta),
+      value: Math.max(0, (q.value ?? defaultQuestionValue(qIdx)) + delta),
     }));
   };
   const setQuestionType = (qIdx: number, type: NonNullable<Question["type"]>) => {
@@ -281,7 +294,7 @@ export function Editor({
   };
   const handleReset=()=>{
     if(!confirm('Alle Kategorien und Fragen dieses Quiz auf Standard zurücksetzen? Der neue Stand wird automatisch gespeichert.'))return;
-    setActiveCat(0);setDraft(structuredClone(CATEGORIES));
+    setActiveCat(0);setDraft(ensureQuestionRows(structuredClone(CATEGORIES),questionRows));
   };
   const goBack=async()=>{
     const localSafe=await autosave.localSettled();
@@ -360,7 +373,7 @@ export function Editor({
           // Unhide previously stored categories without generating a needless
           // autosave write. Only create data if this slot truly does not exist.
           if(draft.length < visibleCount+1) {
-            setDraft(v=>ensureCategoryCount(v,visibleCount+1));
+            setDraft(v=>ensureQuestionRows(ensureCategoryCount(v,visibleCount+1),questionRows));
           }
           onCategoryCountChange?.(visibleCount+1);
           setActiveCat(visibleCount);
@@ -378,6 +391,24 @@ export function Editor({
         <span className="text-xs text-muted-foreground" role="status">
           {visibleCount} von {MAX_CATEGORIES} sichtbar
           {draft.length>visibleCount ? ` · ${draft.length-visibleCount} ausgeblendet, nicht gelöscht` : ''}
+        </span>
+      </div>
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={imagePending || saving}
+          aria-pressed={questionRows === 6}
+          onClick={toggleSixthRow}
+          title={questionRows === 6 ? "Sechste Reihe ausblenden – Fragen bleiben gespeichert" : "Eine sechste Frage für jede Kategorie hinzufügen"}
+          className={`rounded-xl transition-[color,border-color,background-color] duration-300
+            ${questionRows === 6 ? "border-primary/40 bg-primary/[0.12] text-foreground hover:bg-primary/[0.17]" : "border-white/15 bg-white/[0.035] text-foreground/85 hover:bg-white/[0.08]"}`}
+        >
+          {questionRows === 6 ? <Minus className="mr-1.5 h-4 w-4" /> : <Plus className="mr-1.5 h-4 w-4" />}
+          {questionRows === 6 ? "6. Fragenreihe ausblenden" : "6. Fragenreihe hinzufügen"}
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          {questionRows} Fragen pro Kategorie · {questionRows === 6 ? "Zum Ausblenden klicken, vorhandene Fragen bleiben erhalten" : "Optional, Standard sind fünf"}
         </span>
       </div>
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-4 glow-primary mb-4">
@@ -422,7 +453,7 @@ export function Editor({
           />
         </div>
         <div className="space-y-5">
-          {draft[activeCat].questions.map((q, qIdx) => {
+          {draft[activeCat].questions.slice(0,questionRows).map((q, qIdx) => {
             const isOrder = q.type === "order";
             const isChoice = q.type === "choice";
             const isHint = q.type === "hint";
@@ -445,7 +476,7 @@ export function Editor({
                       <button
                         key={delta}
                         type="button"
-                        disabled={(q.value ?? POINT_VALUES[qIdx]) + delta < 0}
+                        disabled={(q.value ?? defaultQuestionValue(qIdx)) + delta < 0}
                         onClick={() => adjustQValue(qIdx, delta)}
                         aria-label={`${Math.abs(delta)} Punkte abziehen`}
                         title={`${Math.abs(delta)} Punkte abziehen`}
@@ -458,7 +489,7 @@ export function Editor({
                       aria-label="Punktwert"
                       type="number"
                       min={0}
-                      value={q.value ?? POINT_VALUES[qIdx]}
+                      value={q.value ?? defaultQuestionValue(qIdx)}
                       onChange={(e) =>
                         updateQValue(
                           qIdx,
