@@ -8,6 +8,10 @@ import { StartScreen } from "@/components/jeopardy/StartScreen";
 import { Board } from "@/components/jeopardy/Board";
 import { useGameStartAnimation } from "./GameStartSequence";
 import { readPlayerPreferences, normalizeColors } from "@/lib/player-preferences";
+import {
+  compactResults, readSavedGame, restoreResults, writeSavedGame, discardSavedGame,
+  type SavedGame,
+} from "@/lib/game-session";
 import { QuestionModal } from "@/components/jeopardy/QuestionModal";
 import {
   ScoreBoard,
@@ -291,6 +295,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const [screen, setScreen] =
     useState<Screen>(editInitially ? "editor" : "start");
   const [testSession, setTestSession] = useState(false);
+  const [savedGame, setSavedGame] = useState<SavedGame | null>(null);
+  const [gameSaveWarning, setGameSaveWarning] = useState(false);
   const [lastEditorCategory, setLastEditorCategory] = useState(0);
   const [players, setPlayers] =
     useState<Player[]>([]);
@@ -313,6 +319,69 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       )
     );
   const [results, setResults] = useState<Record<string, QuestionResult>>({});
+  // Separate game progress from the Supabase quiz/editor data. Each quiz gets
+  // its own small browser-local snapshot, and tests never overwrite it.
+  useEffect(() => {
+    if (loading || !editorSource) return;
+    setSavedGame(readSavedGame(editorSource.id, editorSource.updated_at));
+  }, [loading, editorSource?.id, editorSource?.updated_at]);
+
+  useEffect(() => {
+    if (screen !== "game" || testSession || loading || !editorSource || players.length === 0) return;
+    const snapshot: SavedGame = {
+        version: 1,
+        quizId: editorSource.id,
+        quizUpdatedAt: editorSource.updated_at,
+        savedAt: Date.now(),
+        categoryCount: activeCategoryCount,
+        questionRows,
+        players,
+        answered,
+        results: compactResults(results),
+        stats: gameStats,
+      };
+      const okay = writeSavedGame(snapshot);
+      setGameSaveWarning(!okay);
+    if (okay) setSavedGame(snapshot);
+  }, [
+    screen, testSession, loading, editorSource?.id, editorSource?.updated_at,
+    players, answered, results, gameStats, activeCategoryCount, questionRows,
+  ]);
+
+  const continueGame = () => {
+    const snapshot = savedGame;
+    if (!snapshot || !editorSource || snapshot.quizId !== editorSource.id ||
+        snapshot.quizUpdatedAt !== editorSource.updated_at || snapshot.questionRows !== questionRows)
+      return;
+    const quizCategories = ensureQuestionRows(
+      ensureCategoryCount(allCategories, snapshot.categoryCount),
+      snapshot.questionRows
+    ).slice(0, snapshot.categoryCount);
+    stopFinalQuestionAudio(false);
+    setTestSession(false);
+    setActiveCategoryCount(snapshot.categoryCount);
+    setPlayers(snapshot.players);
+    setGameStats(snapshot.stats);
+    setAnswered(snapshot.answered);
+    setResults(restoreResults(snapshot, quizCategories));
+    leaderRef.current = getSoleLeaderIndex(snapshot.players);
+    ceremonyPlayed.current = false;
+    setCeremonyOpen(false);
+    setActive(null);
+    setShowStats(false);
+    setHighlightedQuestion(null);
+    setIsRandomizing(false);
+    setScorePopups([]);
+    setSealingQuestion(null);
+    setGameEntering(false);
+    setScreen("game");
+  };
+  const discardGame = () => {
+    if (!editorSource) return;
+    discardSavedGame(editorSource.id);
+    setSavedGame(null);
+    setGameSaveWarning(false);
+  };
   const [active, setActive] =
     useState<Active | null>(null);
   const allAnswered = useMemo(
@@ -416,6 +485,11 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     fromEditor = false,
   ) => {
     setTestSession(fromEditor);
+    if (!fromEditor && editorSource) {
+      discardSavedGame(editorSource.id);
+      setSavedGame(null);
+      setGameSaveWarning(false);
+    }
             stopFinalQuestionAudio(false);
             setPlayers(
               names.map((name, index) => ({
@@ -520,6 +594,14 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           footer={<div className="mt-5 flex flex-wrap justify-center gap-3 text-sm">{!customId && <CreateQuiz />}{customId && <Link to="/" className="rounded-xl border border-white/15 px-4 py-2">Zur Startseite</Link>}<Link to="/verwaltung" className="rounded-xl border border-white/15 px-4 py-2">Quiz-Verwaltung</Link></div>}
           onQuizChange={loadQuiz}
           onStart={(names, count, colors) => launchGame(names, count, colors)}
+          savedGame={savedGame && savedGame.quizId === editorSource?.id &&
+            savedGame.quizUpdatedAt === editorSource?.updated_at ? {
+            savedAt: savedGame.savedAt,
+            answered: savedGame.answered.flat().filter(Boolean).length,
+            total: savedGame.categoryCount * savedGame.questionRows,
+          } : undefined}
+          onResume={continueGame}
+          onDiscardSaved={discardGame}
         />
         <div className="fixed top-4 right-4 flex items-center gap-2 z-50">
           <MusicControls />
@@ -1128,6 +1210,11 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           </Button>
         </div>
       </header>
+      {gameSaveWarning && !testSession && (
+        <p role="alert" className="mb-3 text-xs text-amber-200/90">
+          Der Browser konnte den Spielstand nicht lokal sichern. Bitte freien Browserspeicher prüfen.
+        </p>
+      )}
       <div className="mb-4 md:mb-6">
         <ScoreBoard
   players={players}
