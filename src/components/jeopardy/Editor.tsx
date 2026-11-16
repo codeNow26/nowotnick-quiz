@@ -15,13 +15,14 @@ interface EditorProps {
   target: QuizTarget;
   onSaved: (source:LoadedQuiz) => void;
   onBack: () => void;
-  onTest: (questionRows: 5 | 6) => void;
+  onTest: (questionRows: 5 | 6, categoryIndex: number) => void;
+  initialCategory?: number;
   categoryCount?: number;
   onCategoryCountChange?: (count:number)=>void;
 }
 export function Editor({
   source, target, onSaved, categoryCount, onCategoryCountChange,
-  onBack, onTest,
+  onBack, onTest, initialCategory = 0,
 }: EditorProps) {
   const autosave = useEditorAutosave(target,source,onSaved);
   const { value, status, recovery } = autosave.state;
@@ -61,7 +62,7 @@ export function Editor({
   },[]);
   const saving=manualSaving;
   const showSaveSuccess=saveConfirmed && !autosave.state.dirty && status==='saved';
-  const [activeCat, setActiveCat] = useState(0);
+  const [activeCat, setActiveCat] = useState(initialCategory);
   const [openImageEditors, setOpenImageEditors] = useState<Record<string, boolean>>({});
   const [processingImages, setProcessingImages] = useState<Record<string, boolean>>({});
   const imageGeneration=useRef<Record<string,number>>({});
@@ -306,7 +307,7 @@ export function Editor({
         setValidationError('Test nicht gestartet: Die Änderungen konnten nicht gespeichert werden. Bitte den Speicherstatus prüfen.');
         return;
       }
-      onTest(questionRows);
+      onTest(questionRows, activeCat);
     }catch(error){
       setValidationError(error instanceof Error ? error.message : 'Test konnte nicht gestartet werden.');
     }finally{
