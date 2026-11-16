@@ -14,10 +14,15 @@ export interface Question {
 
 export interface Category {
   name: string;
-  questions: Question[]; // Länge 5, sortiert nach Punktwerten 100..1000
+  questions: Question[]; // 5 oder 6 Fragen; eine ausgeblendete sechste Frage bleibt gespeichert
 }
 
 export const POINT_VALUES = [100, 200, 400, 600, 1000] as const;
+export const DEFAULT_QUESTION_ROWS = 5;
+export const MAX_QUESTION_ROWS = 6;
+export const SIXTH_QUESTION_VALUE = 1500;
+export const defaultQuestionValue = (index: number): number =>
+  POINT_VALUES[index] ?? SIXTH_QUESTION_VALUE;
 
 export const CATEGORIES: Category[] = [
   {
