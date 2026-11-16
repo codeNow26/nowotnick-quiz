@@ -826,3 +826,34 @@ html.quiz-launch-scroll-lock body {
 @media(prefers-reduced-motion:reduce) {
   .quiz-editor-save-success,.quiz-save-check {animation:none;}
 }
+
+
+/* Native fullscreen: the root includes every Radix portal and image viewer.
+   Only the board's maximum width increases on large TV/monitor displays.
+   Do not scale the game or suppress scrolling on short screens. */
+html:fullscreen {
+  background: var(--ink-deep);
+}
+@media (min-width: 1024px) {
+  html:fullscreen .quiz-game-stage:not(.quiz-game-stage-wide) {
+    max-width: min(96vw, 1680px) !important;
+  }
+  html:fullscreen .quiz-game-stage.quiz-game-stage-wide {
+    max-width: min(96vw, 1920px) !important;
+  }
+}
+
+/* Small icon transition; no fullscreen overlay or GPU-heavy blur animation. */
+.quiz-fullscreen-icon {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  animation:quiz-fullscreen-icon-in 300ms cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes quiz-fullscreen-icon-in {
+  from {opacity:.35;transform:scale(.78);}
+  to {opacity:1;transform:scale(1);}
+}
+@media (prefers-reduced-motion:reduce) {
+  .quiz-fullscreen-icon {animation:none;}
+}
