@@ -1,5 +1,5 @@
 import { AwardCeremony } from "./AwardCeremony";
-import { ensureCategoryCount, MAX_CATEGORIES } from "@/lib/quiz-repository";
+import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES } from "@/lib/quiz-repository";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { Link } from "@tanstack/react-router";
@@ -26,7 +26,7 @@ import {
   Dices,
   BarChart3,
 } from "lucide-react";
-import { POINT_VALUES, type QuestionResult } from "@/lib/jeopardy-data";
+import { DEFAULT_QUESTION_ROWS, defaultQuestionValue, type QuestionResult } from "@/lib/jeopardy-data";
 import { useCategories } from "@/lib/use-categories";
 interface Player {
   color: string;
@@ -297,15 +297,16 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   ] = useState(
     6
   );
+  const questionRows: 5 | 6 = editorSource?.data.questionRows === 6 ? 6 : 5;
   const categories = useMemo(
-    () => ensureCategoryCount(allCategories, activeCategoryCount).slice(0, activeCategoryCount),
-    [allCategories, activeCategoryCount]
+    () => ensureQuestionRows(ensureCategoryCount(allCategories,activeCategoryCount),questionRows).slice(0, activeCategoryCount),
+    [allCategories, activeCategoryCount, questionRows]
   );
   const [answered, setAnswered] =
     useState<boolean[][]>(() =>
       makeAnswered(
         activeCategoryCount,
-        POINT_VALUES.length
+        DEFAULT_QUESTION_ROWS
       )
     );
   const [results, setResults] = useState<Record<string, QuestionResult>>({});
@@ -465,7 +466,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
             setAnswered(
               makeAnswered(
                 catCount,
-                POINT_VALUES.length
+                questionRows
               )
             );
             leaderRef.current = null;
@@ -534,9 +535,9 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         ].questions[
           active.question
         ].value ??
-        POINT_VALUES[
+        defaultQuestionValue(
           active.question
-        ]
+        )
       : 0;
   const activeCategory =
     active !== null
@@ -546,7 +547,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       : "";
   const highStakes = active !== null && !activeResult &&
     activeValue >= Math.max(1, ...categories[active.category].questions.map(
-      (q, index) => q.value ?? POINT_VALUES[index] ?? 0
+      (q, index) => q.value ?? defaultQuestionValue(index) ?? 0
     ));
   const openQuestion = (
     questionToOpen: Active
@@ -1120,6 +1121,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         </div>
       )}
       <Board
+        questionRows={questionRows}
         launching={gameEntering}
         categories={categories}
         answered={answered}
