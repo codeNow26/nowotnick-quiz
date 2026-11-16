@@ -298,12 +298,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     6
   );
   const categories = useMemo(
-    () =>
-      (customId ? ensureCategoryCount(allCategories,activeCategoryCount) : allCategories).slice(
-        0,
-        activeCategoryCount
-      ),
-    [allCategories, activeCategoryCount, customId]
+    () => ensureCategoryCount(allCategories, activeCategoryCount).slice(0, activeCategoryCount),
+    [allCategories, activeCategoryCount]
   );
   const [answered, setAnswered] =
     useState<boolean[][]>(() =>
@@ -420,8 +416,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         key={editorSource!.id}
         source={editorSource!}
         target={editorTarget}
-        categoryCount={customId ? activeCategoryCount : undefined}
-        onCategoryCountChange={customId ? setActiveCategoryCount : undefined}
+        categoryCount={activeCategoryCount}
+        onCategoryCountChange={setActiveCategoryCount}
         onSaved={applySaved}
         onBack={() =>
           setScreen("start")
@@ -438,7 +434,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           maxCategories={
             customId ? MAX_CATEGORIES : allCategories.length
           }
-          selectedCategoryCount={customId ? activeCategoryCount : undefined}
+          selectedCategoryCount={activeCategoryCount}
           onCategoryCountChange={setActiveCategoryCount}
           key={customId ?? quizSlot}
           activeQuiz={customId ? undefined : quizSlot}
