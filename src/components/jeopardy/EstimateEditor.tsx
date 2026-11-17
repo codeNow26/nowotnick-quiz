@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { Check, CheckCircle2, ChevronDown, Keyboard, SlidersHorizontal, Target } from "lucide-react";
+import { ChevronDown, Keyboard, SlidersHorizontal, Target } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { EstimateSettings } from "@/lib/question-formats";
 
@@ -54,12 +54,6 @@ export function EstimateEditor({ settings: s, onChange }: EstimateEditorProps) {
   const [expanded, setExpanded] = useState(false);
 
   const validTarget = s.target !== undefined && Number.isFinite(s.target);
-  const validTolerance = Number.isFinite(s.tolerance) && s.tolerance >= 0;
-  const margin = validTarget && validTolerance
-    ? s.toleranceType === "percent" ? Math.abs(s.target!) * s.tolerance / 100 : s.tolerance
-    : 0;
-  const lower = validTarget ? s.target! - margin : 0;
-  const upper = validTarget ? s.target! + margin : 0;
   const format = (value: number) => numberFormat.format(value);
   const unit = s.unit.trim();
   const rangeValid = Number.isFinite(s.min) && Number.isFinite(s.max) && s.max > s.min;
@@ -68,20 +62,11 @@ export function EstimateEditor({ settings: s, onChange }: EstimateEditorProps) {
 
   return (
     <section aria-label="Einstellungen der Schätzfrage" className="min-w-0 space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/[0.10] text-primary">
-            <Target className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <div>
-            <h3 className="font-display text-base font-semibold tracking-wide text-foreground">Schätzung</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">Antwort und Spielregeln festlegen</p>
-          </div>
-        </div>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.09] bg-white/[0.035] px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-          <Check className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-          Automatische Wertung
-        </div>
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/[0.10] text-primary">
+          <Target className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <h3 className="font-display text-base font-semibold tracking-wide text-foreground">Schätzung</h3>
       </div>
 
       <div className="grid min-w-0 gap-y-6 lg:grid-cols-2 lg:gap-x-9">
@@ -107,9 +92,6 @@ export function EstimateEditor({ settings: s, onChange }: EstimateEditorProps) {
               />
             </label>
           </div>
-          <p className="text-xs leading-relaxed text-muted-foreground/75">
-            Diese Zahl wird erst bei der Auflösung gezeigt.
-          </p>
         </div>
 
         <div className="min-w-0 space-y-3 lg:border-l lg:border-white/[0.09] lg:pl-9">
@@ -150,7 +132,6 @@ export function EstimateEditor({ settings: s, onChange }: EstimateEditorProps) {
       <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-white/[0.08] pt-4">
         <div className="min-w-[170px]">
           <h4 className="text-sm font-semibold text-foreground/90">Erlaubte Toleranz</h4>
-          <p className="mt-1 text-xs text-muted-foreground">Wie nah muss die Schätzung dran sein?</p>
         </div>
         <div className="flex flex-wrap items-end gap-2.5">
           <div className="w-[110px]">
@@ -186,16 +167,6 @@ export function EstimateEditor({ settings: s, onChange }: EstimateEditorProps) {
           </fieldset>
         </div>
       </div>
-
-      {validTarget && validTolerance && Number.isFinite(lower) && Number.isFinite(upper) && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-primary/[0.13] bg-primary/[0.055] px-3.5 py-2.5">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary/75" aria-hidden="true" />
-          <p className="text-xs leading-relaxed text-foreground/75">
-            <span className="font-semibold text-foreground/85">Vorschau:</span> Richtig bei {format(lower)} bis {format(upper)}{unit ? ` ${unit}` : ""}.
-            <span className="ml-1 text-muted-foreground/75">Im Spiel erscheint nur die Toleranz unter der Frage.</span>
-          </p>
-        </div>
-      )}
 
       {s.input === "slider" && (
         <div className="border-t border-white/[0.08] pt-2">
