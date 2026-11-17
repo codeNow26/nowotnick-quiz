@@ -81,6 +81,13 @@ export function locationSettings(q: Question): LocationSettings {
 export function revealValue(start: number, config: RevealSettings, stage: number) {
   return Math.max(config.floor, start - stage * config.deduction);
 }
+/** A single rule label shown immediately below the estimation question. */
+export function estimateToleranceLabel(s: EstimateSettings): string {
+  const amount = s.tolerance.toLocaleString("de-DE", { maximumFractionDigits: 12 });
+  const unit = s.toleranceType === "percent" ? " %" : s.unit.trim() ? ` ${s.unit.trim()}` : "";
+  return `Toleranz: ±${amount}${unit}`;
+}
+
 export function estimateHit(s: EstimateSettings, guess: number) {
   if (!Number.isFinite(s.target) || !Number.isFinite(guess)) return false;
   const target = s.target!;

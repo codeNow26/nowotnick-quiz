@@ -3,6 +3,7 @@ import {
   nextRound,
   estimateSettings,
   estimateHit,
+  estimateToleranceLabel,
   locationSettings,
   locationHit,
   revealSettings,
@@ -19,6 +20,9 @@ const q: Question = {
 };
 const e = estimateSettings(q);
 assert.equal(e.input, "number");
+assert.equal(estimateToleranceLabel(e), "Toleranz: ±10 %");
+assert.equal(estimateToleranceLabel({ ...e, toleranceType: "absolute", unit: "km", tolerance: 2.5 }), "Toleranz: ±2,5 km");
+assert.equal(estimateToleranceLabel({ ...e, toleranceType: "absolute", unit: "" }), "Toleranz: ±10");
 assert(estimateHit(e, -22));
 assert(!estimateHit(e, -22.1));
 assert(estimateHit({ ...e, target: 0, toleranceType: "absolute", tolerance: 0.1 }, -0.1));
