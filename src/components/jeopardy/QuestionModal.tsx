@@ -1,4 +1,5 @@
 import { QuestionVideo } from "./QuestionVideo";
+import { QuestionAudio } from "./QuestionAudio";
 import { QuestionAtmosphere } from "./QuestionAtmosphere";
 import { AnswerRevealText } from "./AnswerRevealText";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
@@ -552,6 +553,7 @@ function QuestionModalContent({
               <p className="text-sm text-muted-foreground">Nachlesen · {review.playerIndex === null ? "Übersprungen" : `${players[review.playerIndex]?.name}: ${review.correct ? "richtig beantwortet" : "falsch beantwortet"}`}</p>
               {renderQuestionImage()}
               {open && question.videoUrl && <QuestionVideo key={question.videoUrl} src={question.videoUrl} />}
+              {open && question.audioUrl && <QuestionAudio key={question.audioUrl} src={question.audioUrl} />}
               <section><h3 className="mb-2 text-sm font-semibold text-muted-foreground">Frage</h3>
                 <p className="whitespace-pre-wrap break-words text-xl md:text-3xl font-bold">{question.question}</p>
               </section>
@@ -576,6 +578,7 @@ function QuestionModalContent({
             <div className="relative z-10 w-full max-w-2xl space-y-6">
               {renderQuestionImage()}
               {open && question.videoUrl && <QuestionVideo key={question.videoUrl} src={question.videoUrl} />}
+              {open && question.audioUrl && <QuestionAudio key={question.audioUrl} src={question.audioUrl} />}
               <p className="quiz-question-ink font-sans font-bold text-2xl md:text-4xl leading-snug whitespace-pre-line">
                 {question.question}
               </p>
@@ -631,6 +634,7 @@ function QuestionModalContent({
             >
               {renderQuestionImage()}
               {open && question.videoUrl && <QuestionVideo key={question.videoUrl} src={question.videoUrl} />}
+              {open && question.audioUrl && <QuestionAudio key={question.audioUrl} src={question.audioUrl} />}
               {!revealed ? (
                 <>
                   <p
@@ -780,6 +784,7 @@ function QuestionModalContent({
             <div className="relative z-10 w-full max-w-2xl">
               {renderQuestionImage()}
               {open && question.videoUrl && <QuestionVideo key={question.videoUrl} src={question.videoUrl} />}
+              {open && question.audioUrl && <QuestionAudio key={question.audioUrl} src={question.audioUrl} />}
               <AnswerRevealText
                 question={question.question.replace(
                   /\s+(?=[A-D](?::|\.{1,2}|\)))/g,
