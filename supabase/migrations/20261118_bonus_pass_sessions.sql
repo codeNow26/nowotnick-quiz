@@ -52,9 +52,10 @@ BEGIN
      OR p_players IS NULL OR jsonb_typeof(p_players) <> 'array'
      OR jsonb_array_length(p_players) NOT BETWEEN 1 AND 6
      OR EXISTS (
-       SELECT 1 FROM jsonb_array_elements(p_players) AS p
-       WHERE jsonb_typeof(p) <> 'object' OR jsonb_typeof(p->'name') <> 'string'
-             OR length(trim(p->>'name')) NOT BETWEEN 1 AND 80
+       SELECT 1 FROM jsonb_array_elements(p_players) AS element(item)
+       WHERE jsonb_typeof(element.item) <> 'object'
+             OR jsonb_typeof(element.item->'name') <> 'string'
+             OR length(trim(element.item->>'name')) NOT BETWEEN 1 AND 80
      )
   THEN RAISE EXCEPTION 'Ungültige Angaben zur Schätzrunde'; END IF;
   INSERT INTO public.bonus_pass_sessions(
