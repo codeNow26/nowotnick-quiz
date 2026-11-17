@@ -8,6 +8,7 @@ import { uploadQuizAudio, uploadQuizVideo } from "@/lib/quiz-video";
 type MediaKind = "image" | "video" | "audio";
 interface Props {
   quizId: string;
+  requiredVisual?: "image" | "either";
   imageUrl?: string;
   videoUrl?: string;
   audioUrl?: string;
@@ -52,7 +53,7 @@ function urlKind(url: string): MediaKind | null {
 /** One chooser for all three file kinds. Existing image + video combinations
  * remain valid; adding new media never silently deletes older uploads. */
 export function QuestionMediaEditor({
-  quizId, imageUrl, videoUrl, audioUrl, onImageUpload,
+  quizId, requiredVisual, imageUrl, videoUrl, audioUrl, onImageUpload,
   onChangeImage, onChangeVideo, onChangeAudio, onPending,
 }: Props) {
   const [busy, setBusy] = useState(false);
@@ -236,7 +237,7 @@ export function QuestionMediaEditor({
         </div>
       )}
       <p className="text-[11px] text-muted-foreground/65">
-        Medien sind optional und beim Spielen direkt in der Frage sichtbar. Hochgeladene Videos und Audios sind über ihre Links öffentlich abrufbar.
+        {requiredVisual === "image" ? "Für die Zielposition wird ein Bild benötigt." : requiredVisual === "either" ? "Für die Enthüllung wird ein Bild oder Video benötigt." : "Medien sind optional und beim Spielen direkt in der Frage sichtbar."} Hochgeladene Videos und Audios sind über ihre Links öffentlich abrufbar.
       </p>
     </div>
   );

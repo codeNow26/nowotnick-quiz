@@ -1,3 +1,4 @@
+import { FormatEditor } from "./FormatEditor";
 import { QuestionMediaEditor } from "./QuestionMediaEditor";
 import { QuestionTypePicker } from "./QuestionTypePicker";
 import { AnswerImageEditor } from "./AnswerImageEditor";
@@ -20,6 +21,10 @@ interface EditorProps {
   initialCategory?: number;
   categoryCount?: number;
   onCategoryCountChange?: (count:number)=>void;
+}
+function withField(q: Question, field: "question" | "answer" | "imageUrl" | "answerImageUrl", value: string): Question {
+  if (field === "imageUrl" && q.imageUrl !== value && q.location) return { ...q, imageUrl: value, location: { ...q.location, target: undefined, aspect: undefined } };
+  return { ...q, [field]: value };
 }
 export function Editor({
   source, target, onSaved, categoryCount, onCategoryCountChange,
@@ -143,7 +148,7 @@ export function Editor({
       const imageDataUrl = await fileToOptimizedDataUrl(file);
       await autosave.prepareImage(imageDataUrl);
       if(imageGeneration.current[key]!==generation)return;
-      setDraft(prev=>prev.map((c,i)=>i===categoryIndex ? {...c,questions:c.questions.map((q,j)=>j===qIdx?{...q,[field]:imageDataUrl}:q)}:c));
+      setDraft(prev=>prev.map((c,i)=>i===categoryIndex ? {...c,questions:c.questions.map((q,j)=>j===qIdx?withField(q,field,imageDataUrl):q)}:c));
     } catch (error) {
       alert(error instanceof Error ? error.message : "Bild konnte nicht hochgeladen werden.");
     } finally {
@@ -170,7 +175,7 @@ export function Editor({
       const key=`${activeCat}-${qIdx}${field === "answerImageUrl" ? ":answer" : ""}`;imageGeneration.current[key]=(imageGeneration.current[key]??0)+1;
       setProcessingImages(prev=>({...prev,[key]:false}));
     }
-    updateQuestion(qIdx, (q) => ({ ...q, [field]: value }));
+    updateQuestion(qIdx, (q) => withField(q,field,value));
   };
   const updateQValue = (qIdx: number, value: number | undefined) => {
     updateQuestion(qIdx, (q) => ({ ...q, value }));
@@ -207,7 +212,7 @@ export function Editor({
       }
       return {
         ...q,
-        type: "normal",
+        type,
       };
     });
   };
@@ -501,7 +506,7 @@ export function Editor({
               <div key={qIdx} className="glass rounded-2xl p-4 space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
-                    Punkte
+                    {q.type === "reveal" ? "Startpunkte" : "Punkte"}
                   </Label>
                   <div className="inline-flex max-w-full items-center gap-1 rounded-xl border border-white/[0.10] bg-black/[0.13] p-1">
                     {([-100, -10] as const).map(delta => (
@@ -582,7 +587,7 @@ export function Editor({
                     <ImagePlus className="h-4 w-4" aria-hidden="true" />
                     {hasImage || hasVideo || hasAudio
                       ? [hasImage && "Bild", hasVideo && "Video", hasAudio && "Audio"].filter(Boolean).join(" · ") + " vorhanden"
-                      : "Medien hinzufügen · optional"}
+                      : q.type === "location" ? "Bild hinzufügen" : q.type === "reveal" ? "Bild oder Video hinzufügen" : "Medien hinzufügen · optional"}
                     {imageEditorOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {imageEditorOpen && (
@@ -590,6 +595,7 @@ export function Editor({
                       <QuestionMediaEditor
                         key={`media-editor-${source.id}-${activeCat}-${qIdx}`}
                         quizId={source.id}
+                        requiredVisual={q.type === "location" ? "image" : q.type === "reveal" ? "either" : undefined}
                         imageUrl={q.imageUrl}
                         videoUrl={q.videoUrl}
                         audioUrl={q.audioUrl}
@@ -610,7 +616,10 @@ export function Editor({
                     </div>
                   )}
                 </div>
-                {isChoice ? (
+                {(q.type === "estimate" || q.type === "location" || q.type === "reveal") && (
+                  <FormatEditor key={imageEditorKey + q.type} q={q} start={q.value ?? defaultQuestionValue(qIdx)} update={fn=>updateQuestion(qIdx,fn)}/>
+                )}
+                {q.type === "estimate" || q.type === "location" ? null : isChoice ? (
                   <fieldset className="space-y-3">
                     <legend className="text-sm font-semibold">Antworten A–D</legend>
                     <p className="text-xs text-muted-foreground">Trage vier Antworten ein und markiere die richtige Lösung.</p>

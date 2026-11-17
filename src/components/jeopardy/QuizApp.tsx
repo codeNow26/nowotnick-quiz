@@ -1,6 +1,6 @@
 import { AwardCeremony } from "./AwardCeremony";
 import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES } from "@/lib/quiz-repository";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { Link } from "@tanstack/react-router";
 import { CreateQuiz } from "./CreateQuiz";
@@ -27,6 +27,7 @@ import {
   Dices,
   BarChart3,
 } from "lucide-react";
+import { nextRound, type FormatRound, type RoundAction, type FormatAttempt } from "@/lib/question-formats";
 import { DEFAULT_QUESTION_ROWS, defaultQuestionValue, type QuestionResult } from "@/lib/jeopardy-data";
 import { useCategories } from "@/lib/use-categories";
 interface Player {
@@ -312,9 +313,19 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         DEFAULT_QUESTION_ROWS
       )
     );
+  const [formatRounds,setFormatRounds]=useState<Record<string,FormatRound>>({});
   const [results, setResults] = useState<Record<string, QuestionResult>>({});
   const [active, setActive] =
     useState<Active | null>(null);
+  const activeKey = active ? `${active.category}:${active.question}` : null;
+  const dispatchRound = useCallback((action: RoundAction) => {
+    if (activeKey === null) return;
+    setFormatRounds(previous => {
+      const before = previous[activeKey] ?? {};
+      const after = nextRound(before, action);
+      return before === after ? previous : { ...previous, [activeKey]: after };
+    });
+  }, [activeKey]);
   const allAnswered = useMemo(
     () =>
       answered.every((row) =>
@@ -433,6 +444,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
               catCount
             );
             setResults({});
+            setFormatRounds({});
             setAnswered(
               makeAnswered(
                 catCount,
@@ -726,9 +738,11 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     playerIndex: number | null,
     correct: boolean,
     resolvedValue: number = activeValue,
-    selectedChoice: number | null = null
+    selectedChoice: number | null = null,
+    attempt?: FormatAttempt
   ) => {
     if (!active || answered[active.category]?.[active.question]) return;
+    if (playerIndex !== null && activeQuestion?.type === "estimate" && playerIndex !== (players.length === 1 ? 0 : formatRounds[`${active.category}:${active.question}`]?.owner)) return;
     // Bossmusik beenden und normale Hintergrundmusik fortsetzen.
     stopFinalQuestionAudio();
     if (playerIndex !== null) {
@@ -983,7 +997,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     setPlayers(nextPlayers);
     setResults(prev => ({ ...prev, [`${active.category}:${active.question}`]: {
       question: structuredClone(activeQuestion!), category: activeCategory,
-      value: resolvedValue, playerIndex, correct, selectedChoice,
+      value: resolvedValue, playerIndex, correct, selectedChoice, attempt,
     } }));
     setAnswered((prev) => {
       const next =
@@ -1180,6 +1194,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         }
       />
       <QuestionModal
+        round={activeKey ? formatRounds[activeKey] : undefined}
+        dispatchRound={dispatchRound}
         origin={revealOrigin.current}
         open={active !== null}
         highStakes={highStakes}
