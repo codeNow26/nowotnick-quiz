@@ -169,9 +169,10 @@ export function BonusHostRound({
         ) : (
           <div className="space-y-5">
             <div className="rounded-2xl border border-primary/25 bg-primary/[.075] p-4 text-center">
-              <p className="mb-2 text-xs text-[#c1b7d9]">Auf einem Handy öffnen</p>
-              <p className="break-all font-mono text-sm text-[#ebe5ff]">{url}</p>
-              <p className="mt-3 font-display text-2xl tracking-[.2em] text-[#c1adff]">{session.code}</p>
+              <p className="mb-2 text-xs text-[#c1b7d9]">Auf deinem Handy öffnen</p>
+              <p className="break-all font-mono text-sm text-[#ebe5ff]">{typeof window === "undefined" ? "/mitraten" : `${window.location.origin}/mitraten`}</p>
+              <p className="mt-3 text-xs text-[#c1b7d9]">Diesen Code einmal eingeben:</p>
+              <p className="mt-1 font-display text-2xl tracking-[.2em] text-[#c1adff]">{session.code}</p>
               <Button variant="outline" size="sm" className="mt-3 rounded-lg border-white/20"
                 onClick={async () => {
                   try { await navigator.clipboard.writeText(url); setCopied(true); }
