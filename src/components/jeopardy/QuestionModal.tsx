@@ -1,7 +1,7 @@
 import { EstimateRound } from "./EstimateRound";
 import { RevealMedia } from "./RevealMedia";
 import { LocationImage } from "./LocationImage";
-import { estimateSettings, estimateHit, revealSettings, revealValue, REVEAL_STAGES, locationSettings, locationHit, formatError, type FormatAttempt, type FormatRound, type RoundAction, type ImagePoint } from "@/lib/question-formats";
+import { estimateSettings, estimateHit, estimateToleranceLabel, revealSettings, revealValue, REVEAL_STAGES, locationSettings, locationHit, formatError, type FormatAttempt, type FormatRound, type RoundAction, type ImagePoint } from "@/lib/question-formats";
 import { QuestionVideo } from "./QuestionVideo";
 import { QuestionAudio } from "./QuestionAudio";
 import { QuestionAtmosphere } from "./QuestionAtmosphere";
@@ -647,6 +647,11 @@ function QuestionModalContent({
                   <p className="quiz-question-ink whitespace-pre-line break-words text-2xl font-bold md:text-4xl">
                     {question.question}
                   </p>
+                  {isEstimate && (
+                    <p className="-mt-3 text-center text-sm text-muted-foreground/85">
+                      {estimateToleranceLabel(estimate)}
+                    </p>
+                  )}
                   {isEstimate && renderQuestionImage()}
                   {open && !isReveal && question.videoUrl && <QuestionVideo src={question.videoUrl} />}
                   {open && question.audioUrl && <QuestionAudio src={question.audioUrl} />}
