@@ -1,11 +1,12 @@
-import { QuestionVideoEditor } from "./QuestionVideoEditor";
+import { QuestionMediaEditor } from "./QuestionMediaEditor";
+import { QuestionTypePicker } from "./QuestionTypePicker";
 import { AnswerImageEditor } from "./AnswerImageEditor";
 import { useEffect, useRef, useState, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Loader2, Minus, Play, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Loader2, Minus, Play, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useEditorAutosave } from "@/lib/autosave/use-editor-autosave";
 import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES, type LoadedQuiz, type QuizTarget } from "@/lib/quiz-repository";
 import type { Category, Question } from "@/lib/jeopardy-data";
@@ -183,8 +184,10 @@ export function Editor({
   const setQuestionType = (qIdx: number, type: NonNullable<Question["type"]>) => {
     updateQuestion(qIdx, (q) => {
       if (type === "choice") {
+        // Preserve other mode-specific settings; changing back must not erase
+        // existing hints or previously written ordering elements.
         return { ...q, type, options: q.options?.length === 4 ? [...q.options] : ["", "", "", ""],
-          correctOption: q.correctOption, orderItems: undefined, hints: undefined };
+          correctOption: q.correctOption };
       }
       if (type === "order") {
         const existing = q.orderItems?.length ? q.orderItems : ["", "", "", ""];
@@ -192,7 +195,6 @@ export function Editor({
           ...q,
           type: "order",
           orderItems: existing,
-          hints: undefined,
           answer: existing.filter(Boolean).join(" → "),
         };
       }
@@ -200,15 +202,12 @@ export function Editor({
         return {
           ...q,
           type: "hint",
-          orderItems: undefined,
           hints: q.hints?.length ? q.hints : ["", "", ""],
         };
       }
       return {
         ...q,
         type: "normal",
-        orderItems: undefined,
-        hints: undefined,
       };
     });
   };
@@ -495,9 +494,8 @@ export function Editor({
             const imageEditorOpen = Boolean(openImageEditors[imageEditorKey]);
             const hasImage = Boolean(q.imageUrl?.trim());
             const hasVideo = Boolean(q.videoUrl?.trim());
-            const videoProcessing = Boolean(processingVideos[imageEditorKey]);
-            const isUploadedImage = q.imageUrl?.startsWith("data:image/") ?? false;
-            const imageProcessing = Boolean(processingImages[imageEditorKey]);
+            const hasAudio = Boolean(q.audioUrl?.trim());
+            const mediaProcessing = Boolean(processingVideos[imageEditorKey]);
             const answerImageProcessing = Boolean(processingImages[`${imageEditorKey}:answer`]);
             return (
               <div key={qIdx} className="glass rounded-2xl p-4 space-y-4">
@@ -545,45 +543,12 @@ export function Editor({
                       </button>
                     ))}
                   </div>
-                  <div className="ml-auto flex flex-wrap rounded-xl border border-white/10 bg-white/[0.03] p-1">
-                    <button
-                      type="button"
-                      onClick={() => setQuestionType(qIdx, "normal")}
-                      className={`px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${
-                        !isOrder && !isHint && !isChoice
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      Normal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuestionType(qIdx, "order")}
-                      className={`px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${
-                        isOrder
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      Reihenfolge
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuestionType(qIdx, "hint")}
-                      className={`px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 ${
-                        isHint
-                          ? "bg-amber-500 text-amber-950"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Lightbulb className="h-3.5 w-3.5" />
-                      Hinweis
-                    </button>
-                    <button type="button" onClick={() => setQuestionType(qIdx, "choice")}
-                      className={`px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${isChoice ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                      ABCD
-                    </button>
+                  <div className="ml-auto">
+                    <QuestionTypePicker
+                      value={q.type}
+                      disabled={imagePending || saving || testLaunching}
+                      onChange={type => setQuestionType(qIdx, type)}
+                    />
                   </div>
                 </div>
                 <div>
@@ -606,130 +571,39 @@ export function Editor({
                   <button
                     type="button"
                     onClick={() => toggleImageEditor(qIdx)}
-                    disabled={videoProcessing}
+                    disabled={mediaProcessing}
                     aria-expanded={imageEditorOpen}
                     aria-controls={`media-${source.id}-${imageEditorKey}`}
-                    className={`
-                      max-w-full
-                      inline-flex items-center gap-3
-                      rounded-xl
-                      border
-                      px-3 py-2
-                      text-xs
-                      transition-all
-                      ${
-                        hasImage || hasVideo
-                          ? "border-primary/20 bg-primary/[0.04] text-foreground/80 hover:bg-primary/[0.08]"
-                          : "border-transparent bg-transparent text-muted-foreground hover:border-white/10 hover:bg-white/[0.04] hover:text-foreground"
-                      }
-                    `}
+                    className={`inline-flex max-w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-xs transition-[background-color,border-color,color] duration-300
+                      ${hasImage || hasVideo || hasAudio
+                        ? "border-primary/20 bg-primary/[0.05] text-foreground/80 hover:bg-primary/[0.10]"
+                        : "border-transparent bg-transparent text-muted-foreground hover:border-white/10 hover:bg-white/[0.045] hover:text-foreground"}`}
                   >
-                    <span className="flex items-center gap-2">
-                      <ImagePlus className="h-4 w-4" />
-                      {hasImage && hasVideo ? "Bild und Video vorhanden" : hasImage ? "Bild vorhanden" : hasVideo ? "Video vorhanden" : "Medien hinzufügen · Bild oder Video"}
-                    </span>
-                    {imageEditorOpen ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
+                    <ImagePlus className="h-4 w-4" aria-hidden="true" />
+                    {hasImage || hasVideo || hasAudio
+                      ? [hasImage && "Bild", hasVideo && "Video", hasAudio && "Audio"].filter(Boolean).join(" · ") + " vorhanden"
+                      : "Medien hinzufügen · optional"}
+                    {imageEditorOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {imageEditorOpen && (
-                    <div id={`media-${source.id}-${imageEditorKey}`} className="rounded-2xl border border-white/10 bg-black/10 p-3 space-y-3">
-                      <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-                        <div>
-                          <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
-                            Bild-URL
-                          </Label>
-                          <Input
-                            type="url"
-                            value={isUploadedImage ? "" : q.imageUrl ?? ""}
-                            onChange={(e) => updateQ(qIdx, "imageUrl", e.target.value)}
-                            className="glass border-white/10 text-foreground rounded-xl mt-1 h-11"
-                            placeholder={
-                              isUploadedImage
-                                ? "Eigenes Bild ist gespeichert – URL ersetzt es"
-                                : "https://.../bild.jpg"
-                            }
-                          />
-                        </div>
-                        <label
-                          className={`
-                            h-11
-                            inline-flex items-center justify-center gap-2
-                            rounded-xl
-                            border border-primary/25
-                            bg-primary/[0.08]
-                            px-4
-                            text-sm font-semibold
-                            text-primary
-                            transition-all
-                            hover:bg-primary/[0.14]
-                            cursor-pointer
-                            ${imageProcessing ? "opacity-60 pointer-events-none" : ""}
-                          `}
-                        >
-                          <Upload className="h-4 w-4" />
-                          {imageProcessing ? "Wird verarbeitet…" : "Eigenes Bild hochladen"}
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            className="hidden"
-                            disabled={imageProcessing}
-                            onChange={(event) => {
-                              void handleImageUpload(qIdx, event.target.files?.[0]);
-                              event.currentTarget.value = "";
-                            }}
-                          />
-                        </label>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground/70">
-                        JPG, PNG oder WEBP · max. 10 MB. Eigene Bilder werden automatisch verkleinert und im Quiz gespeichert.
-                      </p>
-                      {hasImage && (
-                        <div className="rounded-xl border border-white/10 bg-black/20 p-2">
-                          <img
-                            key={q.imageUrl}
-                            src={q.imageUrl}
-                            alt="Vorschau"
-                            referrerPolicy="no-referrer"
-                            className="mx-auto max-h-32 max-w-full rounded-lg object-contain"
-                            onError={(event) => {
-                              event.currentTarget.style.display = "none";
-                            }}
-                          />
-                          {isUploadedImage && (
-                            <div className="mt-2 text-center text-[11px] text-emerald-300/80">
-                              Eigenes Bild gespeichert ✓
-                            </div>
-                          )}
-                        </div>
-                      )}
-                <QuestionVideoEditor key={`video-${source.id}-${activeCat}-${qIdx}`} quizId={source.id} value={q.videoUrl}
-                  onChange={url => updateQuestion(qIdx, current => ({...current, videoUrl: url}))}
-                  onPending={pending => setProcessingVideos(prev => ({...prev, [`${activeCat}-${qIdx}`]: pending}))} />
-                      <div className="flex gap-2">
-                        {hasImage && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              updateQ(qIdx, "imageUrl", "");
-
-                            }}
-                            className="glass border-destructive/20 text-destructive hover:bg-destructive/15 rounded-xl"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Bild entfernen
-                          </Button>
-                        )}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={videoProcessing}
+                    <div id={`media-${source.id}-${imageEditorKey}`}>
+                      <QuestionMediaEditor
+                        key={`media-editor-${source.id}-${activeCat}-${qIdx}`}
+                        quizId={source.id}
+                        imageUrl={q.imageUrl}
+                        videoUrl={q.videoUrl}
+                        audioUrl={q.audioUrl}
+                        onImageUpload={file => handleImageUpload(qIdx, file)}
+                        onChangeImage={url => updateQ(qIdx, "imageUrl", url)}
+                        onChangeVideo={url => updateQuestion(qIdx, current => ({ ...current, videoUrl: url }))}
+                        onChangeAudio={url => updateQuestion(qIdx, current => ({ ...current, audioUrl: url }))}
+                        onPending={pending => setProcessingVideos(prev => ({ ...prev, [imageEditorKey]: pending }))}
+                      />
+                      <div className="mt-2 flex justify-end">
+                        <Button type="button" size="sm" variant="outline"
+                          disabled={mediaProcessing}
                           onClick={() => closeImageEditor(qIdx)}
-                          className="ml-auto glass border-white/10 rounded-xl"
-                        >
+                          className="rounded-xl border-white/10 bg-white/[0.025] text-muted-foreground hover:text-foreground">
                           Fertig
                         </Button>
                       </div>

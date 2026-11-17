@@ -10,6 +10,7 @@ export interface Question {
   imageUrl?: string;
   answerImageUrl?: string;
   videoUrl?: string;
+  audioUrl?: string;
 }
 
 export interface Category {
