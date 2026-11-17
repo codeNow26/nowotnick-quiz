@@ -50,6 +50,7 @@ function ValueField({
 export function EstimateEditor({ settings: s, onChange }: EstimateEditorProps) {
   const inputName = useId();
   const toleranceName = useId();
+  const sliderPanelId = useId();
   const [expanded, setExpanded] = useState(false);
 
   const validTarget = s.target !== undefined && Number.isFinite(s.target);
@@ -154,7 +155,7 @@ export function EstimateEditor({ settings: s, onChange }: EstimateEditorProps) {
         <div className="flex flex-wrap items-end gap-2.5">
           <div className="w-[110px]">
             <ValueField
-              label="Abweichung ±"
+              label="Wert ±"
               value={s.tolerance}
               min={0}
               onChange={tolerance => onChange({ tolerance })}
@@ -201,7 +202,7 @@ export function EstimateEditor({ settings: s, onChange }: EstimateEditorProps) {
           <button
             type="button"
             aria-expanded={expanded}
-            aria-controls="estimate-slider-options"
+            aria-controls={sliderPanelId}
             onClick={() => setExpanded(open => !open)}
             className="group flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-white/[0.035] focus-visible:outline-2 focus-visible:outline-primary"
           >
@@ -217,7 +218,7 @@ export function EstimateEditor({ settings: s, onChange }: EstimateEditorProps) {
             </span>
           </button>
           {expanded && (
-            <div id="estimate-slider-options" className="space-y-4 px-2 pb-2 pt-3">
+            <div id={sliderPanelId} className="space-y-4 px-2 pb-2 pt-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {([
                   { key: "min", label: "Minimum" },
