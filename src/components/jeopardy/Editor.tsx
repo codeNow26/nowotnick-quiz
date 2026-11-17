@@ -1,4 +1,6 @@
 import { FormatEditor } from "./FormatEditor";
+import { BonusEditor } from "./BonusEditor";
+import { readBonusSettings, bonusQuestionError, type BonusSettings } from "@/lib/bonus-rounds";
 import { QuestionMediaEditor } from "./QuestionMediaEditor";
 import { QuestionTypePicker } from "./QuestionTypePicker";
 import { AnswerImageEditor } from "./AnswerImageEditor";
@@ -33,6 +35,8 @@ export function Editor({
   const autosave = useEditorAutosave(target,source,onSaved);
   const { value, status, recovery } = autosave.state;
   const draft=value.categories;
+  const bonus=readBonusSettings(value.bonus);
+  const setBonus=(settings:BonusSettings)=>autosave.update(v=>({...v,bonus:settings}));
   const titleDraft=value.meta.title;
   const subtitleDraft=value.meta.subtitle;
   const questionRows: 5 | 6 = value.questionRows === 6 ? 6 : 5;
@@ -303,6 +307,11 @@ export function Editor({
     if(testLaunching || manualSaving || imagePending || recovery.length) return;
     setTestLaunching(true);
     setValidationError('');
+    if(bonus.enabled && bonus.rounds.some(q=>bonusQuestionError(q))){
+      setValidationError("Bitte zuerst alle gemeinsamen Schätzrunden unter Spiel-Extras vervollständigen.");
+      setTestLaunching(false);
+      return;
+    }
     try {
       // The editor owns the only current unsaved draft. Never leave it until
       // the exact in-memory version has successfully reached Supabase.
@@ -478,6 +487,7 @@ export function Editor({
           />
         </div>
       </div>
+      <BonusEditor settings={bonus} onChange={setBonus} totalQuestions={visibleCount*questionRows} />
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-6 glow-primary">
         <div>
           <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-2 block">
