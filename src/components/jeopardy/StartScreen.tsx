@@ -93,8 +93,8 @@ export function StartScreen({
       }
     };
   }, []);
-  const [names, setNames] = useState<string[]>(["", "", "", ""]);
-  const [colors,setColors]=useState<string[]>(["", "", "", ""]);
+  const [names, setNames] = useState<string[]>(["", "", "", "", "", ""]);
+  const [colors,setColors]=useState<string[]>(["", "", "", "", "", ""]);
   const [colorPicker,setColorPicker]=useState<number|null>(null);
   useEffect(()=>{const prefs=readPlayerPreferences();setNames(prefs.names);setCount(prefs.count);},[]);
   const chooseColor=(index:number,color:string)=>{const next=selectPlayerColor(colors,index,color,count);setColors(next);rememberPlayers({names,colors:next,count});setColorPicker(null);};
@@ -197,13 +197,13 @@ export function StartScreen({
             </Label>
 
             <SelectionTrack value={count} className="flex gap-2 justify-center">
-              {[1, 2, 3, 4].map((n) => (
+              {[1, 2, 3, 4, 5, 6].map((n) => (
                 <button
                   data-selection-value={n}
                   key={n}
                   aria-pressed={count === n}
                   onClick={() => changePlayerCount(n)}
-                  className={`${pillBase} w-14 h-14 text-2xl ${
+                  className={`${pillBase} w-12 h-12 sm:w-14 sm:h-14 text-xl sm:text-2xl ${
                     count === n
                       ? pillActive
                       : pillIdle
