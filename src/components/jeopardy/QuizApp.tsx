@@ -1,4 +1,6 @@
 import { AwardCeremony } from "./AwardCeremony";
+import { BonusHostRound } from "./BonusHostRound";
+import { readBonusSettings, bonusMilestone, bonusQuestionError } from "@/lib/bonus-rounds";
 import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES } from "@/lib/quiz-repository";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gsap } from "gsap";
@@ -302,6 +304,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     6
   );
   const questionRows: 5 | 6 = editorSource?.data.questionRows === 6 ? 6 : 5;
+  const bonusConfig = readBonusSettings(editorSource?.data.bonus);
   const categories = useMemo(
     () => ensureQuestionRows(ensureCategoryCount(allCategories,activeCategoryCount),questionRows).slice(0, activeCategoryCount),
     [allCategories, activeCategoryCount, questionRows]
@@ -315,6 +318,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     );
   const [formatRounds,setFormatRounds]=useState<Record<string,FormatRound>>({});
   const [results, setResults] = useState<Record<string, QuestionResult>>({});
+  const [finishedBonuses, setFinishedBonuses] = useState<number[]>([]);
+  const [activeBonus, setActiveBonus] = useState<number | null>(null);
   const [active, setActive] =
     useState<Active | null>(null);
   const activeKey = active ? `${active.category}:${active.question}` : null;
@@ -326,6 +331,11 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       return before === after ? previous : { ...previous, [activeKey]: after };
     });
   }, [activeKey]);
+  const answeredCount = answered.reduce((sum, row) => sum + row.filter(Boolean).length, 0);
+  const totalQuestions = categories.length * questionRows;
+  const nextBonus = bonusConfig.enabled ? bonusConfig.rounds.findIndex((round, index) =>
+    !finishedBonuses.includes(index) && !bonusQuestionError(round) &&
+    answeredCount >= bonusMilestone(index, totalQuestions, bonusConfig)) : -1;
   const allAnswered = useMemo(
     () =>
       answered.every((row) =>
@@ -445,6 +455,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
             );
             setResults({});
             setFormatRounds({});
+            setFinishedBonuses([]);
+            setActiveBonus(null);
             setAnswered(
               makeAnswered(
                 catCount,
@@ -1168,6 +1180,27 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           </Button>
         </div>
       )}
+
+      {bonusConfig.enabled && bonusConfig.rounds.length > 0 && nextBonus >= 0 && activeBonus === null && active === null && !gameEntering && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#b89b66]/35 bg-[#b89b66]/[0.07] p-3 sm:p-4">
+          <div className="flex items-center gap-2.5">
+            <span aria-hidden="true" className="text-xl">✨</span>
+            <div>
+              <p className="font-semibold text-[#e9d6a8]">Eine gemeinsame Schätzrunde ist bereit!</p>
+              <p className="text-xs text-muted-foreground">Runde {nextBonus + 1} von {bonusConfig.rounds.length} · Alle dürfen mitmachen.</p>
+            </div>
+          </div>
+          <Button type="button" className="rounded-xl" onClick={() => setActiveBonus(nextBonus)}>Alle schätzen!</Button>
+        </div>
+      )}
+      {testSession && bonusConfig.enabled && activeBonus === null && nextBonus < 0 && (
+        <div className="mb-3 flex justify-end">
+          <Button type="button" variant="outline" className="rounded-xl text-xs" onClick={() => {
+            const index = bonusConfig.rounds.findIndex((round, i) => !finishedBonuses.includes(i) && !bonusQuestionError(round));
+            if (index >= 0) setActiveBonus(index);
+          }}>Schätzrunde testweise starten</Button>
+        </div>
+      )}
       <Board
         questionRows={questionRows}
         launching={gameEntering}
@@ -1193,6 +1226,32 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           })
         }
       />
+      {activeBonus !== null && bonusConfig.rounds[activeBonus] && (
+        <BonusHostRound
+          key={activeBonus}
+          quizId={editorSource!.id}
+          roundNumber={activeBonus + 1}
+          totalRounds={bonusConfig.rounds.length}
+          question={bonusConfig.rounds[activeBonus]}
+          players={players}
+          onClose={() => setActiveBonus(null)}
+          onAward={(winnerIndices, points) => {
+            setPlayers(previous => {
+              const updated = previous.map((p, i) => winnerIndices.includes(i) ? { ...p, score: p.score + points } : p);
+              leaderRef.current = getSoleLeaderIndex(updated);
+              return updated;
+            });
+            setGameStats(previous => previous.map((stat, i) => winnerIndices.includes(i)
+              ? { ...stat, pointsWon: stat.pointsWon + points, biggestGain: Math.max(stat.biggestGain, points), highestScore: Math.max(stat.highestScore, (players[i]?.score ?? 0) + points) }
+              : stat));
+            setScorePopups(winnerIndices.map(i => ({ id: ++popupIdRef.current, playerIndex: i, amount: points })));
+            if (popupTimerRef.current) clearTimeout(popupTimerRef.current);
+            popupTimerRef.current = setTimeout(() => { setScorePopups([]); popupTimerRef.current = null; }, 1600);
+            setFinishedBonuses(previous => previous.includes(activeBonus) ? previous : [...previous, activeBonus]);
+            setActiveBonus(null);
+          }}
+        />
+      )}
       <QuestionModal
         round={activeKey ? formatRounds[activeKey] : undefined}
         dispatchRound={dispatchRound}
