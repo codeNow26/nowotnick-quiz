@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Loader2, Minus, Play, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, GripVertical, ImagePlus, Lightbulb, Loader2, Minus, Play, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useEditorAutosave } from "@/lib/autosave/use-editor-autosave";
 import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES, type LoadedQuiz, type QuizTarget } from "@/lib/quiz-repository";
 import type { Category, Question } from "@/lib/jeopardy-data";
