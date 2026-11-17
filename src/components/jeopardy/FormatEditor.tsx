@@ -10,11 +10,11 @@ import {
   type RevealSettings,
 } from "@/lib/question-formats";
 import { LocationImage } from "./LocationImage";
+import { EstimateEditor } from "./EstimateEditor";
 
 const control =
   "h-9 w-full min-w-0 rounded-lg border border-white/[.14] bg-white/[.035] px-2.5 py-1 text-sm font-normal text-foreground shadow-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary";
 const row = "flex flex-wrap items-end gap-x-5 gap-y-2.5";
-const pair = "grid w-56 max-w-full grid-cols-2 items-end gap-2";
 const caption = "text-[13px] font-medium leading-4 text-foreground/75";
 
 function Field({
@@ -54,7 +54,7 @@ function NumberField({
   return (
     <Field label={label}>
       <Input
-        className={control}
+        className={control + " quiz-number-input"}
         aria-describedby={describedBy}
         type="number"
         step={step}
@@ -159,70 +159,10 @@ export function FormatEditor({
             : "Enthüllung"}
       </legend>
       {q.type === "estimate" && (
-        <>
-          <div className={row}>
-            <div className={pair}>
-              <NumberField
-                label="Richtige Zahl"
-                value={s.target}
-                onChange={(target) => patch("estimate", { target })}
-              />
-              <Field label="Einheit (optional)">
-                <Input
-                  className={control}
-                  value={s.unit}
-                  placeholder="z. B. km"
-                  onChange={(e) => patch("estimate", { unit: e.target.value })}
-                />
-              </Field>
-            </div>
-            <Segments
-              label="Eingabe im Spiel"
-              value={s.input}
-              choices={[
-                ["number", "Freie Eingabe"],
-                ["slider", "Slider"],
-              ]}
-              onChange={(input) => patch("estimate", { input })}
-            />
-            <div className="grid w-48 max-w-full grid-cols-[minmax(3.5rem,2fr)_minmax(0,3fr)] items-end [&_input]:rounded-r-none [&_select]:rounded-l-none [&_select]:border-l-0">
-              <NumberField
-                label="Toleranz ±"
-                min={0}
-                value={s.tolerance}
-                onChange={(tolerance) => patch("estimate", { tolerance })}
-              />
-              <Select
-                label="Toleranzart"
-                hideLabel
-                value={s.toleranceType}
-                choices={[
-                  ["percent", "Prozent (%)"],
-                  ["absolute", "Absolut"],
-                ]}
-                onChange={(toleranceType) => patch("estimate", { toleranceType })}
-              />
-            </div>
-          </div>
-          {s.input === "slider" && (
-            <div className="grid w-[21.5rem] max-w-full grid-cols-3 gap-2">
-              {(
-                [
-                  ["min", "Minimum"],
-                  ["max", "Maximum"],
-                  ["step", "Schrittweite"],
-                ] as const
-              ).map(([key, label]) => (
-                <NumberField
-                  key={key}
-                  label={label}
-                  value={s[key]}
-                  onChange={(v) => patch("estimate", { [key]: v })}
-                />
-              ))}
-            </div>
-          )}
-        </>
+        <EstimateEditor
+          settings={s}
+          onChange={changes => patch("estimate", changes)}
+        />
       )}
       {q.type === "reveal" && (
         <>
