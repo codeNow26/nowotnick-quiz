@@ -22,7 +22,7 @@ const fileTypes = [
   "image/jpeg", "image/png", "image/webp",
   "video/mp4", "video/webm",
   "audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav",
-  "audio/ogg", "audio/mp4", "audio/x-m4a", "audio/webm",
+  "audio/ogg", "audio/mp4", "audio/x-m4a", "audio/webm", "audio/wave",
 ];
 const extensions: Record<string, MediaKind> = {
   jpg: "image", jpeg: "image", png: "image", webp: "image",
