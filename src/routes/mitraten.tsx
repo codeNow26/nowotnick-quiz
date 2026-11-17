@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,12 +9,17 @@ export const Route = createFileRoute("/mitraten")({ component: JoinBonusPage });
 function JoinBonusPage() {
   const [code, setCode] = useState("");
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const normalized = code.trim().toUpperCase().replace(/[^A-Z2-9]/g, "");
   const go = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (normalized.length !== 10) return;
     void navigate({ to: "/mitraten/$code", params: { code: normalized } });
   };
+  // /mitraten/$code is a child route. The parent must render its Outlet,
+  // otherwise navigating to a valid code leaves the join form on screen.
+  if (pathname !== "/mitraten" && pathname !== "/mitraten/") return <Outlet />;
+
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-8">
       <form onSubmit={go} className="w-full max-w-sm space-y-5 rounded-3xl border border-primary/25 bg-[#17132f] p-6 text-center shadow-[0_20px_75px_rgba(0,0,0,.4)]">
