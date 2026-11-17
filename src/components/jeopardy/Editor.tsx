@@ -184,8 +184,10 @@ export function Editor({
   const setQuestionType = (qIdx: number, type: NonNullable<Question["type"]>) => {
     updateQuestion(qIdx, (q) => {
       if (type === "choice") {
+        // Preserve other mode-specific settings; changing back must not erase
+        // existing hints or previously written ordering elements.
         return { ...q, type, options: q.options?.length === 4 ? [...q.options] : ["", "", "", ""],
-          correctOption: q.correctOption, orderItems: undefined, hints: undefined };
+          correctOption: q.correctOption };
       }
       if (type === "order") {
         const existing = q.orderItems?.length ? q.orderItems : ["", "", "", ""];
@@ -193,7 +195,6 @@ export function Editor({
           ...q,
           type: "order",
           orderItems: existing,
-          hints: undefined,
           answer: existing.filter(Boolean).join(" → "),
         };
       }
@@ -201,15 +202,12 @@ export function Editor({
         return {
           ...q,
           type: "hint",
-          orderItems: undefined,
           hints: q.hints?.length ? q.hints : ["", "", ""],
         };
       }
       return {
         ...q,
         type: "normal",
-        orderItems: undefined,
-        hints: undefined,
       };
     });
   };
