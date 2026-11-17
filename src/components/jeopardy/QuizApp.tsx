@@ -518,7 +518,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         onTest={(rows, categoryIndex) => {
           setLastEditorCategory(categoryIndex);
           const prefs = readPlayerPreferences();
-          const count = Math.max(1, Math.min(4, prefs.count));
+          const count = Math.max(1, Math.min(6, prefs.count));
           const names = prefs.names.slice(0,count).map((name,index) =>
             name.trim() || `Spieler ${index+1}`
           );
@@ -1247,7 +1247,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
             setScorePopups(winnerIndices.map(i => ({ id: ++popupIdRef.current, playerIndex: i, amount: points })));
             if (popupTimerRef.current) clearTimeout(popupTimerRef.current);
             popupTimerRef.current = setTimeout(() => { setScorePopups([]); popupTimerRef.current = null; }, 1600);
-            setFinishedBonuses(previous => previous.includes(activeBonus) ? previous : [...previous, activeBonus]);
+            setFinishedBonuses(previous => activeBonus !== null && !previous.includes(activeBonus) ? [...previous, activeBonus] : previous);
             setActiveBonus(null);
           }}
         />
