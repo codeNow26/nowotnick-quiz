@@ -96,7 +96,7 @@ export function StartScreen({
   const [names, setNames] = useState<string[]>(["", "", "", "", "", ""]);
   const [colors,setColors]=useState<string[]>(["", "", "", "", "", ""]);
   const [colorPicker,setColorPicker]=useState<number|null>(null);
-  useEffect(()=>{const prefs=readPlayerPreferences();setNames(prefs.names);setCount(prefs.count);},[]);
+  useEffect(()=>{const prefs=readPlayerPreferences();setNames(prefs.names);setColors(prefs.colors);setCount(prefs.count);},[]);
   const chooseColor=(index:number,color:string)=>{const next=selectPlayerColor(colors,index,color,count);setColors(next);rememberPlayers({names,colors:next,count});setColorPicker(null);};
   const defaultCats = Math.min(6, maxCategories);
   const [localCatCount, setLocalCatCount] = useState(defaultCats);
