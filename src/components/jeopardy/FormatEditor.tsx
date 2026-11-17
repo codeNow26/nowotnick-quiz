@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import type { Question } from "@/lib/jeopardy-data";
 import {
@@ -11,10 +11,24 @@ import {
 } from "@/lib/question-formats";
 import { LocationImage } from "./LocationImage";
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+const control =
+  "h-9 w-full min-w-0 rounded-lg border border-white/[.14] bg-white/[.035] px-2.5 py-1 text-sm font-normal text-foreground shadow-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary";
+const row = "flex flex-wrap items-end gap-x-5 gap-y-2.5";
+const pair = "grid w-56 max-w-full grid-cols-2 items-end gap-2";
+const caption = "text-[13px] font-medium leading-4 text-foreground/75";
+
+function Field({
+  label,
+  hideLabel,
+  children,
+}: {
+  label: string;
+  hideLabel?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <label className="grid min-w-0 content-start gap-1.5 text-xs text-muted-foreground">
-      {label}
+    <label className="grid min-w-0 gap-1">
+      <span className={hideLabel ? "sr-only" : caption}>{label}</span>
       {children}
     </label>
   );
@@ -26,6 +40,7 @@ function NumberField({
   min,
   max,
   step = "any",
+  describedBy,
 }: {
   label: string;
   value?: number;
@@ -33,11 +48,14 @@ function NumberField({
   min?: number;
   max?: number;
   step?: number | "any";
+  describedBy?: string;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   return (
     <Field label={label}>
       <Input
+        className={control}
+        aria-describedby={describedBy}
         type="number"
         step={step}
         min={min}
@@ -52,31 +70,58 @@ function NumberField({
     </Field>
   );
 }
+type ChoiceProps<T extends string> = {
+  label: string;
+  value: T;
+  choices: [T, string][];
+  onChange: (value: T) => void;
+};
 function Select<T extends string>({
   label,
   value,
   choices,
   onChange,
-}: {
-  label: string;
-  value: T;
-  choices: [T, string][];
-  onChange: (v: T) => void;
-}) {
+  hideLabel,
+}: ChoiceProps<T> & { hideLabel?: boolean }) {
   return (
-    <Field label={label}>
+    <Field label={label} hideLabel={hideLabel}>
       <select
-        className="h-10 rounded-lg border border-white/15 bg-[#171530] px-3 text-sm text-foreground"
+        className={control}
         value={value}
-        onChange={(e) => onChange(e.target.value as T)}
+        onChange={(event) => onChange(event.target.value as T)}
       >
         {choices.map(([key, text]) => (
-          <option key={key} value={key}>
+          <option key={key} value={key} className="bg-[#171530]">
             {text}
           </option>
         ))}
       </select>
     </Field>
+  );
+}
+function Segments<T extends string>({ label, value, choices, onChange }: ChoiceProps<T>) {
+  const name = useId();
+  return (
+    <fieldset className="min-w-0">
+      <legend className={caption + " mb-1"}>{label}</legend>
+      <div className="inline-flex h-9 max-w-full items-stretch rounded-lg bg-white/[.06] p-0.5">
+        {choices.map(([key, text]) => (
+          <label key={key} className="relative inline-flex min-w-0 cursor-pointer">
+            <input
+              type="radio"
+              className="peer absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0"
+              name={name}
+              value={key}
+              checked={value === key}
+              onChange={() => onChange(key)}
+            />
+            <span className="inline-flex items-center whitespace-nowrap rounded-md px-3 text-sm font-medium text-foreground/65 peer-hover:text-foreground peer-checked:bg-[#484070] peer-checked:text-white peer-checked:shadow-sm peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-primary">
+              {text}
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 export function FormatEditor({
@@ -91,6 +136,7 @@ export function FormatEditor({
   const s = estimateSettings(q),
     r = revealSettings(q, start),
     l = locationSettings(q);
+  const radiusHint = useId();
   const error = formatError(q, start);
   function patch(
     key: "estimate" | "location" | "reveal",
@@ -104,8 +150,8 @@ export function FormatEditor({
     }));
   }
   return (
-    <fieldset className="space-y-4 rounded-2xl border border-primary/20 bg-primary/[.045] p-4">
-      <legend className="px-2 text-sm font-semibold">
+    <fieldset className="min-w-0 space-y-2.5 border-0 border-t border-solid border-white/10 pt-3">
+      <legend className="sr-only">
         {q.type === "estimate"
           ? "Schätzung"
           : q.type === "location"
@@ -114,46 +160,52 @@ export function FormatEditor({
       </legend>
       {q.type === "estimate" && (
         <>
-          <div className="grid grid-cols-2 gap-3">
-            <NumberField
-              label="Richtige Zahl"
-              value={s.target}
-              onChange={(target) => patch("estimate", { target })}
-            />
-            <Field label="Einheit (optional)">
-              <Input
-                value={s.unit}
-                placeholder="z. B. km"
-                onChange={(e) => patch("estimate", { unit: e.target.value })}
+          <div className={row}>
+            <div className={pair}>
+              <NumberField
+                label="Richtige Zahl"
+                value={s.target}
+                onChange={(target) => patch("estimate", { target })}
               />
-            </Field>
-            <Select
+              <Field label="Einheit (optional)">
+                <Input
+                  className={control}
+                  value={s.unit}
+                  placeholder="z. B. km"
+                  onChange={(e) => patch("estimate", { unit: e.target.value })}
+                />
+              </Field>
+            </div>
+            <Segments
               label="Eingabe im Spiel"
               value={s.input}
               choices={[
-                ["number", "Freie Zahl"],
+                ["number", "Freie Eingabe"],
                 ["slider", "Slider"],
               ]}
               onChange={(input) => patch("estimate", { input })}
             />
-            <Select
-              label="Toleranzart"
-              value={s.toleranceType}
-              choices={[
-                ["percent", "Prozent"],
-                ["absolute", "Absoluter Wert"],
-              ]}
-              onChange={(toleranceType) => patch("estimate", { toleranceType })}
-            />
-            <NumberField
-              label={`Toleranz ± ${s.toleranceType === "percent" ? "%" : s.unit}`}
-              min={0}
-              value={s.tolerance}
-              onChange={(tolerance) => patch("estimate", { tolerance })}
-            />
+            <div className="grid w-48 max-w-full grid-cols-[minmax(3.5rem,2fr)_minmax(0,3fr)] items-end [&_input]:rounded-r-none [&_select]:rounded-l-none [&_select]:border-l-0">
+              <NumberField
+                label="Toleranz ±"
+                min={0}
+                value={s.tolerance}
+                onChange={(tolerance) => patch("estimate", { tolerance })}
+              />
+              <Select
+                label="Toleranzart"
+                hideLabel
+                value={s.toleranceType}
+                choices={[
+                  ["percent", "Prozent (%)"],
+                  ["absolute", "Absolut"],
+                ]}
+                onChange={(toleranceType) => patch("estimate", { toleranceType })}
+              />
+            </div>
           </div>
           {s.input === "slider" && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid w-[21.5rem] max-w-full grid-cols-3 gap-2">
               {(
                 [
                   ["min", "Minimum"],
@@ -173,72 +225,89 @@ export function FormatEditor({
         </>
       )}
       {q.type === "reveal" && (
-        <div className="grid grid-cols-2 gap-3">
-          {q.imageUrl && q.videoUrl && (
+        <>
+          <div className={row}>
+            {q.imageUrl && q.videoUrl && (
+              <Select
+                label="Enthülltes Medium"
+                value={r.medium}
+                choices={[
+                  ["image", "Bild"],
+                  ["video", "Video"],
+                ]}
+                onChange={(medium) => patch("reveal", { medium })}
+              />
+            )}
             <Select
-              label="Enthülltes Medium"
-              value={r.medium}
+              label="Methode"
+              value={r.method}
               choices={[
-                ["image", "Bild"],
-                ["video", "Video"],
+                ["tiles", "Kacheln aufdecken"],
+                ["mosaic", "Mosaik"],
+                ["blur", "Unschärfe reduzieren"],
               ]}
-              onChange={(medium) => patch("reveal", { medium })}
+              onChange={(method) => patch("reveal", { method })}
             />
-          )}
-          <Select
-            label="Methode"
-            value={r.method}
-            choices={[
-              ["tiles", "Kacheln aufdecken"],
-              ["mosaic", "Mosaik"],
-              ["blur", "Unschärfe reduzieren"],
-            ]}
-            onChange={(method) => patch("reveal", { method })}
-          />
-          <Select
-            label="Fortschritt"
-            value={r.advance}
-            choices={[
-              ["manual", "Per Klick"],
-              ["auto", "Automatisch"],
-            ]}
-            onChange={(advance) => patch("reveal", { advance })}
-          />
-          {r.advance === "auto" && (
+            <Segments
+              label="Aufdecken"
+              value={r.advance}
+              choices={[
+                ["manual", "Per Klick"],
+                ["auto", "Automatisch"],
+              ]}
+              onChange={(advance) => patch("reveal", { advance })}
+            />
+            {r.advance === "auto" && (
+              <div className="w-32 max-w-full">
+                <NumberField
+                  label="Sekunden pro Stufe"
+                  min={1}
+                  max={300}
+                  value={r.seconds}
+                  onChange={(seconds) => patch("reveal", { seconds })}
+                />
+              </div>
+            )}
+          </div>
+          <div className="grid w-64 max-w-full grid-cols-[1.25fr_1fr] items-end gap-2">
             <NumberField
-              label="Sekunden pro Stufe"
+              label="Punktabzug je Stufe"
               min={1}
-              max={300}
-              value={r.seconds}
-              onChange={(seconds) => patch("reveal", { seconds })}
+              step={1}
+              value={r.deduction}
+              onChange={(deduction) => patch("reveal", { deduction })}
             />
-          )}
-          <NumberField
-            label="Punktabzug je Stufe"
-            min={1}
-            step={1}
-            value={r.deduction}
-            onChange={(deduction) => patch("reveal", { deduction })}
-          />
-          <NumberField
-            label="Mindestpunkte"
-            min={0}
-            max={start}
-            step={1}
-            value={r.floor}
-            onChange={(floor) => patch("reveal", { floor })}
-          />
-        </div>
+            <NumberField
+              label="Mindestpunkte"
+              min={0}
+              max={start}
+              step={1}
+              value={r.floor}
+              onChange={(floor) => patch("reveal", { floor })}
+            />
+          </div>
+        </>
       )}
       {q.type === "location" && (
         <>
-          <NumberField
-            label="Trefferradius (% der kürzeren Bildseite)"
-            min={0.1}
-            max={100}
-            value={l.radius}
-            onChange={(radius) => patch("location", { radius })}
-          />
+          <div className="flex items-end gap-2">
+            <div className="w-[6.25rem] shrink-0">
+              <NumberField
+                label="Trefferradius"
+                min={0.1}
+                max={100}
+                value={l.radius}
+                onChange={(radius) => patch("location", { radius })}
+                describedBy={radiusHint}
+              />
+            </div>
+            <span
+              id={radiusHint}
+              className="flex min-h-9 items-center text-xs text-muted-foreground"
+            >
+              % der kürzeren Bildseite
+            </span>
+          </div>
           {q.imageUrl && (
             <LocationImage
               key={q.imageUrl}
