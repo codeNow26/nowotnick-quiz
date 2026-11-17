@@ -826,3 +826,34 @@ html.quiz-launch-scroll-lock body {
 @media(prefers-reduced-motion:reduce) {
   .quiz-editor-save-success,.quiz-save-check {animation:none;}
 }
+
+
+/* Compact question-type gallery. No moving white line, giant bloom or layer
+   resize. Animation is limited to opacity/transform on the small dialog. */
+.quiz-type-dialog[data-state="open"] {
+  animation:quiz-type-dialog-enter 440ms cubic-bezier(.16,1,.3,1) both;
+}
+.quiz-type-dialog[data-state="closed"] {
+  animation:quiz-type-dialog-exit 180ms ease-in both;
+}
+@keyframes quiz-type-dialog-enter {
+  0% { opacity:0; transform:translate(-50%,-47%) scale(.965); }
+  100% { opacity:1; transform:translate(-50%,-50%) scale(1); }
+}
+@keyframes quiz-type-dialog-exit {
+  0% { opacity:1; transform:translate(-50%,-50%) scale(1); }
+  100% { opacity:0; transform:translate(-50%,-49%) scale(.985); }
+}
+.quiz-type-dialog[data-state="open"] .quiz-type-tile {
+  animation:quiz-type-tile-enter 400ms cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes quiz-type-tile-enter {
+  0% { opacity:0; transform:translateY(8px); }
+  100% { opacity:1; transform:translateY(0); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .quiz-type-dialog[data-state],
+  .quiz-type-dialog[data-state="open"] .quiz-type-tile {
+    animation:none !important;
+  }
+}
