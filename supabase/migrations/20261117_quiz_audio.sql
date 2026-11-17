@@ -12,11 +12,11 @@ VALUES (
 )
 ON CONFLICT (id) DO UPDATE
 SET allowed_mime_types = (
-  SELECT array_agg(DISTINCT mime)
+  SELECT array_agg(DISTINCT v.mime)
   FROM unnest(
     coalesce(storage.buckets.allowed_mime_types, ARRAY[]::text[]) ||
     ARRAY['audio/mpeg','audio/wav','audio/ogg','audio/mp4','audio/webm']
-  ) AS mime
+  ) AS v(mime)
 );
 DO $$
 BEGIN
