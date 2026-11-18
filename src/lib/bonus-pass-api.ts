@@ -105,3 +105,39 @@ export async function revealBonus(s: BonusSession): Promise<BonusHostState> {
   });
   return checked<BonusHostState>(data, error);
 }
+
+/** Phone remote: only public clip labels and opaque IDs are sent to the phone. */
+export interface TvClip { id: string; title: string }
+export interface TvGuestState { clips: TvClip[]; busy: boolean; status: "idle" | "pending" | "playing" }
+export interface TvHostRequest {
+  seq: number;
+  clipId: string | null;
+  status: "idle" | "pending" | "playing";
+  requestedAt: string | null;
+}
+export async function configureTvRemote(session: BonusSession, clips: TvClip[]) {
+  const { data, error } = await supabase.rpc("bonus_tv_config", {
+    p_id: session.id, p_host_token: session.hostToken, p_clips: clips,
+  });
+  return checked<{count:number}>(data, error);
+}
+export async function readTvGuest(code: string): Promise<TvGuestState> {
+  const { data, error } = await supabase.rpc("bonus_tv_guest", {p_code: code});
+  return checked<TvGuestState>(data, error);
+}
+export async function requestTvClip(code: string, clipId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("bonus_tv_request", {p_code: code, p_clip_id: clipId});
+  return checked<number>(data, error);
+}
+export async function readTvHost(session: BonusSession): Promise<TvHostRequest> {
+  const { data, error } = await supabase.rpc("bonus_tv_host", {
+    p_id: session.id, p_host_token: session.hostToken,
+  });
+  return checked<TvHostRequest>(data, error);
+}
+export async function acknowledgeTvCommand(session: BonusSession, seq: number, action: "start" | "done") {
+  const { data, error } = await supabase.rpc("bonus_tv_ack", {
+    p_id: session.id, p_host_token: session.hostToken, p_seq: seq, p_action: action,
+  });
+  return checked<boolean>(data, error);
+}
