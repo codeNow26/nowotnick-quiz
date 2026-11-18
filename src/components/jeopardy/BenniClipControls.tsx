@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Clapperboard, Play, Shuffle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { BenniClip } from "@/lib/benni-clips";
@@ -68,48 +69,108 @@ interface PlayerProps {
   onClose: () => void;
 }
 
-/** Covers the quiz temporarily, without changing its score or the selected question. */
+/** A short show interlude; the parent restores music after the exit fade. */
 export function BenniClipPlayer({ clip, onClose }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const [open, setOpen] = useState(true);
   const [needsTap, setNeedsTap] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [aspect, setAspect] = useState(16 / 9);
+  const title = clip.title.trim();
+
+  const close = useCallback(() => {
+    videoRef.current?.pause();
+    setOpen(false);
+  }, []);
+
   useEffect(() => {
-    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
-    window.addEventListener("keydown", escape);
-    const video = videoRef.current;
-    // Autoplay with sound can be blocked on some browsers; show a manual play button.
-    const playback = video?.play();
-    if (playback) void playback.catch(() => setNeedsTap(true));
-    return () => {
-      window.removeEventListener("keydown", escape);
-      video?.pause();
-    };
-  }, [clip.url, onClose]);
+    if (open) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timeout = window.setTimeout(onClose, reducedMotion ? 0 : 220);
+    return () => window.clearTimeout(timeout);
+  }, [open, onClose]);
+
+  // The portal mounts its content after the player, so start once the video exists.
+  const attachVideo = useCallback((video: HTMLVideoElement | null) => {
+    videoRef.current?.pause();
+    videoRef.current = video;
+    // Phone-triggered playback may need a local gesture to allow sound.
+    void video?.play().catch(() => {
+      if (videoRef.current === video) setNeedsTap(true);
+    });
+  }, []);
+
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Benni-TV: ${clip.title}`}
-      className="fixed inset-0 z-[240] flex items-center justify-center bg-black/95 p-3 backdrop-blur-xl sm:p-8">
-      <button type="button" onClick={onClose} aria-label="Video schließen"
-        className="absolute right-4 top-4 z-10 rounded-full border border-white/20 bg-black/70 p-3 text-white hover:bg-white/15">
-        <X className="h-6 w-6" />
-      </button>
-      <div className="relative flex max-h-[90dvh] w-full max-w-6xl items-center justify-center">
-        <video ref={videoRef} key={clip.url} src={clip.url} autoPlay controls playsInline preload="auto"
-          aria-label={clip.title}
-          className="max-h-[88dvh] w-full rounded-xl bg-black object-contain"
-          onPlaying={() => setNeedsTap(false)}
-          onEnded={onClose}
-          onError={() => { setFailed(true); setNeedsTap(false); }} />
-        {needsTap && !failed && (
-          <Button type="button" size="lg" className="absolute inset-0 m-auto h-16 w-fit rounded-2xl px-8 shadow-2xl"
-            onClick={() => void videoRef.current?.play().catch(() => setNeedsTap(true))}>
-            <Play className="mr-2 h-5 w-5" /> Video abspielen
-          </Button>
-        )}
-        {failed && <div role="alert" className="absolute inset-x-3 bottom-5 rounded-xl border border-amber-400/30 bg-black/90 p-4 text-center text-amber-100">
-          Video konnte nicht geladen werden. Bitte MP4 mit H.264/AAC verwenden.
-          <Button type="button" variant="outline" className="ml-3" onClick={onClose}>Zurück zum Quiz</Button>
-        </div>}
-      </div>
-    </div>
+    <Dialog.Root open={open} onOpenChange={next => { if (!next) close(); }}>
+      <Dialog.Portal container={typeof document !== "undefined" ? document.fullscreenElement : undefined}>
+        <Dialog.Overlay className="benni-show-backdrop" />
+        <Dialog.Content
+          ref={dialogRef}
+          className="benni-show"
+          onOpenAutoFocus={event => {
+            event.preventDefault();
+            returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+            dialogRef.current?.focus({ preventScroll: true });
+          }}
+          onCloseAutoFocus={event => {
+            event.preventDefault();
+            returnFocusRef.current?.focus({ preventScroll: true });
+          }}
+          onClick={event => { if (event.target === event.currentTarget) close(); }}
+        >
+          <Dialog.Title className="sr-only">Benni-Moment{title && ` · ${title}`}</Dialog.Title>
+          <Dialog.Description className="sr-only">
+            Kurzer Quiz-Einspieler. Mit Escape oder einem Klick neben das Video überspringen.
+          </Dialog.Description>
+          <button type="button" onClick={close} aria-label="Einspieler überspringen" className="benni-show-close">
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <div className="benni-show-stage" style={{ "--benni-aspect": aspect } as CSSProperties}>
+            <video
+              ref={attachVideo}
+              key={clip.url}
+              src={clip.url}
+              playsInline
+              preload="auto"
+              disablePictureInPicture
+              disableRemotePlayback
+              aria-label={title || "Benni-Moment"}
+              onLoadedMetadata={event => {
+                const video = event.currentTarget;
+                if (video.videoWidth && video.videoHeight) setAspect(video.videoWidth / video.videoHeight);
+              }}
+              onPlaying={() => { setNeedsTap(false); setStarted(true); }}
+              onEnded={close}
+              onError={() => { setFailed(true); setNeedsTap(false); }}
+            />
+            {started && !failed && (
+              <div className="benni-show-caption" aria-hidden="true">
+                <span className="benni-show-label">Benni-Moment</span>
+                {title && title !== "Benni-Moment" && <span className="benni-show-title">{title}</span>}
+              </div>
+            )}
+            {open && needsTap && !failed && (
+              <button
+                type="button"
+                className="benni-show-play"
+                aria-label="Benni-Moment abspielen"
+                onClick={() => void videoRef.current?.play().catch(() => setNeedsTap(true))}
+              >
+                <Play className="h-6 w-6" fill="currentColor" aria-hidden="true" />
+              </button>
+            )}
+            {failed && (
+              <div role="alert" className="benni-show-error">
+                <p>Dieser Einspieler konnte nicht geladen werden.</p>
+                <button type="button" onClick={close}>Zurück zum Quiz</button>
+              </div>
+            )}
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

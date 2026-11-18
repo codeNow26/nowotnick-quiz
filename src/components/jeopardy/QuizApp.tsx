@@ -1402,7 +1402,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           totalRounds={bonusConfig.rounds.length}
           question={bonusConfig.rounds[activeBonus]}
           players={players}
-          preparedSession={preparedBonus?.quizId === editorSource?.id &&
+          preparedSession={preparedBonus && preparedBonus.quizId === editorSource?.id &&
             preparedBonus.roster === JSON.stringify(players.map(p => ({name: p.name, color: p.color})))
               ? preparedBonus.session : null}
           onClose={() => setActiveBonus(null)}
