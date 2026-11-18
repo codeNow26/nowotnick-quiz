@@ -316,12 +316,6 @@ export function StartScreen({
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {phoneConnected && (
-                    <span className={`inline-flex items-center gap-1.5 text-xs ${phoneOnline ? "text-emerald-300" : "text-amber-200"}`}>
-                      {phoneOnline ? <CheckCircle2 className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
-                      {phoneOnline ? "Handy verbunden" : "Warte auf Handy"}
-                    </span>
-                  )}
                   <Button type="button" variant="outline" disabled={preparingPhone || launching}
                     onClick={() => void preparePhone()} className="rounded-xl border-primary/35">
                     {preparingPhone ? "QR-Code wird erstellt …" : phoneConnected ? "Neu koppeln" : "QR-Code anzeigen"}
@@ -329,26 +323,14 @@ export function StartScreen({
                 </div>
               </div>
               {phoneConnected && (
-                <div className="mt-4 grid items-center gap-5 rounded-2xl border border-primary/20 bg-primary/[.06] p-4 sm:grid-cols-[auto_minmax(0,1fr)]">
-                  <div className="mx-auto overflow-hidden rounded-2xl bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.23)] sm:mx-0">
+                <div className={`mt-4 flex flex-col items-center gap-3 rounded-2xl border p-4 ${phoneOnline ? "border-emerald-400/25" : "border-primary/20"}`}>
+                  <div className="rounded-2xl bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.2)]">
                     <PairingQrCode value={phoneLink} />
                   </div>
-                  <div className="space-y-2 text-center sm:text-left">
-                    <p className="text-base font-semibold text-foreground">Einfach mit der Handykamera scannen</p>
-                    <p className="text-sm text-muted-foreground">
-                      Link antippen, Seite geöffnet lassen. Das Handy bleibt für alle Schätzrunden verbunden.
-                    </p>
-                    {phoneOnline
-                      ? <p className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-300">
-                          <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                          Handy ist verbunden!
-                        </p>
-                      : <p className="text-xs text-amber-200">Warte auf die Verbindung vom Handy …</p>}
-                    <div className="pt-2 text-xs text-muted-foreground">
-                      <span>Code als Notlösung: </span>
-                      <span className="font-mono font-medium tracking-[.12em] text-foreground/75">{preparedBonus!.session.code}</span>
-                    </div>
-                  </div>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Code als Notlösung:{" "}
+                    <span className="font-mono font-medium tracking-[.1em] text-foreground/80">{preparedBonus!.session.code}</span>
+                  </p>
                 </div>
               )}
               {!phoneConnected && preparedBonus && (
