@@ -75,10 +75,10 @@ export function BonusPhone({ code }: { code: string }) {
       <div className="w-full max-w-sm space-y-5 rounded-3xl border border-primary/25 bg-[#17132f] p-5 text-white shadow-[0_16px_65px_rgba(0,0,0,.4)]">
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#baabfa]">
-            <Smartphone className="h-4 w-4" /> Alle schätzen
+            <Smartphone className="h-4 w-4" /> {state?.status === "waiting" || state?.status === "revealed" ? "handyschmendi" : "Alle schätzen"}
           </span>
           <span className="text-xs tabular-nums text-[#afa3c6]">
-            {state ? `${Math.min(state.nextPlayer + (handoff ? 0 : 1), state.players.length)} / ${state.players.length}` : code}
+            {state?.status === "waiting" || state?.status === "revealed" ? "Benni-TV" : state ? `${Math.min(state.nextPlayer + (handoff ? 0 : 1), state.players.length)} / ${state.players.length}` : code}
           </span>
         </div>
         {error && <p role="alert" className="rounded-xl border border-rose-300/25 bg-rose-400/10 p-3 text-sm text-rose-200">{error}</p>}
