@@ -2,7 +2,10 @@ import { AwardCeremony } from "./AwardCeremony";
 import { BonusHostRound } from "./BonusHostRound";
 import { BenniClipControls, BenniClipPlayer } from "./BenniClipControls";
 import { drawBenniClip, readBenniClips, recordBenniClip, type BenniClip } from "@/lib/benni-clips";
-import { prepareBonusSession, readBonusHost, type BonusSession } from "@/lib/bonus-pass-api";
+import {
+  acknowledgeTvCommand, configureTvRemote, prepareBonusSession,
+  readBonusHost, readTvHost, type BonusSession,
+} from "@/lib/bonus-pass-api";
 import { readBonusSettings, bonusMilestone, bonusQuestionError } from "@/lib/bonus-rounds";
 import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES } from "@/lib/quiz-repository";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -309,6 +312,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const questionRows: 5 | 6 = editorSource?.data.questionRows === 6 ? 6 : 5;
   const bonusConfig = readBonusSettings(editorSource?.data.bonus);
   const benniClips = readBenniClips(editorSource?.data.benniClips);
+  const tvClipSignature = JSON.stringify(benniClips.map(clip => ({id:clip.id,title:clip.title})));
   const categories = useMemo(
     () => ensureQuestionRows(ensureCategoryCount(allCategories,activeCategoryCount),questionRows).slice(0, activeCategoryCount),
     [allCategories, activeCategoryCount, questionRows]
@@ -334,6 +338,12 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     } catch { return null; }
   });
   const [phoneOnline, setPhoneOnline] = useState(false);
+  // Keep the phone's buttons in sync with the editor's clip titles; no media URLs are exposed.
+  useEffect(() => {
+    if (!preparedBonus || preparedBonus.quizId !== editorSource?.id) return;
+    void configureTvRemote(preparedBonus.session, JSON.parse(tvClipSignature))
+      .catch(error => console.error("Benni-TV konnte nicht mit dem Handy synchronisiert werden:", error));
+  }, [preparedBonus?.session.id, editorSource?.id, tvClipSignature]);
   useEffect(() => {
     try {
       if (preparedBonus) window.sessionStorage.setItem("quiz-bonus-phone", JSON.stringify(preparedBonus));
@@ -390,7 +400,12 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const [activeBenniClip, setActiveBenniClip] = useState<BenniClip | null>(null);
   const benniHistory = useRef<string[]>([]);
   const pausedForBenni = useRef<HTMLAudioElement[]>([]);
+  const remoteTvCommand = useRef<{session:BonusSession;seq:number}|null>(null);
   const closeBenniClip = useCallback(() => {
+    const remote = remoteTvCommand.current;
+    remoteTvCommand.current = null;
+    if (remote) void acknowledgeTvCommand(remote.session, remote.seq, "done")
+      .catch(error => console.error("Benni-TV Abschluss konnte nicht bestätigt werden:", error));
     setActiveBenniClip(null);
     // Return to the exact quiz music state that was playing before the clip.
     const toResume = pausedForBenni.current;
@@ -415,6 +430,68 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     benniHistory.current = drawn.playedIds;
     playBenniClip(drawn.clip);
   };
+  const screenStateRef = useRef(screen);
+  const activeBonusRef = useRef(false);
+  const playbackBusyRef = useRef(false);
+  screenStateRef.current = screen;
+  activeBonusRef.current = activeBonus !== null;
+  playbackBusyRef.current = !!activeBenniClip || isRandomizing || showStats || ceremonyOpen || gameEntering;
+  const playRemoteRef = useRef<(id:string)=>boolean>(()=>false);
+  playRemoteRef.current = (clipId: string) => {
+    if (screen === "editor" || activeBonus !== null || activeBenniClip ||
+        isRandomizing || showStats || ceremonyOpen || gameEntering) return false;
+    if (clipId === "__random__") {
+      const drawn = drawBenniClip(benniClips, benniHistory.current);
+      if (!drawn) return false;
+      benniHistory.current = drawn.playedIds;
+      playBenniClip(drawn.clip);
+      return true;
+    }
+    const clip = benniClips.find(c => c.id === clipId);
+    if (!clip) return false;
+    playBenniClip(clip);
+    return true;
+  };
+
+  // The paired laptop polls lightweight commands; the phone never loads the video itself.
+  useEffect(() => {
+    if (!preparedBonus || preparedBonus.quizId !== editorSource?.id) return;
+    const session = preparedBonus.session;
+    let alive = true;
+    let checking = false;
+    const poll = async () => {
+      if (!alive || checking || document.hidden) return;
+      checking = true;
+      try {
+        const command = await readTvHost(session);
+        if (!alive || command.status !== "pending" || !command.clipId) return;
+        // Keep pending commands queued until the quiz can safely show the video.
+        const playbackAllowed = playRemoteRef.current;
+        // Attempt to play only after the host successfully claims this command.
+        if (screenStateRef.current === "editor" || activeBonusRef.current ||
+            playbackBusyRef.current) return;
+        if (!(await acknowledgeTvCommand(session, command.seq, "start"))) return;
+        if (!alive) {
+          await acknowledgeTvCommand(session, command.seq, "done");
+          return;
+        }
+        remoteTvCommand.current = {session, seq:command.seq};
+        const played = playbackAllowed(command.clipId);
+        if (!played) {
+          remoteTvCommand.current = null;
+          await acknowledgeTvCommand(session, command.seq, "done");
+        }
+      } catch (error) {
+        if (alive) console.error("Benni-TV Fernsteuerung:", error);
+      } finally {
+        checking = false;
+      }
+    };
+    void poll();
+    const timer = window.setInterval(() => void poll(), 1250);
+    return () => {alive=false;window.clearInterval(timer);};
+  }, [preparedBonus?.session.id, editorSource?.id]);
+
   useEffect(() => {
     if (screen !== "game" || !allAnswered || active || showStats || ceremonyPlayed.current) return;
     // Let the final score settle before entering the podium.
@@ -621,7 +698,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           onQuizChange={loadQuiz}
           preparedBonus={preparedBonus?.quizId === editorSource?.id ? preparedBonus : null}
           phoneOnline={phoneOnline}
-          onPrepareBonus={bonusConfig.enabled && bonusConfig.rounds.length > 0 && editorSource
+          onPrepareBonus={((bonusConfig.enabled && bonusConfig.rounds.length > 0) || benniClips.length > 0) && editorSource
             ? async phonePlayers => {
                 const session = await prepareBonusSession(editorSource.id, phonePlayers);
                 setPreparedBonus({session, roster: JSON.stringify(phonePlayers), quizId: editorSource.id});
@@ -629,6 +706,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
             : undefined}
           onStart={(names, count, colors) => launchGame(names, count, colors)}
         />
+        {activeBenniClip && <BenniClipPlayer clip={activeBenniClip} onClose={closeBenniClip} />}
         <div className="fixed top-4 right-4 flex items-center gap-2 z-50">
           <MusicControls />
           <Button
