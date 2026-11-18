@@ -1,5 +1,7 @@
 import { AwardCeremony } from "./AwardCeremony";
 import { BonusHostRound } from "./BonusHostRound";
+import { BenniClipControls, BenniClipPlayer } from "./BenniClipControls";
+import { drawBenniClip, readBenniClips, recordBenniClip, type BenniClip } from "@/lib/benni-clips";
 import { prepareBonusSession, readBonusHost, type BonusSession } from "@/lib/bonus-pass-api";
 import { readBonusSettings, bonusMilestone, bonusQuestionError } from "@/lib/bonus-rounds";
 import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES } from "@/lib/quiz-repository";
@@ -306,6 +308,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   );
   const questionRows: 5 | 6 = editorSource?.data.questionRows === 6 ? 6 : 5;
   const bonusConfig = readBonusSettings(editorSource?.data.bonus);
+  const benniClips = readBenniClips(editorSource?.data.benniClips);
   const categories = useMemo(
     () => ensureQuestionRows(ensureCategoryCount(allCategories,activeCategoryCount),questionRows).slice(0, activeCategoryCount),
     [allCategories, activeCategoryCount, questionRows]
@@ -384,6 +387,34 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const revealOrigin = useRef({ x: 0, y: 8 });
   const ceremonyPlayed = useRef(false);
   const [ceremonyOpen, setCeremonyOpen] = useState(false);
+  const [activeBenniClip, setActiveBenniClip] = useState<BenniClip | null>(null);
+  const benniHistory = useRef<string[]>([]);
+  const pausedForBenni = useRef<HTMLAudioElement[]>([]);
+  const closeBenniClip = useCallback(() => {
+    setActiveBenniClip(null);
+    // Return to the exact quiz music state that was playing before the clip.
+    const toResume = pausedForBenni.current;
+    pausedForBenni.current = [];
+    for (const audio of toResume) {
+      if ([audioRef.current, tenseAudioRef.current, finalAudioRef.current].includes(audio)) {
+        void audio.play().catch(() => {});
+      }
+    }
+  }, []);
+  const playBenniClip = (clip: BenniClip) => {
+    if (activeBenniClip) return;
+    pausedForBenni.current = [audioRef.current, tenseAudioRef.current, finalAudioRef.current]
+      .filter((audio): audio is HTMLAudioElement => !!audio && !audio.paused);
+    pausedForBenni.current.forEach(audio => audio.pause());
+    benniHistory.current = recordBenniClip(benniHistory.current, clip.id);
+    setActiveBenniClip(clip);
+  };
+  const playRandomBenniClip = () => {
+    const drawn = drawBenniClip(benniClips, benniHistory.current);
+    if (!drawn) return;
+    benniHistory.current = drawn.playedIds;
+    playBenniClip(drawn.clip);
+  };
   useEffect(() => {
     if (screen !== "game" || !allAnswered || active || showStats || ceremonyPlayed.current) return;
     // Let the final score settle before entering the podium.
@@ -500,6 +531,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
             setFormatRounds({});
             setFinishedBonuses([]);
             setActiveBonus(null);
+            setActiveBenniClip(null);
+            benniHistory.current = [];
             setAnswered(
               makeAnswered(
                 catCount,
@@ -1166,6 +1199,12 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
               Zurück zum Editor
             </Button>
           )}
+          <BenniClipControls
+            clips={benniClips}
+            disabled={active !== null || activeBonus !== null || isRandomizing || showStats || ceremonyOpen || gameEntering}
+            onPlay={playBenniClip}
+            onRandom={playRandomBenniClip}
+          />
           <Button
             onClick={
               selectRandomQuestion
@@ -1306,6 +1345,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           }}
         />
       )}
+      {activeBenniClip && <BenniClipPlayer clip={activeBenniClip} onClose={closeBenniClip} />}
       <QuestionModal
         round={activeKey ? formatRounds[activeKey] : undefined}
         dispatchRound={dispatchRound}
