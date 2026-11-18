@@ -493,7 +493,7 @@ export function Editor({
         </div>
       </div>
       <BonusEditor settings={bonus} onChange={setBonus} totalQuestions={visibleCount*questionRows} />
-      <BenniClipsEditor quizId={source.id} clips={benniClips} onChange={setBenniClips} onPending={setBenniUploading} />
+
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-6 glow-primary">
         <div>
           <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-2 block">
@@ -816,6 +816,15 @@ export function Editor({
           {testLaunching ? "Speichert und startet …" : "Spiel testen"}
         </Button>
       </div>
+      <details className="group mt-6 rounded-xl border border-white/[.08] bg-white/[.015] px-4 py-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs text-muted-foreground/70 hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
+          <span>Weitere Einstellungen</span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <div className="pt-4">
+          <BenniClipsEditor quizId={source.id} clips={benniClips} onChange={setBenniClips} onPending={setBenniUploading} />
+        </div>
+      </details>
       </fieldset>
     </div>
   );
