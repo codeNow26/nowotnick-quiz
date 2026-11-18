@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, LockKeyhole, RefreshCw, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BenniPhoneRemote } from "./BenniPhoneRemote";
 import { readBonusGuest, sendBonusGuess, type BonusGuestState } from "@/lib/bonus-pass-api";
 
 function midpoint(s: BonusGuestState): number {
@@ -96,6 +97,7 @@ export function BonusPhone({ code }: { code: string }) {
                 : "Die Runde ist vorbei. Die nächste Schätzfrage erscheint automatisch."}
             </p>
             <p className="text-xs text-[#9f93ba]">Lass diese Seite geöffnet. Kein neuer Code nötig.</p>
+            <BenniPhoneRemote code={code} />
           </div>
         ) : handoff ? (
           <div className="space-y-5 py-6 text-center">
