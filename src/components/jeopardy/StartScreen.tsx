@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SelectionTrack } from "./SelectionTrack";
-import { CheckCircle2, Copy, Smartphone } from "lucide-react";
+import { CheckCircle2, Smartphone } from "lucide-react";
+import { PairingQrCode } from "./PairingQrCode";
 import type { BonusPlayer, BonusSession } from "@/lib/bonus-pass-api";
 
 import { PLAYER_PALETTE, normalizeColors, readPlayerPreferences, rememberPlayers, selectPlayerColor } from "@/lib/player-preferences";
@@ -41,7 +42,6 @@ export function StartScreen({
   const [launching, setLaunching] = useState(false);
   const [preparingPhone, setPreparingPhone] = useState(false);
   const [phoneError, setPhoneError] = useState("");
-  const [copiedPhone, setCopiedPhone] = useState(false);
   const launchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (launchTimer.current) clearTimeout(launchTimer.current); }, []);
   const [count, setCount] = useState(2);
@@ -130,7 +130,6 @@ export function StartScreen({
     if (!onPrepareBonus || preparingPhone) return;
     setPreparingPhone(true);
     setPhoneError("");
-    setCopiedPhone(false);
     try { await onPrepareBonus(activePlayers); }
     catch (e) { setPhoneError(e instanceof Error ? e.message : "Handy-Verbindung fehlgeschlagen."); }
     finally { setPreparingPhone(false); }
@@ -312,8 +311,8 @@ export function StartScreen({
                 <div className="flex items-center gap-2.5">
                   <Smartphone className="h-5 w-5 text-primary" aria-hidden="true" />
                   <div>
-                    <p className="text-sm font-semibold">Handy für Schätzrunden</p>
-                    <p className="text-xs text-muted-foreground">Einmal vorab verbinden, danach bleibt es bereit.</p>
+                    <p className="text-sm font-semibold">handyschmendi</p>
+                    <p className="text-xs text-muted-foreground">Mach halt</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -325,25 +324,31 @@ export function StartScreen({
                   )}
                   <Button type="button" variant="outline" disabled={preparingPhone || launching}
                     onClick={() => void preparePhone()} className="rounded-xl border-primary/35">
-                    {preparingPhone ? "Verbindung wird erstellt …" : phoneConnected ? "Neu koppeln" : "Handy vorbereiten"}
+                    {preparingPhone ? "QR-Code wird erstellt …" : phoneConnected ? "Neu koppeln" : "QR-Code anzeigen"}
                   </Button>
                 </div>
               </div>
               {phoneConnected && (
-                <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-primary/[.06] px-3 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs text-muted-foreground">Verbindungscode</p>
-                    <p className="font-mono text-xl font-semibold tracking-[.12em]">{preparedBonus!.session.code}</p>
-                    <p className="mt-1 break-all text-xs text-muted-foreground">{phoneLink}</p>
-                    {!phoneOnline && <p className="mt-1 text-xs text-amber-100/80">Link auf dem Handy öffnen und geöffnet lassen. Danach erscheint hier „Handy verbunden“.</p>}
+                <div className="mt-4 grid items-center gap-5 rounded-2xl border border-primary/20 bg-primary/[.06] p-4 sm:grid-cols-[auto_minmax(0,1fr)]">
+                  <div className="mx-auto overflow-hidden rounded-2xl bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.23)] sm:mx-0">
+                    <PairingQrCode value={phoneLink} />
                   </div>
-                  <Button type="button" variant="outline" className="rounded-xl" onClick={async () => {
-                    try { await navigator.clipboard.writeText(phoneLink); setCopiedPhone(true); }
-                    catch { setPhoneError("Link konnte nicht kopiert werden. Bitte den Code am Handy eingeben."); }
-                  }}>
-                    {copiedPhone ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-                    {copiedPhone ? "Kopiert" : "Link kopieren"}
-                  </Button>
+                  <div className="space-y-2 text-center sm:text-left">
+                    <p className="text-base font-semibold text-foreground">Einfach mit der Handykamera scannen</p>
+                    <p className="text-sm text-muted-foreground">
+                      Link antippen, Seite geöffnet lassen. Das Handy bleibt für alle Schätzrunden verbunden.
+                    </p>
+                    {phoneOnline
+                      ? <p className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-300">
+                          <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                          Handy ist verbunden!
+                        </p>
+                      : <p className="text-xs text-amber-200">Warte auf die Verbindung vom Handy …</p>}
+                    <div className="pt-2 text-xs text-muted-foreground">
+                      <span>Code als Notlösung: </span>
+                      <span className="font-mono font-medium tracking-[.12em] text-foreground/75">{preparedBonus!.session.code}</span>
+                    </div>
+                  </div>
                 </div>
               )}
               {!phoneConnected && preparedBonus && (
