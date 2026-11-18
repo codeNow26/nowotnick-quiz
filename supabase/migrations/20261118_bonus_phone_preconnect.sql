@@ -56,6 +56,42 @@ BEGIN
   RETURN jsonb_build_object('status','collecting','submitted',0,'guesses','[]'::jsonb);
 END $$;
 
+-- Phone heartbeat: the host can see when the actual phone has joined.
+ALTER TABLE public.bonus_pass_sessions
+  ADD COLUMN IF NOT EXISTS guest_seen_at timestamptz;
+
+CREATE OR REPLACE FUNCTION public.bonus_pass_guest(p_code text)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $
+DECLARE s public.bonus_pass_sessions%ROWTYPE;
+BEGIN
+  UPDATE public.bonus_pass_sessions SET guest_seen_at=now()
+    WHERE code=p_code AND expires_at>now()
+    RETURNING * INTO s;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Schätzrunde nicht gefunden oder abgelaufen'; END IF;
+  RETURN jsonb_build_object(
+    'code',s.code,'question',s.question,'unit',s.unit,
+    'min',s.range_min,'max',s.range_max,'step',s.range_step,
+    'players',s.players,'nextPlayer',s.next_player,
+    'status',s.status,'submitted',s.next_player
+  );
+END $;
+
+CREATE OR REPLACE FUNCTION public.bonus_pass_host(p_id uuid,p_host_token uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $
+DECLARE s public.bonus_pass_sessions%ROWTYPE;
+BEGIN
+  SELECT * INTO s FROM public.bonus_pass_sessions
+    WHERE id=p_id AND host_token=p_host_token AND expires_at>now();
+  IF NOT FOUND THEN RAISE EXCEPTION 'Sitzung nicht gefunden oder abgelaufen'; END IF;
+  RETURN jsonb_build_object(
+    'status',s.status,'submitted',s.next_player,
+    'guesses',CASE WHEN s.status='revealed' THEN s.guesses ELSE '[]'::jsonb END,
+    'phoneOnline', s.guest_seen_at IS NOT NULL AND s.guest_seen_at >= now()-interval '15 seconds'
+  );
+END $;
+
 REVOKE ALL ON FUNCTION public.bonus_pass_prepare(text,uuid,uuid,jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.bonus_pass_activate(uuid,uuid,text,numeric,text,numeric,numeric,numeric) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.bonus_pass_prepare(text,uuid,uuid,jsonb) TO anon, authenticated;
