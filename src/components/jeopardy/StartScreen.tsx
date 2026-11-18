@@ -316,15 +316,18 @@ export function StartScreen({
                     <p className="text-xs text-muted-foreground">Einmal vorab verbinden, danach bleibt es bereit.</p>
                   </div>
                 </div>
-                {phoneConnected
-                  ? <span className={`inline-flex items-center gap-1.5 text-xs ${phoneOnline ? "text-emerald-300" : "text-amber-200"}`}>
+                <div className="flex flex-wrap items-center gap-2">
+                  {phoneConnected && (
+                    <span className={`inline-flex items-center gap-1.5 text-xs ${phoneOnline ? "text-emerald-300" : "text-amber-200"}`}>
                       {phoneOnline ? <CheckCircle2 className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
                       {phoneOnline ? "Handy verbunden" : "Warte auf Handy"}
                     </span>
-                  : <Button type="button" variant="outline" disabled={preparingPhone || launching}
-                      onClick={() => void preparePhone()} className="rounded-xl border-primary/35">
-                      {preparingPhone ? "Verbindung wird erstellt …" : "Handy vorbereiten"}
-                    </Button>}
+                  )}
+                  <Button type="button" variant="outline" disabled={preparingPhone || launching}
+                    onClick={() => void preparePhone()} className="rounded-xl border-primary/35">
+                    {preparingPhone ? "Verbindung wird erstellt …" : phoneConnected ? "Neu koppeln" : "Handy vorbereiten"}
+                  </Button>
+                </div>
               </div>
               {phoneConnected && (
                 <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-primary/[.06] px-3 py-3">
