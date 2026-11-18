@@ -15,6 +15,7 @@ export interface BonusGuestState {
   status: "waiting" | "collecting" | "ready" | "revealed";
 }
 export interface BonusHostState {
+  phoneOnline?: boolean;
   submitted: number;
   status: "waiting" | "collecting" | "ready" | "revealed";
   guesses: number[];
