@@ -12,11 +12,11 @@ export interface BonusGuestState {
   players: BonusPlayer[];
   nextPlayer: number;
   submitted: number;
-  status: "collecting" | "ready" | "revealed";
+  status: "waiting" | "collecting" | "ready" | "revealed";
 }
 export interface BonusHostState {
   submitted: number;
-  status: "collecting" | "ready" | "revealed";
+  status: "waiting" | "collecting" | "ready" | "revealed";
   guesses: number[];
 }
 export interface BonusSession {
@@ -54,6 +54,34 @@ export async function createBonusSession(quizId: string, q: BonusQuestion, playe
   });
   return { id: checked<string>(data, error), hostToken, code };
 }
+/** Creates the one-time phone connection before the game starts. */
+export async function prepareBonusSession(quizId: string, players: BonusPlayer[]): Promise<BonusSession> {
+  const code = randomCode();
+  const hostToken = crypto.randomUUID();
+  const { data, error } = await supabase.rpc("bonus_pass_prepare", {
+    p_code: code,
+    p_host_token: hostToken,
+    p_quiz_id: quizId,
+    p_players: players,
+  });
+  return { id: checked<string>(data, error), hostToken, code };
+}
+
+/** Activates a prepared phone connection for a new question without changing its code. */
+export async function activateBonusSession(session: BonusSession, q: BonusQuestion): Promise<BonusHostState> {
+  const { data, error } = await supabase.rpc("bonus_pass_activate", {
+    p_id: session.id,
+    p_host_token: session.hostToken,
+    p_question: q.question,
+    p_target: q.target,
+    p_unit: q.unit,
+    p_min: q.min,
+    p_max: q.max,
+    p_step: q.step,
+  });
+  return checked<BonusHostState>(data, error);
+}
+
 export async function readBonusGuest(code: string): Promise<BonusGuestState> {
   const { data, error } = await supabase.rpc("bonus_pass_guest", { p_code: code });
   return checked<BonusGuestState>(data, error);
