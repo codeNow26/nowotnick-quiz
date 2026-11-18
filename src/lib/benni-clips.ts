@@ -15,10 +15,11 @@ export function readBenniClips(raw: unknown): BenniClip[] {
     if (!item || typeof item !== "object") continue;
     const { id, title, url } = item as Partial<BenniClip>;
     if (typeof id !== "string" || !id || seen.has(id) ||
-        typeof title !== "string" || !title.trim() ||
+        typeof title !== "string" ||
         typeof url !== "string" || !/^https:\/\//i.test(url)) continue;
     seen.add(id);
-    result.push({ id, title: title.trim().slice(0, 70), url });
+    // Preserve spaces while the user is typing a new title in the editor.
+    result.push({ id, title: title.slice(0, 70), url });
     if (result.length >= MAX_BENNI_CLIPS) break;
   }
   return result;
