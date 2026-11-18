@@ -62,7 +62,7 @@ ALTER TABLE public.bonus_pass_sessions
 
 CREATE OR REPLACE FUNCTION public.bonus_pass_guest(p_code text)
 RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE s public.bonus_pass_sessions%ROWTYPE;
 BEGIN
   UPDATE public.bonus_pass_sessions SET guest_seen_at=now()
@@ -75,11 +75,11 @@ BEGIN
     'players',s.players,'nextPlayer',s.next_player,
     'status',s.status,'submitted',s.next_player
   );
-END $;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.bonus_pass_host(p_id uuid,p_host_token uuid)
 RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE s public.bonus_pass_sessions%ROWTYPE;
 BEGIN
   SELECT * INTO s FROM public.bonus_pass_sessions
@@ -90,7 +90,7 @@ BEGIN
     'guesses',CASE WHEN s.status='revealed' THEN s.guesses ELSE '[]'::jsonb END,
     'phoneOnline', s.guest_seen_at IS NOT NULL AND s.guest_seen_at >= now()-interval '15 seconds'
   );
-END $;
+END $$;
 
 REVOKE ALL ON FUNCTION public.bonus_pass_prepare(text,uuid,uuid,jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.bonus_pass_activate(uuid,uuid,text,numeric,text,numeric,numeric,numeric) FROM PUBLIC;
