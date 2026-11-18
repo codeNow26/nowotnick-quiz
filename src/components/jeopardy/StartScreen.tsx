@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SelectionTrack } from "./SelectionTrack";
+import { CheckCircle2, Copy, Smartphone } from "lucide-react";
+import type { BonusPlayer, BonusSession } from "@/lib/bonus-pass-api";
 
 import { PLAYER_PALETTE, normalizeColors, readPlayerPreferences, rememberPlayers, selectPlayerColor } from "@/lib/player-preferences";
 
@@ -19,6 +21,8 @@ interface StartScreenProps {
   footer?: ReactNode;
   onQuizChange: (quiz: 1 | 2 | 3 | 4) => void;
   onStart: (playerNames: string[], categoryCount: number, colors:string[]) => void;
+  onPrepareBonus?: (players: BonusPlayer[]) => Promise<void>;
+  preparedBonus?: { session: BonusSession; roster: string } | null;
 }
 
 export function StartScreen({
@@ -29,8 +33,13 @@ export function StartScreen({
   footer,
   onQuizChange,
   onStart,
+  onPrepareBonus,
+  preparedBonus,
 }: StartScreenProps) {
   const [launching, setLaunching] = useState(false);
+  const [preparingPhone, setPreparingPhone] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
+  const [copiedPhone, setCopiedPhone] = useState(false);
   const launchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (launchTimer.current) clearTimeout(launchTimer.current); }, []);
   const [count, setCount] = useState(2);
@@ -109,6 +118,23 @@ export function StartScreen({
     setNames(next);
     rememberPlayers({names:next,colors,count});
   };
+
+  const activePlayers: BonusPlayer[] = names.slice(0, count).map((name, i) => ({
+    name: name.trim() || `Spieler ${i + 1}`,
+    color: normalizeColors(colors.slice(0, count))[i],
+  }));
+  const phoneConnected = !!preparedBonus && preparedBonus.roster === JSON.stringify(activePlayers);
+  const preparePhone = async () => {
+    if (!onPrepareBonus || preparingPhone) return;
+    setPreparingPhone(true);
+    setPhoneError("");
+    setCopiedPhone(false);
+    try { await onPrepareBonus(activePlayers); }
+    catch (e) { setPhoneError(e instanceof Error ? e.message : "Handy-Verbindung fehlgeschlagen."); }
+    finally { setPreparingPhone(false); }
+  };
+  const phoneLink = typeof window === "undefined" || !phoneConnected
+    ? "" : `${window.location.origin}/mitraten/${preparedBonus!.session.code}`;
 
   const handleStart = () => {
     if (launchTimer.current || launching) return;
@@ -277,6 +303,46 @@ export function StartScreen({
               )
             )}
           </div>
+
+          {onPrepareBonus && (
+            <div className="mb-6 rounded-2xl border border-white/[.10] bg-white/[.025] px-4 py-4 text-left">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <Smartphone className="h-5 w-5 text-primary" aria-hidden="true" />
+                  <div>
+                    <p className="text-sm font-semibold">Handy für Schätzrunden</p>
+                    <p className="text-xs text-muted-foreground">Einmal vorab verbinden, danach bleibt es bereit.</p>
+                  </div>
+                </div>
+                {phoneConnected
+                  ? <span className="inline-flex items-center gap-1.5 text-xs text-emerald-300"><CheckCircle2 className="h-4 w-4" /> Verbindung vorbereitet</span>
+                  : <Button type="button" variant="outline" disabled={preparingPhone || launching}
+                      onClick={() => void preparePhone()} className="rounded-xl border-primary/35">
+                      {preparingPhone ? "Verbindung wird erstellt …" : "Handy vorbereiten"}
+                    </Button>}
+              </div>
+              {phoneConnected && (
+                <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-primary/[.06] px-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">Verbindungscode</p>
+                    <p className="font-mono text-xl font-semibold tracking-[.12em]">{preparedBonus!.session.code}</p>
+                    <p className="mt-1 break-all text-xs text-muted-foreground">{phoneLink}</p>
+                  </div>
+                  <Button type="button" variant="outline" className="rounded-xl" onClick={async () => {
+                    try { await navigator.clipboard.writeText(phoneLink); setCopiedPhone(true); }
+                    catch { setPhoneError("Link konnte nicht kopiert werden. Bitte den Code am Handy eingeben."); }
+                  }}>
+                    {copiedPhone ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                    {copiedPhone ? "Kopiert" : "Link kopieren"}
+                  </Button>
+                </div>
+              )}
+              {!phoneConnected && preparedBonus && (
+                <p className="mt-2 text-xs text-amber-200">Spieler geändert. Das Handy bitte erneut vorbereiten.</p>
+              )}
+              {phoneError && <p role="alert" className="mt-2 text-sm text-rose-300">{phoneError}</p>}
+            </div>
+          )}
 
           <Button
             onClick={handleStart}
