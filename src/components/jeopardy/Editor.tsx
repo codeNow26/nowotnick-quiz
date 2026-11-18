@@ -1,5 +1,7 @@
 import { FormatEditor } from "./FormatEditor";
 import { BonusEditor } from "./BonusEditor";
+import { BenniClipsEditor } from "./BenniClipsEditor";
+import { readBenniClips, type BenniClip } from "@/lib/benni-clips";
 import { readBonusSettings, bonusQuestionError, type BonusSettings } from "@/lib/bonus-rounds";
 import { QuestionMediaEditor } from "./QuestionMediaEditor";
 import { QuestionTypePicker } from "./QuestionTypePicker";
@@ -37,6 +39,8 @@ export function Editor({
   const draft=value.categories;
   const bonus=readBonusSettings(value.bonus);
   const setBonus=(settings:BonusSettings)=>autosave.update(v=>({...v,bonus:settings}));
+  const benniClips=readBenniClips(value.benniClips);
+  const setBenniClips=(clips:BenniClip[])=>autosave.update(v=>({...v,benniClips:clips}));
   const titleDraft=value.meta.title;
   const subtitleDraft=value.meta.subtitle;
   const questionRows: 5 | 6 = value.questionRows === 6 ? 6 : 5;
@@ -77,8 +81,9 @@ export function Editor({
   const [processingImages, setProcessingImages] = useState<Record<string, boolean>>({});
   const imageGeneration=useRef<Record<string,number>>({});
   const [processingVideos, setProcessingVideos] = useState<Record<string, boolean>>({});
+  const [benniUploading, setBenniUploading] = useState(false);
   const videoPending = Object.values(processingVideos).some(Boolean);
-  const imagePending=Object.values(processingImages).some(Boolean) || videoPending;
+  const imagePending=Object.values(processingImages).some(Boolean) || videoPending || benniUploading;
   useEffect(()=>{
     if(!imagePending)return;
     const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};
@@ -488,6 +493,7 @@ export function Editor({
         </div>
       </div>
       <BonusEditor settings={bonus} onChange={setBonus} totalQuestions={visibleCount*questionRows} />
+      <BenniClipsEditor quizId={source.id} clips={benniClips} onChange={setBenniClips} onPending={setBenniUploading} />
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-6 glow-primary">
         <div>
           <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-2 block">
