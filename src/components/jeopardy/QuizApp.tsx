@@ -344,7 +344,14 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       try {
         const result = await readBonusHost(preparedBonus.session);
         if (active) setPhoneOnline(result.phoneOnline === true);
-      } catch { if (active) setPhoneOnline(false); }
+      } catch (e) {
+        if (!active) return;
+        setPhoneOnline(false);
+        // A truly expired pairing can be recreated before the quiz starts.
+        if (e instanceof Error && /abgelaufen|nicht gefunden/i.test(e.message)) {
+          setPreparedBonus(existing => existing?.session.id === preparedBonus.session.id ? null : existing);
+        }
+      }
     };
     void poll();
     const timer = window.setInterval(poll, 3000);
