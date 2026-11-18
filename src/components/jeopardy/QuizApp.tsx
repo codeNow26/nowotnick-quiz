@@ -1,6 +1,6 @@
 import { AwardCeremony } from "./AwardCeremony";
 import { BonusHostRound } from "./BonusHostRound";
-import { prepareBonusSession, type BonusSession } from "@/lib/bonus-pass-api";
+import { prepareBonusSession, readBonusHost, type BonusSession } from "@/lib/bonus-pass-api";
 import { readBonusSettings, bonusMilestone, bonusQuestionError } from "@/lib/bonus-rounds";
 import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES } from "@/lib/quiz-repository";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -320,7 +320,36 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const [formatRounds,setFormatRounds]=useState<Record<string,FormatRound>>({});
   const [results, setResults] = useState<Record<string, QuestionResult>>({});
   const [finishedBonuses, setFinishedBonuses] = useState<number[]>([]);
-  const [preparedBonus, setPreparedBonus] = useState<{session: BonusSession; roster: string; quizId: string} | null>(null);
+  const [preparedBonus, setPreparedBonus] = useState<{session: BonusSession; roster: string; quizId: string} | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.sessionStorage.getItem("quiz-bonus-phone");
+      if (!raw) return null;
+      const saved = JSON.parse(raw);
+      return saved?.session?.id && saved?.session?.hostToken && saved?.session?.code &&
+        typeof saved.roster === "string" && typeof saved.quizId === "string" ? saved : null;
+    } catch { return null; }
+  });
+  const [phoneOnline, setPhoneOnline] = useState(false);
+  useEffect(() => {
+    try {
+      if (preparedBonus) window.sessionStorage.setItem("quiz-bonus-phone", JSON.stringify(preparedBonus));
+      else window.sessionStorage.removeItem("quiz-bonus-phone");
+    } catch { /* Private browsing may restrict session storage. */ }
+  }, [preparedBonus]);
+  useEffect(() => {
+    if (!preparedBonus) { setPhoneOnline(false); return; }
+    let active = true;
+    const poll = async () => {
+      try {
+        const result = await readBonusHost(preparedBonus.session);
+        if (active) setPhoneOnline(result.phoneOnline === true);
+      } catch { if (active) setPhoneOnline(false); }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 3000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [preparedBonus]);
   const [activeBonus, setActiveBonus] = useState<number | null>(null);
   const [active, setActive] =
     useState<Active | null>(null);
@@ -551,6 +580,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           footer={<div className="mt-5 flex flex-wrap justify-center gap-3 text-sm">{!customId && <CreateQuiz />}{customId && <Link to="/" className="rounded-xl border border-white/15 px-4 py-2">Zur Startseite</Link>}<Link to="/verwaltung" className="rounded-xl border border-white/15 px-4 py-2">Quiz-Verwaltung</Link></div>}
           onQuizChange={loadQuiz}
           preparedBonus={preparedBonus?.quizId === editorSource?.id ? preparedBonus : null}
+          phoneOnline={phoneOnline}
           onPrepareBonus={bonusConfig.enabled && bonusConfig.rounds.length > 0 && editorSource
             ? async phonePlayers => {
                 const session = await prepareBonusSession(editorSource.id, phonePlayers);
