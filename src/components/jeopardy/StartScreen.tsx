@@ -22,6 +22,7 @@ interface StartScreenProps {
   onQuizChange: (quiz: 1 | 2 | 3 | 4) => void;
   onStart: (playerNames: string[], categoryCount: number, colors:string[]) => void;
   onPrepareBonus?: (players: BonusPlayer[]) => Promise<void>;
+  phoneOnline?: boolean;
   preparedBonus?: { session: BonusSession; roster: string } | null;
 }
 
@@ -34,6 +35,7 @@ export function StartScreen({
   onQuizChange,
   onStart,
   onPrepareBonus,
+  phoneOnline = false,
   preparedBonus,
 }: StartScreenProps) {
   const [launching, setLaunching] = useState(false);
@@ -315,7 +317,10 @@ export function StartScreen({
                   </div>
                 </div>
                 {phoneConnected
-                  ? <span className="inline-flex items-center gap-1.5 text-xs text-emerald-300"><CheckCircle2 className="h-4 w-4" /> Verbindung vorbereitet</span>
+                  ? <span className={`inline-flex items-center gap-1.5 text-xs ${phoneOnline ? "text-emerald-300" : "text-amber-200"}`}>
+                      {phoneOnline ? <CheckCircle2 className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
+                      {phoneOnline ? "Handy verbunden" : "Warte auf Handy"}
+                    </span>
                   : <Button type="button" variant="outline" disabled={preparingPhone || launching}
                       onClick={() => void preparePhone()} className="rounded-xl border-primary/35">
                       {preparingPhone ? "Verbindung wird erstellt …" : "Handy vorbereiten"}
@@ -327,6 +332,7 @@ export function StartScreen({
                     <p className="text-xs text-muted-foreground">Verbindungscode</p>
                     <p className="font-mono text-xl font-semibold tracking-[.12em]">{preparedBonus!.session.code}</p>
                     <p className="mt-1 break-all text-xs text-muted-foreground">{phoneLink}</p>
+                    {!phoneOnline && <p className="mt-1 text-xs text-amber-100/80">Link auf dem Handy öffnen und geöffnet lassen. Danach erscheint hier „Handy verbunden“.</p>}
                   </div>
                   <Button type="button" variant="outline" className="rounded-xl" onClick={async () => {
                     try { await navigator.clipboard.writeText(phoneLink); setCopiedPhone(true); }
