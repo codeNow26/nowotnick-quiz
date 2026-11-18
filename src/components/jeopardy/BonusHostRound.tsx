@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, ChevronRight, Copy, LockKeyhole, Smartphone, Sparkles, Trophy, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { bonusQuestionError, bonusRanking, type BonusQuestion } from "@/lib/bonus-rounds";
-import { createBonusSession, readBonusHost, revealBonus, type BonusHostState, type BonusPlayer, type BonusSession } from "@/lib/bonus-pass-api";
+import { activateBonusSession, createBonusSession, readBonusHost, revealBonus, type BonusHostState, type BonusPlayer, type BonusSession } from "@/lib/bonus-pass-api";
 
 interface BonusHostProps {
   quizId: string;
@@ -10,6 +10,7 @@ interface BonusHostProps {
   totalRounds: number;
   question: BonusQuestion;
   players: BonusPlayer[];
+  preparedSession?: BonusSession | null;
   onAward: (winners: number[], points: number) => void;
   onClose: () => void;
 }
@@ -17,9 +18,10 @@ interface BonusHostProps {
 const shown = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 12 });
 
 export function BonusHostRound({
-  quizId, roundNumber, totalRounds, question, players, onAward, onClose,
+  quizId, roundNumber, totalRounds, question, players, preparedSession, onAward, onClose,
 }: BonusHostProps) {
-  const [session, setSession] = useState<BonusSession | null>(null);
+  const [session, setSession] = useState<BonusSession | null>(preparedSession ?? null);
+  const activationStarted = useRef(false);
   const [state, setState] = useState<BonusHostState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -34,7 +36,22 @@ export function BonusHostRound({
   const winners = ranking.filter(r => r.winner);
 
   useEffect(() => {
-    if (!session || state?.status === "revealed") return;
+    if (!preparedSession || activationStarted.current) return;
+    activationStarted.current = true;
+    let alive = true;
+    setBusy(true);
+    setError("");
+    void activateBonusSession(preparedSession, question)
+      .then(next => { if (alive) setState(next); })
+      .catch(e => {
+        if (alive) setError(e instanceof Error ? e.message : "Handy-Verbindung konnte nicht aktiviert werden.");
+      })
+      .finally(() => { if (alive) setBusy(false); });
+    return () => { alive = false; };
+  }, [preparedSession, question]);
+
+  useEffect(() => {
+    if (!session || (preparedSession && (busy || !state)) || state?.status === "revealed") return;
     let alive = true;
     const check = async () => {
       try {
@@ -51,7 +68,7 @@ export function BonusHostRound({
     const onVisibility = () => { if (!document.hidden) void check(); };
     document.addEventListener("visibilitychange", onVisibility);
     return () => { alive = false; clearInterval(timer); document.removeEventListener("visibilitychange", onVisibility); };
-  }, [session, state?.status]);
+  }, [session, state?.status, preparedSession, busy]);
 
   const create = async () => {
     if (busy || safeError) return;
@@ -182,6 +199,7 @@ export function BonusHostRound({
                 {copied ? "Link kopiert" : "Handy-Link kopieren"}
               </Button>
             </div>
+            {preparedSession && <p className="text-center text-xs text-emerald-300">Das Handy ist schon vor Spielbeginn verbunden.</p>}
             <p className="text-center text-xs text-[#b4aaca]">
               {state?.status === "ready" ? "Alle Tipps sind eingegangen!" : `${submitted} von ${players.length} haben geschätzt`}
             </p>
