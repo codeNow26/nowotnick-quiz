@@ -1,5 +1,6 @@
 import { AwardCeremony } from "./AwardCeremony";
 import { BonusHostRound } from "./BonusHostRound";
+import { prepareBonusSession, type BonusSession } from "@/lib/bonus-pass-api";
 import { readBonusSettings, bonusMilestone, bonusQuestionError } from "@/lib/bonus-rounds";
 import { ensureCategoryCount, ensureQuestionRows, MAX_CATEGORIES } from "@/lib/quiz-repository";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -319,6 +320,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const [formatRounds,setFormatRounds]=useState<Record<string,FormatRound>>({});
   const [results, setResults] = useState<Record<string, QuestionResult>>({});
   const [finishedBonuses, setFinishedBonuses] = useState<number[]>([]);
+  const [preparedBonus, setPreparedBonus] = useState<{session: BonusSession; roster: string; quizId: string} | null>(null);
   const [activeBonus, setActiveBonus] = useState<number | null>(null);
   const [active, setActive] =
     useState<Active | null>(null);
@@ -437,6 +439,11 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     fromEditor = false,
   ) => {
     setTestSession(fromEditor);
+    // Only keep a prepared phone if its quiz and player order still match.
+    setPreparedBonus(existing => existing &&
+      existing.quizId === editorSource?.id &&
+      existing.roster === JSON.stringify(names.map((name, i) => ({name, color: colors[i]})))
+        ? existing : null);
             stopFinalQuestionAudio(false);
             setPlayers(
               names.map((name, index) => ({
@@ -543,6 +550,13 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           activeQuiz={customId ? undefined : quizSlot}
           footer={<div className="mt-5 flex flex-wrap justify-center gap-3 text-sm">{!customId && <CreateQuiz />}{customId && <Link to="/" className="rounded-xl border border-white/15 px-4 py-2">Zur Startseite</Link>}<Link to="/verwaltung" className="rounded-xl border border-white/15 px-4 py-2">Quiz-Verwaltung</Link></div>}
           onQuizChange={loadQuiz}
+          preparedBonus={preparedBonus?.quizId === editorSource?.id ? preparedBonus : null}
+          onPrepareBonus={bonusConfig.enabled && bonusConfig.rounds.length > 0 && editorSource
+            ? async phonePlayers => {
+                const session = await prepareBonusSession(editorSource.id, phonePlayers);
+                setPreparedBonus({session, roster: JSON.stringify(phonePlayers), quizId: editorSource.id});
+              }
+            : undefined}
           onStart={(names, count, colors) => launchGame(names, count, colors)}
         />
         <div className="fixed top-4 right-4 flex items-center gap-2 z-50">
@@ -1234,6 +1248,9 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           totalRounds={bonusConfig.rounds.length}
           question={bonusConfig.rounds[activeBonus]}
           players={players}
+          preparedSession={preparedBonus?.quizId === editorSource?.id &&
+            preparedBonus.roster === JSON.stringify(players.map(p => ({name: p.name, color: p.color})))
+              ? preparedBonus.session : null}
           onClose={() => setActiveBonus(null)}
           onAward={(winnerIndices, points) => {
             setPlayers(previous => {
