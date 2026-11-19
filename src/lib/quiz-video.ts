@@ -25,7 +25,6 @@ const AUDIO_TYPES = {
   "audio/wav": "wav",
   "audio/x-wav": "wav",
   "audio/wave": "wav",
-  "audio/wave": "wav",
   "audio/ogg": "ogg",
   "audio/mp4": "m4a",
   "audio/x-m4a": "m4a",

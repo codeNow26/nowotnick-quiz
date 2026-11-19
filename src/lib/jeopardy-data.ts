@@ -1,8 +1,12 @@
+import type { EstimateSettings, RevealSettings, LocationSettings, FormatAttempt } from "./question-formats";
 export interface Question {
   question: string;
   answer: string;
   value?: number;
-  type?: "normal" | "order" | "hint" | "choice";
+  type?: "normal" | "order" | "hint" | "choice" | "estimate" | "reveal" | "location";
+  estimate?: Partial<EstimateSettings>;
+  reveal?: Partial<RevealSettings>;
+  location?: Partial<LocationSettings>;
   options?: string[];
   correctOption?: number;
   orderItems?: string[];
@@ -147,4 +151,5 @@ export interface QuestionResult {
   playerIndex: number | null;
   correct: boolean;
   selectedChoice?: number | null;
+  attempt?: FormatAttempt;
 }

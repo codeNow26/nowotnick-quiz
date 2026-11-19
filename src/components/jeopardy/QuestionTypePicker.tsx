@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChevronDown, Grid2X2, Lightbulb, ListOrdered, MessageSquareText } from "lucide-react";
+import { Gauge, ScanEye, MapPin, Check, ChevronDown, Grid2X2, Lightbulb, ListOrdered, MessageSquareText } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { Question } from "@/lib/jeopardy-data";
 
@@ -10,6 +10,9 @@ const types = [
   { id: "choice", label: "ABCD", subtitle: "Vier Möglichkeiten, eine richtige Antwort", icon: Grid2X2 },
   { id: "hint", label: "Hinweise", subtitle: "Tipps freischalten, Punkte reduzieren", icon: Lightbulb },
   { id: "order", label: "Reihenfolge", subtitle: "Elemente in die richtige Ordnung bringen", icon: ListOrdered },
+  { id: "estimate", label: "Schätzfrage", subtitle: "Eine Zahl tippen und die Abweichung sehen", icon: Gauge },
+  { id: "reveal", label: "Enthüllungsfrage", subtitle: "Bild oder Video mit jedem Schritt besser erkennen", icon: ScanEye },
+  { id: "location", label: "Zeig mir wo!", subtitle: "Eine Stelle auf dem Bild markieren", icon: MapPin },
 ] as const;
 
 interface Props {
@@ -45,7 +48,7 @@ export function QuestionTypePicker({ value, disabled, onChange }: Props) {
             Fragetyp auswählen
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            Wie soll diese Frage gespielt werden? Bilder, Videos und Audio funktionieren unabhängig davon.
+            Wie soll diese Frage gespielt werden?
           </DialogDescription>
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -76,9 +79,7 @@ export function QuestionTypePicker({ value, disabled, onChange }: Props) {
             );
           })}
         </div>
-        <p className="pt-1 text-center text-[11px] text-muted-foreground/70">
-          Weitere Fragetypen können später ergänzt werden. Spezialfunktionen bleiben vorerst außen vor.
-        </p>
+
       </DialogContent>
     </Dialog>
   );

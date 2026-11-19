@@ -1,3 +1,8 @@
+import { FormatEditor } from "./FormatEditor";
+import { BonusEditor } from "./BonusEditor";
+import { BenniClipsEditor } from "./BenniClipsEditor";
+import { readBenniClips, type BenniClip } from "@/lib/benni-clips";
+import { readBonusSettings, bonusQuestionError, type BonusSettings } from "@/lib/bonus-rounds";
 import { QuestionMediaEditor } from "./QuestionMediaEditor";
 import { QuestionTypePicker } from "./QuestionTypePicker";
 import { AnswerImageEditor } from "./AnswerImageEditor";
@@ -21,6 +26,10 @@ interface EditorProps {
   categoryCount?: number;
   onCategoryCountChange?: (count:number)=>void;
 }
+function withField(q: Question, field: "question" | "answer" | "imageUrl" | "answerImageUrl", value: string): Question {
+  if (field === "imageUrl" && q.imageUrl !== value && q.location) return { ...q, imageUrl: value, location: { ...q.location, target: undefined, aspect: undefined } };
+  return { ...q, [field]: value };
+}
 export function Editor({
   source, target, onSaved, categoryCount, onCategoryCountChange,
   onBack, onTest, initialCategory = 0,
@@ -28,6 +37,10 @@ export function Editor({
   const autosave = useEditorAutosave(target,source,onSaved);
   const { value, status, recovery } = autosave.state;
   const draft=value.categories;
+  const bonus=readBonusSettings(value.bonus);
+  const setBonus=(settings:BonusSettings)=>autosave.update(v=>({...v,bonus:settings}));
+  const benniClips=readBenniClips(value.benniClips);
+  const setBenniClips=(clips:BenniClip[])=>autosave.update(v=>({...v,benniClips:clips}));
   const titleDraft=value.meta.title;
   const subtitleDraft=value.meta.subtitle;
   const questionRows: 5 | 6 = value.questionRows === 6 ? 6 : 5;
@@ -68,8 +81,9 @@ export function Editor({
   const [processingImages, setProcessingImages] = useState<Record<string, boolean>>({});
   const imageGeneration=useRef<Record<string,number>>({});
   const [processingVideos, setProcessingVideos] = useState<Record<string, boolean>>({});
+  const [benniUploading, setBenniUploading] = useState(false);
   const videoPending = Object.values(processingVideos).some(Boolean);
-  const imagePending=Object.values(processingImages).some(Boolean) || videoPending;
+  const imagePending=Object.values(processingImages).some(Boolean) || videoPending || benniUploading;
   useEffect(()=>{
     if(!imagePending)return;
     const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};
@@ -143,7 +157,7 @@ export function Editor({
       const imageDataUrl = await fileToOptimizedDataUrl(file);
       await autosave.prepareImage(imageDataUrl);
       if(imageGeneration.current[key]!==generation)return;
-      setDraft(prev=>prev.map((c,i)=>i===categoryIndex ? {...c,questions:c.questions.map((q,j)=>j===qIdx?{...q,[field]:imageDataUrl}:q)}:c));
+      setDraft(prev=>prev.map((c,i)=>i===categoryIndex ? {...c,questions:c.questions.map((q,j)=>j===qIdx?withField(q,field,imageDataUrl):q)}:c));
     } catch (error) {
       alert(error instanceof Error ? error.message : "Bild konnte nicht hochgeladen werden.");
     } finally {
@@ -170,7 +184,7 @@ export function Editor({
       const key=`${activeCat}-${qIdx}${field === "answerImageUrl" ? ":answer" : ""}`;imageGeneration.current[key]=(imageGeneration.current[key]??0)+1;
       setProcessingImages(prev=>({...prev,[key]:false}));
     }
-    updateQuestion(qIdx, (q) => ({ ...q, [field]: value }));
+    updateQuestion(qIdx, (q) => withField(q,field,value));
   };
   const updateQValue = (qIdx: number, value: number | undefined) => {
     updateQuestion(qIdx, (q) => ({ ...q, value }));
@@ -207,7 +221,7 @@ export function Editor({
       }
       return {
         ...q,
-        type: "normal",
+        type,
       };
     });
   };
@@ -298,6 +312,11 @@ export function Editor({
     if(testLaunching || manualSaving || imagePending || recovery.length) return;
     setTestLaunching(true);
     setValidationError('');
+    if(bonus.enabled && bonus.rounds.some(q=>bonusQuestionError(q))){
+      setValidationError("Bitte zuerst alle gemeinsamen Schätzrunden unter Spiel-Extras vervollständigen.");
+      setTestLaunching(false);
+      return;
+    }
     try {
       // The editor owns the only current unsaved draft. Never leave it until
       // the exact in-memory version has successfully reached Supabase.
@@ -473,6 +492,8 @@ export function Editor({
           />
         </div>
       </div>
+      <BonusEditor settings={bonus} onChange={setBonus} totalQuestions={visibleCount*questionRows} />
+
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-6 glow-primary">
         <div>
           <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-2 block">
@@ -501,7 +522,7 @@ export function Editor({
               <div key={qIdx} className="glass rounded-2xl p-4 space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <Label className="text-xs text-muted-foreground uppercase tracking-[0.18em]">
-                    Punkte
+                    {q.type === "reveal" ? "Startpunkte" : "Punkte"}
                   </Label>
                   <div className="inline-flex max-w-full items-center gap-1 rounded-xl border border-white/[0.10] bg-black/[0.13] p-1">
                     {([-100, -10] as const).map(delta => (
@@ -582,7 +603,7 @@ export function Editor({
                     <ImagePlus className="h-4 w-4" aria-hidden="true" />
                     {hasImage || hasVideo || hasAudio
                       ? [hasImage && "Bild", hasVideo && "Video", hasAudio && "Audio"].filter(Boolean).join(" · ") + " vorhanden"
-                      : "Medien hinzufügen · optional"}
+                      : q.type === "location" ? "Bild hinzufügen" : q.type === "reveal" ? "Bild oder Video hinzufügen" : "Medien hinzufügen · optional"}
                     {imageEditorOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {imageEditorOpen && (
@@ -590,6 +611,7 @@ export function Editor({
                       <QuestionMediaEditor
                         key={`media-editor-${source.id}-${activeCat}-${qIdx}`}
                         quizId={source.id}
+                        requiredVisual={q.type === "location" ? "image" : q.type === "reveal" ? "either" : undefined}
                         imageUrl={q.imageUrl}
                         videoUrl={q.videoUrl}
                         audioUrl={q.audioUrl}
@@ -610,7 +632,10 @@ export function Editor({
                     </div>
                   )}
                 </div>
-                {isChoice ? (
+                {(q.type === "estimate" || q.type === "location" || q.type === "reveal") && (
+                  <FormatEditor key={imageEditorKey + q.type} q={q} start={q.value ?? defaultQuestionValue(qIdx)} update={fn=>updateQuestion(qIdx,fn)}/>
+                )}
+                {q.type === "estimate" || q.type === "location" ? null : isChoice ? (
                   <fieldset className="space-y-3">
                     <legend className="text-sm font-semibold">Antworten A–D</legend>
                     <p className="text-xs text-muted-foreground">Trage vier Antworten ein und markiere die richtige Lösung.</p>
@@ -791,6 +816,15 @@ export function Editor({
           {testLaunching ? "Speichert und startet …" : "Spiel testen"}
         </Button>
       </div>
+      <details className="group mt-6 rounded-xl border border-white/[.08] bg-white/[.015] px-4 py-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs text-muted-foreground/70 hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
+          <span>Weitere Einstellungen</span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <div className="pt-4">
+          <BenniClipsEditor quizId={source.id} clips={benniClips} onChange={setBenniClips} onPending={setBenniUploading} />
+        </div>
+      </details>
       </fieldset>
     </div>
   );

@@ -1,3 +1,7 @@
+import { EstimateRound } from "./EstimateRound";
+import { RevealMedia } from "./RevealMedia";
+import { LocationImage } from "./LocationImage";
+import { estimateSettings, estimateHit, estimateToleranceLabel, revealSettings, revealValue, REVEAL_STAGES, locationSettings, locationHit, formatError, type FormatAttempt, type FormatRound, type RoundAction, type ImagePoint } from "@/lib/question-formats";
 import { QuestionVideo } from "./QuestionVideo";
 import { QuestionAudio } from "./QuestionAudio";
 import { QuestionAtmosphere } from "./QuestionAtmosphere";
@@ -24,6 +28,8 @@ interface QuestionModalProps {
   open: boolean;
   review?: QuestionResult;
   highStakes?: boolean;
+  round?: FormatRound;
+  dispatchRound: (action:RoundAction)=>void;
   question: Question | null;
   value: number;
   category: string;
@@ -32,7 +38,8 @@ interface QuestionModalProps {
     playerIndex: number | null,
     correct: boolean,
     resolvedValue: number,
-    selectedChoice?: number | null
+    selectedChoice?: number | null,
+    attempt?: FormatAttempt
   ) => void;
   onClose: () => void;
 }
@@ -61,6 +68,7 @@ function QuestionModalContent({
   open,
   review,
   highStakes = false,
+  round, dispatchRound,
   question,
   value,
   category,
@@ -72,7 +80,12 @@ function QuestionModalContent({
   useEffect(() => {
     if (open) contentRef.current?.scrollTo({ top: 0 });
   }, [open, question]);
-  const [revealed, setRevealed] = useState(false);
+  const [estimateRaw,setEstimateRaw]=useState("");
+  const [pin,setPin]=useState<ImagePoint>();
+  const stage=round?.stage ?? 0;
+  const [mediaReady,setMediaReady]=useState(false);
+  const [showAnswer, setRevealed] = useState(false);
+  const revealed=showAnswer || !!round?.locked || !!review;
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0 });
   }, [revealed]);
@@ -94,6 +107,7 @@ function QuestionModalContent({
   useEffect(() => {
     if (open) {
       setRevealed(Boolean(review));
+      setEstimateRaw("");setPin(undefined);setMediaReady(false);
       setSelectedPlayer(
         players.length === 1 ? 0 : null
       );
@@ -145,6 +159,16 @@ function QuestionModalContent({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [imageExpanded]);
+  const revealConfig = question && revealSettings(question, value);
+  const autoSeconds =
+    question?.type === "reveal" && revealConfig?.advance === "auto" && !formatError(question, value)
+      ? revealConfig.seconds
+      : 0;
+  useEffect(() => {
+    if (!open || review || revealed || !mediaReady || !autoSeconds || stage >= REVEAL_STAGES) return;
+    const id = window.setTimeout(() => dispatchRound({ kind: "advance" }), autoSeconds * 1000);
+    return () => window.clearTimeout(id);
+  }, [open, review, revealed, mediaReady, autoSeconds, stage, dispatchRound]);
   if (!question) {
     return null;
   }
@@ -164,16 +188,50 @@ function QuestionModalContent({
       : [];
   const isHintQuestion =
     question.type === "hint" && availableHints.length > 0;
-  const currentValue = Math.max(
-    0,
-    Math.round(value * (1 - revealedHintCount * 0.2))
+  const isEstimate = question.type === "estimate",
+    isLocation = question.type === "location",
+    isReveal = question.type === "reveal";
+  const special = isEstimate || isLocation || isReveal;
+  const formatIssue = special
+    ? formatError(question, review ? (question.value ?? value) : value)
+    : undefined;
+  const estimate = estimateSettings(question),
+    location = locationSettings(question);
+  const owner = players.length === 1 ? 0 : (round?.owner ?? null);
+  const numberText = estimateRaw.trim().replace(",", ".");
+  const typed = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(numberText)
+    ? Number(numberText)
+    : NaN;
+  const sliderDefault = Number(
+    (
+      estimate.min +
+      Math.floor((estimate.max - estimate.min) / (2 * estimate.step)) * estimate.step
+    ).toPrecision(15),
   );
+  const submitted = review ? review.attempt : round?.locked;
+  let guess: number | undefined;
+  if (review || submitted) guess = submitted?.estimate;
+  else if (Number.isFinite(typed)) guess = typed;
+  else if (isEstimate && estimate.input === "slider") guess = sliderDefault;
+  const guessedPin = review || submitted ? submitted?.pin : pin;
+  const interactiveCorrect = isEstimate
+    ? guess !== undefined && estimateHit(estimate, guess)
+    : !!guessedPin && locationHit(location, guessedPin);
+  const videoReveal = Boolean(
+    question.videoUrl && (revealConfig?.medium === "video" || !question.imageUrl),
+  );
+  const currentValue = review
+    ? review.value
+    : isReveal && !formatIssue
+      ? revealValue(value, revealConfig!, stage)
+      : Math.max(0, Math.round(value * (1 - revealedHintCount * 0.2)));
   const isChoiceQuestion = question.type === "choice";
   const validChoices = hasValidChoices(question);
   const commitResult = (player: number | null, correct: boolean) => {
     if (!open || review || resolvedRef.current) return;
     resolvedRef.current = true;
-    onResolve(player, correct, currentValue, selectedChoice);
+    const attempt: FormatAttempt | undefined=isEstimate?{estimate:guess}:isLocation?{pin:guessedPin}:undefined;
+    onResolve(player, correct, currentValue, selectedChoice, attempt);
   };
   const moveOrderItem = (
     from: number,
@@ -548,7 +606,115 @@ function QuestionModalContent({
               Antwort
             </div>
           )}
-          {review ? (
+          {special ? (
+            <div className="relative z-10 mx-auto w-full max-w-2xl space-y-5">
+              {review && (
+                <p className="text-sm text-muted-foreground">
+                  Nachlesen ·{" "}
+                  {review.playerIndex === null
+                    ? "Übersprungen"
+                    : players[review.playerIndex]?.name + (review.correct ? " · richtig" : " · falsch")}
+                </p>
+              )}
+              {formatIssue ? (
+                <p role="alert" className="rounded-xl border border-amber-400/25 p-4 text-amber-200">
+                  {formatIssue}
+                </p>
+              ) : isEstimate && owner === null && !review ? (
+                <div className="space-y-4">
+                  <h3 className="font-display text-xl">Wer hat die Schätzfrage gewählt?</h3>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {players.map((p, i) => (
+                      <Button
+                        key={i}
+                        variant="outline"
+                        onClick={() => dispatchRound({ kind: "claim", player: i })}
+                      >
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ background: playerColor(i, p.color) }}
+                        />
+                        {p.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {isEstimate && !review && owner !== null && (
+                    <p className="text-sm font-semibold text-primary">Schätzung von {players[owner]?.name}</p>
+                  )}
+                  <p className="quiz-question-ink whitespace-pre-line break-words text-2xl font-bold md:text-4xl">
+                    {question.question}
+                  </p>
+                  {isEstimate && (
+                    <p className="-mt-3 text-center text-sm text-muted-foreground/85">
+                      {estimateToleranceLabel(estimate)}
+                    </p>
+                  )}
+                  {isEstimate && renderQuestionImage()}
+                  {open && !isReveal && question.videoUrl && <QuestionVideo src={question.videoUrl} />}
+                  {open && question.audioUrl && <QuestionAudio src={question.audioUrl} />}
+                  {isEstimate && (
+                    <EstimateRound
+                      settings={estimate}
+                      raw={estimateRaw}
+                      guess={guess}
+                      revealed={revealed}
+                      onInput={setEstimateRaw}
+                    />
+                  )}
+                  {isLocation && (
+                    <LocationImage
+                      key={question.imageUrl}
+                      src={question.imageUrl!}
+                      label="Tipp im Bild"
+                      radius={location.radius}
+                      target={revealed ? location.target : undefined}
+                      guess={guessedPin}
+                      onPick={revealed ? undefined : (point) => setPin(point)}
+                    />
+                  )}
+                  {isLocation && revealed && guessedPin && (
+                    <p className="font-semibold">
+                      {interactiveCorrect ? "Treffer im Zielbereich!" : "Außerhalb des Zielbereichs"}
+                    </p>
+                  )}
+                  {isReveal && open && (
+                    <RevealMedia
+                      key={videoReveal ? question.videoUrl : question.imageUrl}
+                      src={(videoReveal ? question.videoUrl : question.imageUrl)!}
+                      video={videoReveal}
+                      method={revealConfig!.method}
+                      stage={stage}
+                      full={revealed}
+                      onReady={setMediaReady}
+                    />
+                  )}
+                  {isReveal && !revealed && (
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                      <span className="text-sm text-muted-foreground" role="status">
+                        Stufe {stage + 1} von {REVEAL_STAGES + 1}
+                      </span>
+                      {revealConfig!.advance === "manual" && stage < REVEAL_STAGES && (
+                        <Button
+                          variant="outline"
+                          disabled={!mediaReady}
+                          onClick={() => dispatchRound({ kind: "advance" })}
+                        >
+                          Weiter aufdecken
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  {isReveal && revealed && (
+                    <p className="whitespace-pre-wrap text-xl font-semibold">{question.answer}</p>
+                  )}
+                  {revealed && renderAnswerImage()}
+                </>
+              )}
+            </div>
+          ) : review ? (
             <div className="relative z-10 w-full max-w-2xl space-y-6 text-left">
               <p className="text-sm text-muted-foreground">Nachlesen · {review.playerIndex === null ? "Übersprungen" : `${players[review.playerIndex]?.name}: ${review.correct ? "richtig beantwortet" : "falsch beantwortet"}`}</p>
               {renderQuestionImage()}
@@ -829,7 +995,7 @@ function QuestionModalContent({
           {review ? (
             <Button onClick={onClose} className="w-full rounded-xl">Zurück zum Spielfeld</Button>
           ) : <>
-          {revealed && players.length > 1 && (
+          {revealed && !isEstimate && players.length > 1 && (
             <div>
               <p className="mb-2 text-center text-sm text-muted-foreground">Wer bekommt die Punkte?</p>
               <div className="flex flex-wrap justify-center gap-2">
@@ -963,13 +1129,19 @@ function QuestionModalContent({
           )}
           {!revealed ? (
             <Button
-              disabled={isChoiceQuestion && (!validChoices || selectedChoice === null)}
-              onClick={() => { setTimeLeft(null); setRevealed(true); }}
+              disabled={!!formatIssue || (isEstimate && (owner===null || guess===undefined)) || (isLocation && !guessedPin) || (isReveal && !mediaReady) || (isChoiceQuestion && (!validChoices || selectedChoice === null))}
+              onClick={() => {
+                setTimeLeft(null);
+                if (special) dispatchRound({kind:"lock",attempt:isEstimate?{estimate:guess}:isLocation?{pin:guessedPin}:{}});
+                setRevealed(true);
+              }}
               size="lg"
               className="quiz-action w-full rounded-2xl bg-primary py-6 font-display text-lg text-white">
               <Eye className="mr-2 h-5 w-5" />
-              {isChoiceQuestion ? "Antwort auflösen" : isOrderQuestion ? "Reihenfolge prüfen" : "Antwort zeigen"}
+              {special ? "Auflösen" : isChoiceQuestion ? "Antwort auflösen" : isOrderQuestion ? "Reihenfolge prüfen" : "Antwort zeigen"}
             </Button>
+          ) : isEstimate || isLocation ? (
+            <Button disabled={(isEstimate ? owner : selectedPlayer)===null} className="quiz-action w-full rounded-2xl py-6 font-display" onClick={()=>commitResult(isEstimate ? owner : selectedPlayer, interactiveCorrect)}>Wertung übernehmen</Button>
           ) : isChoiceQuestion ? (
             <Button onClick={() => commitResult(selectedPlayer, selectedChoice === question.correctOption)}
               disabled={selectedPlayer === null || selectedChoice === null}

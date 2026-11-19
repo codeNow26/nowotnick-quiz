@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MitratenRouteImport } from './routes/mitraten'
 import { Route as VerwaltungRouteImport } from './routes/verwaltung'
+import { Route as MitratenCodeRouteImport } from './routes/mitraten.$code'
 import { Route as QuizSlugRouteImport } from './routes/quiz.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -18,10 +20,20 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MitratenRoute = MitratenRouteImport.update({
+  id: '/mitraten',
+  path: '/mitraten',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VerwaltungRoute = VerwaltungRouteImport.update({
   id: '/verwaltung',
   path: '/verwaltung',
   getParentRoute: () => rootRouteImport,
+} as any)
+const MitratenCodeRoute = MitratenCodeRouteImport.update({
+  id: '/$code',
+  path: '/$code',
+  getParentRoute: () => MitratenRoute,
 } as any)
 const QuizSlugRoute = QuizSlugRouteImport.update({
   id: '/quiz/$slug',
@@ -31,30 +43,44 @@ const QuizSlugRoute = QuizSlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/mitraten': typeof MitratenRouteWithChildren
   '/verwaltung': typeof VerwaltungRoute
+  '/mitraten/$code': typeof MitratenCodeRoute
   '/quiz/$slug': typeof QuizSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/mitraten': typeof MitratenRouteWithChildren
   '/verwaltung': typeof VerwaltungRoute
+  '/mitraten/$code': typeof MitratenCodeRoute
   '/quiz/$slug': typeof QuizSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/mitraten': typeof MitratenRouteWithChildren
   '/verwaltung': typeof VerwaltungRoute
+  '/mitraten/$code': typeof MitratenCodeRoute
   '/quiz/$slug': typeof QuizSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/verwaltung' | '/quiz/$slug'
+  fullPaths:
+    '/' | '/mitraten' | '/verwaltung' | '/mitraten/$code' | '/quiz/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/verwaltung' | '/quiz/$slug'
-  id: '__root__' | '/' | '/verwaltung' | '/quiz/$slug'
+  to: '/' | '/mitraten' | '/verwaltung' | '/mitraten/$code' | '/quiz/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/mitraten'
+    | '/verwaltung'
+    | '/mitraten/$code'
+    | '/quiz/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MitratenRoute: typeof MitratenRouteWithChildren
   VerwaltungRoute: typeof VerwaltungRoute
   QuizSlugRoute: typeof QuizSlugRoute
 }
@@ -68,12 +94,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mitraten': {
+      id: '/mitraten'
+      path: '/mitraten'
+      fullPath: '/mitraten'
+      preLoaderRoute: typeof MitratenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/verwaltung': {
       id: '/verwaltung'
       path: '/verwaltung'
       fullPath: '/verwaltung'
       preLoaderRoute: typeof VerwaltungRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/mitraten/$code': {
+      id: '/mitraten/$code'
+      path: '/$code'
+      fullPath: '/mitraten/$code'
+      preLoaderRoute: typeof MitratenCodeRouteImport
+      parentRoute: typeof MitratenRoute
     }
     '/quiz/$slug': {
       id: '/quiz/$slug'
@@ -85,8 +125,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface MitratenRouteChildren {
+  MitratenCodeRoute: typeof MitratenCodeRoute
+}
+
+const MitratenRouteChildren: MitratenRouteChildren = {
+  MitratenCodeRoute: MitratenCodeRoute,
+}
+
+const MitratenRouteWithChildren = MitratenRoute._addFileChildren(
+  MitratenRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MitratenRoute: MitratenRouteWithChildren,
   VerwaltungRoute: VerwaltungRoute,
   QuizSlugRoute: QuizSlugRoute,
 }
