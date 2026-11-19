@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SelectionTrack } from "./SelectionTrack";
+import { CheckCircle2, Smartphone } from "lucide-react";
+import { PairingQrCode } from "./PairingQrCode";
+import type { BonusPlayer, BonusSession } from "@/lib/bonus-pass-api";
 
 import { PLAYER_PALETTE, normalizeColors, readPlayerPreferences, rememberPlayers, selectPlayerColor } from "@/lib/player-preferences";
 
@@ -19,6 +22,9 @@ interface StartScreenProps {
   footer?: ReactNode;
   onQuizChange: (quiz: 1 | 2 | 3 | 4) => void;
   onStart: (playerNames: string[], categoryCount: number, colors:string[]) => void;
+  onPrepareBonus?: (players: BonusPlayer[]) => Promise<void>;
+  phoneOnline?: boolean;
+  preparedBonus?: { session: BonusSession; roster: string } | null;
 }
 
 export function StartScreen({
@@ -29,8 +35,13 @@ export function StartScreen({
   footer,
   onQuizChange,
   onStart,
+  onPrepareBonus,
+  phoneOnline = false,
+  preparedBonus,
 }: StartScreenProps) {
   const [launching, setLaunching] = useState(false);
+  const [preparingPhone, setPreparingPhone] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
   const launchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (launchTimer.current) clearTimeout(launchTimer.current); }, []);
   const [count, setCount] = useState(2);
@@ -109,6 +120,22 @@ export function StartScreen({
     setNames(next);
     rememberPlayers({names:next,colors,count});
   };
+
+  const activePlayers: BonusPlayer[] = names.slice(0, count).map((name, i) => ({
+    name: name.trim() || `Spieler ${i + 1}`,
+    color: normalizeColors(colors.slice(0, count))[i],
+  }));
+  const phoneConnected = !!preparedBonus && preparedBonus.roster === JSON.stringify(activePlayers);
+  const preparePhone = async () => {
+    if (!onPrepareBonus || preparingPhone) return;
+    setPreparingPhone(true);
+    setPhoneError("");
+    try { await onPrepareBonus(activePlayers); }
+    catch (e) { setPhoneError(e instanceof Error ? e.message : "Handy-Verbindung fehlgeschlagen."); }
+    finally { setPreparingPhone(false); }
+  };
+  const phoneLink = typeof window === "undefined" || !phoneConnected
+    ? "" : `${window.location.origin}/mitraten/${preparedBonus!.session.code}`;
 
   const handleStart = () => {
     if (launchTimer.current || launching) return;
@@ -277,6 +304,41 @@ export function StartScreen({
               )
             )}
           </div>
+
+          {onPrepareBonus && (
+            <div className="mb-6 rounded-2xl border border-white/[.10] bg-white/[.025] px-4 py-4 text-left">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <Smartphone className="h-5 w-5 text-primary" aria-hidden="true" />
+                  <div>
+                    <p className="text-sm font-semibold">handyschmendi</p>
+                    <p className="text-xs text-muted-foreground">Mach halt</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="outline" disabled={preparingPhone || launching}
+                    onClick={() => void preparePhone()} className="rounded-xl border-primary/35">
+                    {preparingPhone ? "QR-Code wird erstellt …" : phoneConnected ? "Neu koppeln" : "QR-Code anzeigen"}
+                  </Button>
+                </div>
+              </div>
+              {phoneConnected && (
+                <div className={`mt-4 flex flex-col items-center gap-3 rounded-2xl border p-4 ${phoneOnline ? "border-emerald-400/25" : "border-primary/20"}`}>
+                  <div className="rounded-2xl bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.2)]">
+                    <PairingQrCode value={phoneLink} />
+                  </div>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Code als Notlösung:{" "}
+                    <span className="font-mono font-medium tracking-[.1em] text-foreground/80">{preparedBonus!.session.code}</span>
+                  </p>
+                </div>
+              )}
+              {!phoneConnected && preparedBonus && (
+                <p className="mt-2 text-xs text-amber-200">Spieler geändert. Das Handy bitte erneut vorbereiten.</p>
+              )}
+              {phoneError && <p role="alert" className="mt-2 text-sm text-rose-300">{phoneError}</p>}
+            </div>
+          )}
 
           <Button
             onClick={handleStart}

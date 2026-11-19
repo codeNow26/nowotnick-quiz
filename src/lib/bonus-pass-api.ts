@@ -12,11 +12,12 @@ export interface BonusGuestState {
   players: BonusPlayer[];
   nextPlayer: number;
   submitted: number;
-  status: "collecting" | "ready" | "revealed";
+  status: "waiting" | "collecting" | "ready" | "revealed";
 }
 export interface BonusHostState {
+  phoneOnline?: boolean;
   submitted: number;
-  status: "collecting" | "ready" | "revealed";
+  status: "waiting" | "collecting" | "ready" | "revealed";
   guesses: number[];
 }
 export interface BonusSession {
@@ -54,6 +55,34 @@ export async function createBonusSession(quizId: string, q: BonusQuestion, playe
   });
   return { id: checked<string>(data, error), hostToken, code };
 }
+/** Creates the one-time phone connection before the game starts. */
+export async function prepareBonusSession(quizId: string, players: BonusPlayer[]): Promise<BonusSession> {
+  const code = randomCode();
+  const hostToken = crypto.randomUUID();
+  const { data, error } = await supabase.rpc("bonus_pass_prepare", {
+    p_code: code,
+    p_host_token: hostToken,
+    p_quiz_id: quizId,
+    p_players: players,
+  });
+  return { id: checked<string>(data, error), hostToken, code };
+}
+
+/** Activates a prepared phone connection for a new question without changing its code. */
+export async function activateBonusSession(session: BonusSession, q: BonusQuestion): Promise<BonusHostState> {
+  const { data, error } = await supabase.rpc("bonus_pass_activate", {
+    p_id: session.id,
+    p_host_token: session.hostToken,
+    p_question: q.question,
+    p_target: q.target,
+    p_unit: q.unit,
+    p_min: q.min,
+    p_max: q.max,
+    p_step: q.step,
+  });
+  return checked<BonusHostState>(data, error);
+}
+
 export async function readBonusGuest(code: string): Promise<BonusGuestState> {
   const { data, error } = await supabase.rpc("bonus_pass_guest", { p_code: code });
   return checked<BonusGuestState>(data, error);
@@ -75,4 +104,40 @@ export async function revealBonus(s: BonusSession): Promise<BonusHostState> {
     p_id: s.id, p_host_token: s.hostToken,
   });
   return checked<BonusHostState>(data, error);
+}
+
+/** Phone remote: only public clip labels and opaque IDs are sent to the phone. */
+export interface TvClip { id: string; title: string }
+export interface TvGuestState { clips: TvClip[]; busy: boolean; status: "idle" | "pending" | "playing" }
+export interface TvHostRequest {
+  seq: number;
+  clipId: string | null;
+  status: "idle" | "pending" | "playing";
+  requestedAt: string | null;
+}
+export async function configureTvRemote(session: BonusSession, clips: TvClip[]) {
+  const { data, error } = await supabase.rpc("bonus_tv_config", {
+    p_id: session.id, p_host_token: session.hostToken, p_clips: clips,
+  });
+  return checked<{count:number}>(data, error);
+}
+export async function readTvGuest(code: string): Promise<TvGuestState> {
+  const { data, error } = await supabase.rpc("bonus_tv_guest", {p_code: code});
+  return checked<TvGuestState>(data, error);
+}
+export async function requestTvClip(code: string, clipId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("bonus_tv_request", {p_code: code, p_clip_id: clipId});
+  return checked<number>(data, error);
+}
+export async function readTvHost(session: BonusSession): Promise<TvHostRequest> {
+  const { data, error } = await supabase.rpc("bonus_tv_host", {
+    p_id: session.id, p_host_token: session.hostToken,
+  });
+  return checked<TvHostRequest>(data, error);
+}
+export async function acknowledgeTvCommand(session: BonusSession, seq: number, action: "start" | "done") {
+  const { data, error } = await supabase.rpc("bonus_tv_ack", {
+    p_id: session.id, p_host_token: session.hostToken, p_seq: seq, p_action: action,
+  });
+  return checked<boolean>(data, error);
 }

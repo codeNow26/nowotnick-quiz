@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronRight, Copy, LockKeyhole, Smartphone, Sparkles, Trophy, X } from "lucide-react";
+import { Check, ChevronRight, LockKeyhole, Smartphone, Sparkles, Trophy, X } from "lucide-react";
+import { PairingQrCode } from "./PairingQrCode";
 import { Button } from "@/components/ui/button";
 import { bonusQuestionError, bonusRanking, type BonusQuestion } from "@/lib/bonus-rounds";
-import { createBonusSession, readBonusHost, revealBonus, type BonusHostState, type BonusPlayer, type BonusSession } from "@/lib/bonus-pass-api";
+import { activateBonusSession, createBonusSession, readBonusHost, revealBonus, type BonusHostState, type BonusPlayer, type BonusSession } from "@/lib/bonus-pass-api";
 
 interface BonusHostProps {
   quizId: string;
@@ -10,6 +11,7 @@ interface BonusHostProps {
   totalRounds: number;
   question: BonusQuestion;
   players: BonusPlayer[];
+  preparedSession?: BonusSession | null;
   onAward: (winners: number[], points: number) => void;
   onClose: () => void;
 }
@@ -17,13 +19,13 @@ interface BonusHostProps {
 const shown = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 12 });
 
 export function BonusHostRound({
-  quizId, roundNumber, totalRounds, question, players, onAward, onClose,
+  quizId, roundNumber, totalRounds, question, players, preparedSession, onAward, onClose,
 }: BonusHostProps) {
-  const [session, setSession] = useState<BonusSession | null>(null);
+  const [session, setSession] = useState<BonusSession | null>(preparedSession ?? null);
+  const activationStarted = useRef(false);
   const [state, setState] = useState<BonusHostState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
   const scored = useRef(false);
   const safeError = bonusQuestionError(question);
   const url = typeof window === "undefined" || !session ? "" : `${window.location.origin}/mitraten/${session.code}`;
@@ -34,7 +36,22 @@ export function BonusHostRound({
   const winners = ranking.filter(r => r.winner);
 
   useEffect(() => {
-    if (!session || state?.status === "revealed") return;
+    if (!preparedSession || activationStarted.current) return;
+    activationStarted.current = true;
+    let alive = true;
+    setBusy(true);
+    setError("");
+    void activateBonusSession(preparedSession, question)
+      .then(next => { if (alive) setState(next); })
+      .catch(e => {
+        if (alive) setError(e instanceof Error ? e.message : "Handy-Verbindung konnte nicht aktiviert werden.");
+      })
+      .finally(() => { if (alive) setBusy(false); });
+    return () => { alive = false; };
+  }, [preparedSession, question]);
+
+  useEffect(() => {
+    if (!session || (preparedSession && (busy || !state)) || state?.status === "revealed") return;
     let alive = true;
     const check = async () => {
       try {
@@ -51,7 +68,7 @@ export function BonusHostRound({
     const onVisibility = () => { if (!document.hidden) void check(); };
     document.addEventListener("visibilitychange", onVisibility);
     return () => { alive = false; clearInterval(timer); document.removeEventListener("visibilitychange", onVisibility); };
-  }, [session, state?.status]);
+  }, [session, state?.status, preparedSession, busy]);
 
   const create = async () => {
     if (busy || safeError) return;
@@ -168,20 +185,16 @@ export function BonusHostRound({
           </div>
         ) : (
           <div className="space-y-5">
-            <div className="rounded-2xl border border-primary/25 bg-primary/[.075] p-4 text-center">
-              <p className="mb-2 text-xs text-[#c1b7d9]">Auf deinem Handy öffnen</p>
-              <p className="break-all font-mono text-sm text-[#ebe5ff]">{typeof window === "undefined" ? "/mitraten" : `${window.location.origin}/mitraten`}</p>
-              <p className="mt-3 text-xs text-[#c1b7d9]">Diesen Code einmal eingeben:</p>
-              <p className="mt-1 font-display text-2xl tracking-[.2em] text-[#c1adff]">{session.code}</p>
-              <Button variant="outline" size="sm" className="mt-3 rounded-lg border-white/20"
-                onClick={async () => {
-                  try { await navigator.clipboard.writeText(url); setCopied(true); }
-                  catch { setError("Link konnte nicht kopiert werden. Bitte die Adresse oben verwenden."); }
-                }}>
-                {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-                {copied ? "Link kopiert" : "Handy-Link kopieren"}
-              </Button>
-            </div>
+            {!preparedSession && (
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[.04] p-4">
+                <div className="rounded-2xl bg-white p-2">
+                  <PairingQrCode value={url} />
+                </div>
+                <p className="text-center text-xs text-[#aea3c6]">
+                  Code als Notlösung: <span className="font-mono tracking-wider text-[#d0c3f2]">{session.code}</span>
+                </p>
+              </div>
+            )}
             <p className="text-center text-xs text-[#b4aaca]">
               {state?.status === "ready" ? "Alle Tipps sind eingegangen!" : `${submitted} von ${players.length} haben geschätzt`}
             </p>

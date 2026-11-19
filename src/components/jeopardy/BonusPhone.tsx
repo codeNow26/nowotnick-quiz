@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, LockKeyhole, RefreshCw, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BenniPhoneRemote } from "./BenniPhoneRemote";
 import { readBonusGuest, sendBonusGuess, type BonusGuestState } from "@/lib/bonus-pass-api";
 
 function midpoint(s: BonusGuestState): number {
@@ -17,6 +18,7 @@ export function BonusPhone({ code }: { code: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const lastPlayer = useRef<number | null>(null);
+  const lastStatus = useRef<BonusGuestState["status"] | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -24,6 +26,13 @@ export function BonusPhone({ code }: { code: string }) {
       try {
         const fresh = await readBonusGuest(code);
         if (!alive) return;
+        // When the host activates a later round, the same phone/code becomes ready again.
+        if (fresh.status === "collecting" && lastStatus.current !== "collecting") {
+          setHandoff(false);
+          setSubmittedName("");
+          setGuess(midpoint(fresh));
+        }
+        lastStatus.current = fresh.status;
         setState(fresh);
         setError("");
         if (lastPlayer.current !== fresh.nextPlayer) {
@@ -41,7 +50,7 @@ export function BonusPhone({ code }: { code: string }) {
     return () => { alive = false; clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); };
   }, [code]);
 
-  const isFinished = state && state.status !== "collecting";
+  const isFinished = state && (state.status === "ready" || state.status === "revealed");
   const player = state?.players[state.nextPlayer];
   const send = async () => {
     if (!state || !player || guess === null || busy) return;
@@ -66,10 +75,10 @@ export function BonusPhone({ code }: { code: string }) {
       <div className="w-full max-w-sm space-y-5 rounded-3xl border border-primary/25 bg-[#17132f] p-5 text-white shadow-[0_16px_65px_rgba(0,0,0,.4)]">
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#baabfa]">
-            <Smartphone className="h-4 w-4" /> Alle schätzen
+            <Smartphone className="h-4 w-4" /> {state?.status === "waiting" || state?.status === "revealed" ? "handyschmendi" : "Alle schätzen"}
           </span>
           <span className="text-xs tabular-nums text-[#afa3c6]">
-            {state ? `${Math.min(state.nextPlayer + (handoff ? 0 : 1), state.players.length)} / ${state.players.length}` : code}
+            {state?.status === "waiting" || state?.status === "revealed" ? "Benni-TV" : state ? `${Math.min(state.nextPlayer + (handoff ? 0 : 1), state.players.length)} / ${state.players.length}` : code}
           </span>
         </div>
         {error && <p role="alert" className="rounded-xl border border-rose-300/25 bg-rose-400/10 p-3 text-sm text-rose-200">{error}</p>}
@@ -77,6 +86,18 @@ export function BonusPhone({ code }: { code: string }) {
           <div className="space-y-3 py-8 text-center text-sm text-[#c8bce1]">
             <RefreshCw className="mx-auto h-7 w-7 animate-spin" />
             Verbindung wird geprüft …
+          </div>
+        ) : state.status === "waiting" || state.status === "revealed" ? (
+          <div className="space-y-4 py-10 text-center">
+            <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-300" />
+            <h1 className="font-display text-2xl">Handy verbunden!</h1>
+            <p className="text-sm text-[#c2b6d7]">
+              {state.status === "waiting"
+                ? "Alles bereit. Bei der nächsten Schätzrunde erscheint die Frage automatisch."
+                : "Die Runde ist vorbei. Die nächste Schätzfrage erscheint automatisch."}
+            </p>
+            <p className="text-xs text-[#9f93ba]">Lass diese Seite geöffnet. Kein neuer Code nötig.</p>
+            <BenniPhoneRemote code={code} />
           </div>
         ) : handoff ? (
           <div className="space-y-5 py-6 text-center">

@@ -1,5 +1,7 @@
 import { FormatEditor } from "./FormatEditor";
 import { BonusEditor } from "./BonusEditor";
+import { BenniClipsEditor } from "./BenniClipsEditor";
+import { readBenniClips, type BenniClip } from "@/lib/benni-clips";
 import { readBonusSettings, bonusQuestionError, type BonusSettings } from "@/lib/bonus-rounds";
 import { QuestionMediaEditor } from "./QuestionMediaEditor";
 import { QuestionTypePicker } from "./QuestionTypePicker";
@@ -37,6 +39,8 @@ export function Editor({
   const draft=value.categories;
   const bonus=readBonusSettings(value.bonus);
   const setBonus=(settings:BonusSettings)=>autosave.update(v=>({...v,bonus:settings}));
+  const benniClips=readBenniClips(value.benniClips);
+  const setBenniClips=(clips:BenniClip[])=>autosave.update(v=>({...v,benniClips:clips}));
   const titleDraft=value.meta.title;
   const subtitleDraft=value.meta.subtitle;
   const questionRows: 5 | 6 = value.questionRows === 6 ? 6 : 5;
@@ -77,8 +81,9 @@ export function Editor({
   const [processingImages, setProcessingImages] = useState<Record<string, boolean>>({});
   const imageGeneration=useRef<Record<string,number>>({});
   const [processingVideos, setProcessingVideos] = useState<Record<string, boolean>>({});
+  const [benniUploading, setBenniUploading] = useState(false);
   const videoPending = Object.values(processingVideos).some(Boolean);
-  const imagePending=Object.values(processingImages).some(Boolean) || videoPending;
+  const imagePending=Object.values(processingImages).some(Boolean) || videoPending || benniUploading;
   useEffect(()=>{
     if(!imagePending)return;
     const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};
@@ -488,6 +493,7 @@ export function Editor({
         </div>
       </div>
       <BonusEditor settings={bonus} onChange={setBonus} totalQuestions={visibleCount*questionRows} />
+
       <div className="glass-strong rounded-3xl p-4 md:p-6 space-y-6 glow-primary">
         <div>
           <Label className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-2 block">
@@ -810,6 +816,15 @@ export function Editor({
           {testLaunching ? "Speichert und startet …" : "Spiel testen"}
         </Button>
       </div>
+      <details className="group mt-6 rounded-xl border border-white/[.08] bg-white/[.015] px-4 py-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs text-muted-foreground/70 hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
+          <span>Weitere Einstellungen</span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <div className="pt-4">
+          <BenniClipsEditor quizId={source.id} clips={benniClips} onChange={setBenniClips} onPending={setBenniUploading} />
+        </div>
+      </details>
       </fieldset>
     </div>
   );
