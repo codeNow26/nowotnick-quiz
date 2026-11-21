@@ -426,6 +426,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const ceremonyPlayed = useRef(false);
   const [ceremonyOpen, setCeremonyOpen] = useState(false);
   const [activeBenniClip, setActiveBenniClip] = useState<BenniClip | null>(null);
+  // Always reattach the host after a quiz question or video overlay closes.
+  const [tvHostRecoveryTick, setTvHostRecoveryTick] = useState(0);
   const benniHistory = useRef<string[]>([]);
   const pausedForBenni = useRef<HTMLAudioElement[]>([]);
   const remoteTvCommand = useRef<{session:BonusSession;seq:number}|null>(null);
@@ -435,6 +437,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     if (remote) void acknowledgeTvCommand(remote.session, remote.seq, "done")
       .catch(error => console.error("Benni-TV Abschluss konnte nicht bestätigt werden:", error));
     setActiveBenniClip(null);
+    setTvHostRecoveryTick(tick => tick + 1);
     // Return to the exact quiz music state that was playing before the clip.
     const toResume = pausedForBenni.current;
     pausedForBenni.current = [];
@@ -453,14 +456,16 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     setActiveBenniClip(clip);
   };
   const screenStateRef = useRef(screen);
+  const questionOpenRef = useRef(false);
   const activeBonusRef = useRef(false);
   const playbackBusyRef = useRef(false);
   screenStateRef.current = screen;
+  questionOpenRef.current = active !== null;
   activeBonusRef.current = activeBonus !== null;
   playbackBusyRef.current = !!activeBenniClip || isRandomizing || showStats || ceremonyOpen || gameEntering;
   const playRemoteRef = useRef<(id:string)=>boolean>(()=>false);
   playRemoteRef.current = (clipId: string) => {
-    if (screen === "editor" || activeBonus !== null || activeBenniClip ||
+    if (screen === "editor" || active !== null || activeBonus !== null || activeBenniClip ||
         isRandomizing || showStats || ceremonyOpen || gameEntering) return false;
     if (clipId === "__random__") {
       const drawn = drawBenniClip(benniClips, benniHistory.current);
@@ -510,8 +515,8 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         // Keep fresh requests queued until the quiz can safely show the video.
         const playbackAllowed = playRemoteRef.current;
         // Attempt to play only after the host successfully claims this command.
-        if (screenStateRef.current === "editor" || activeBonusRef.current ||
-            playbackBusyRef.current) return;
+        if (screenStateRef.current === "editor" || questionOpenRef.current ||
+            activeBonusRef.current || playbackBusyRef.current) return;
         if (!(await acknowledgeTvCommand(session, command.seq, "start"))) return;
         if (!alive) {
           await acknowledgeTvCommand(session, command.seq, "done");
@@ -540,17 +545,23 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     const heartbeatTimer = window.setInterval(() => void heartbeat(), 4500);
     const pollTimer = window.setInterval(() => void poll(), 1250);
     const onWake = () => { void heartbeat(); void poll(); };
+    // Browser timer throttling must not make a live quiz look offline.
+    // Every local host interaction gives the TV connection an immediate kick.
     document.addEventListener("visibilitychange", onWake);
     window.addEventListener("focus", onWake);
+    window.addEventListener("pointerdown", onWake);
+    window.addEventListener("keydown", onWake);
     return () => {
       alive = false;
       window.clearInterval(heartbeatTimer);
       window.clearInterval(pollTimer);
       document.removeEventListener("visibilitychange", onWake);
       window.removeEventListener("focus", onWake);
+      window.removeEventListener("pointerdown", onWake);
+      window.removeEventListener("keydown", onWake);
       void supabase.removeChannel(channel);
     };
-  }, [preparedBonus?.session.id]);
+  }, [preparedBonus?.session.id, tvHostRecoveryTick]);
 
   useEffect(() => {
     if (screen !== "game" || !allAnswered || active || showStats || ceremonyPlayed.current) return;
@@ -848,6 +859,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const closeQuestion = () => {
     stopFinalQuestionAudio();
     setActive(null);
+    setTvHostRecoveryTick(tick => tick + 1);
   };
   const selectRandomQuestion = () => {
     if (isRandomizing) return;
@@ -1252,6 +1264,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       sealTimerRef.current = null;
     }, 850);
     setActive(null);
+    setTvHostRecoveryTick(tick => tick + 1);
   };
   const handleManualScoreChange = (
   playerIndex: number,
