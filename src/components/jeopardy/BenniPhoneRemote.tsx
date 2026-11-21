@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clapperboard, Play, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { readTvGuest, requestTvClip, type TvGuestState } from "@/lib/bonus-pass-api";
@@ -8,7 +8,9 @@ export function BenniPhoneRemote({ code }: { code: string }) {
   const [remote, setRemote] = useState<TvGuestState | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [connectionError, setConnectionError] = useState("");
   const [notice, setNotice] = useState("");
+  const pendingSince = useRef<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -17,10 +19,21 @@ export function BenniPhoneRemote({ code }: { code: string }) {
         const fresh = await readTvGuest(code);
         if (!alive) return;
         setRemote(fresh);
-        setError("");
-        if (!fresh.busy) setNotice("");
+        setConnectionError("");
+        if (!fresh.busy) {
+          pendingSince.current = null;
+          setNotice("");
+        } else if (fresh.status === "playing") {
+          pendingSince.current = null;
+          setNotice("Der Quizbildschirm hat den Einspieler angenommen.");
+        } else if (fresh.status === "pending") {
+          pendingSince.current ??= Date.now();
+          setNotice(Date.now() - pendingSince.current > 8000
+            ? "Der Quizbildschirm reagiert noch nicht. Prüfe, ob die Quizseite auf dem Laptop geöffnet ist."
+            : "Anfrage gesendet. Warte auf den Quizbildschirm …");
+        }
       } catch (cause) {
-        if (alive) setError(cause instanceof Error ? cause.message : "Benni-TV nicht erreichbar.");
+        if (alive) setConnectionError(cause instanceof Error ? cause.message : "Benni-TV nicht erreichbar.");
       }
     };
     void refresh();
@@ -40,8 +53,9 @@ export function BenniPhoneRemote({ code }: { code: string }) {
     setError("");
     try {
       await requestTvClip(code, id);
+      pendingSince.current = Date.now();
       setRemote(previous => previous ? {...previous, busy: true, status: "pending"} : previous);
-      setNotice("Clip wird auf dem großen Bildschirm gestartet.");
+      setNotice("Anfrage gesendet. Warte auf den Quizbildschirm …");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Clip konnte nicht gestartet werden.");
     } finally {
@@ -55,7 +69,7 @@ export function BenniPhoneRemote({ code }: { code: string }) {
         <Clapperboard className="h-5 w-5 text-[#b6a2f3]" />
         <h2 className="font-display text-lg">Benni-TV</h2>
       </div>
-      {error && <p role="alert" className="rounded-xl bg-rose-400/10 p-2 text-sm text-rose-200">{error}</p>}
+      {(error || connectionError) && <p role="alert" className="rounded-xl bg-rose-400/10 p-2 text-sm text-rose-200">{error || connectionError}</p>}
       {remote && remote.clips.length ? (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2.5">
@@ -75,11 +89,10 @@ export function BenniPhoneRemote({ code }: { code: string }) {
             className="h-12 w-full rounded-xl font-display" onClick={() => void trigger("__random__")}>
             <Shuffle className="mr-2 h-4 w-4" /> Zufälliger Benni-Moment
           </Button>
-          {remote.busy && <p role="status" className="text-center text-xs text-[#bcaed9]">Einspieler läuft auf dem Fernseher …</p>}
-          {notice && <p role="status" className="text-center text-xs text-emerald-300">{notice}</p>}
+          {notice && <p role="status" className="text-center text-xs text-[#bcaed9]">{notice}</p>}
         </div>
       ) : remote ? (
-        <p className="text-xs text-[#b9aed2]">Noch keine Clips im Quiz hinterlegt. Du kannst sie im Quiz-Editor unter Benni-TV hochladen.</p>
+        <p className="text-xs text-[#b9aed2]">Noch keine Benni-TV-Clips vorhanden. Du kannst sie im Quiz-Editor hochladen.</p>
       ) : !error ? (
         <p className="text-xs text-[#b9aed2]">Lade Benni-TV …</p>
       ) : null}
