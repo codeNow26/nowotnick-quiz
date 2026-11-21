@@ -108,7 +108,7 @@ export async function revealBonus(s: BonusSession): Promise<BonusHostState> {
 
 /** Phone remote: only public clip labels and opaque IDs are sent to the phone. */
 export interface TvClip { id: string; title: string }
-export interface TvGuestState { clips: TvClip[]; busy: boolean; status: "idle" | "pending" | "playing" }
+export interface TvGuestState { clips: TvClip[]; busy: boolean; hostOnline: boolean; status: "idle" | "pending" | "playing" }
 export interface TvHostRequest {
   seq: number;
   clipId: string | null;
@@ -121,6 +121,14 @@ export async function configureTvRemote(session: BonusSession, clips: TvClip[]) 
   });
   return checked<{count:number}>(data, error);
 }
+/** Host heartbeat lets the phone distinguish a live TV screen from a disconnected one. */
+export async function heartbeatTvHost(session: BonusSession): Promise<boolean> {
+  const { data, error } = await supabase.rpc("bonus_tv_heartbeat", {
+    p_id: session.id, p_host_token: session.hostToken,
+  });
+  return checked<boolean>(data, error);
+}
+
 export async function readTvGuest(code: string): Promise<TvGuestState> {
   const { data, error } = await supabase.rpc("bonus_tv_guest", {p_code: code});
   return checked<TvGuestState>(data, error);
