@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, LockKeyhole, RefreshCw, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { BenniPhoneRemote } from "./BenniPhoneRemote";
 import { readBonusGuest, sendBonusGuess, type BonusGuestState } from "@/lib/bonus-pass-api";
 
@@ -10,15 +11,41 @@ function midpoint(s: BonusGuestState): number {
 }
 const formatted = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 12 });
 
+function parseTypedGuess(raw: string): number | null {
+  const normalized = raw.trim().replace(",", ".");
+  if (!/^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalized)) return null;
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : null;
+}
+
+function validGuess(raw: string, state: BonusGuestState): number | null {
+  const value = parseTypedGuess(raw);
+  if (value === null || value < state.min || value > state.max) return null;
+  const steps = (value - state.min) / state.step;
+  return Math.abs(steps - Math.round(steps)) <= 1e-8 ? value : null;
+}
+
+function nearestSliderGuess(value: number, state: BonusGuestState): number {
+  const maxSteps = Math.floor((state.max - state.min) / state.step);
+  const steps = Math.max(0, Math.min(maxSteps, Math.round((value - state.min) / state.step)));
+  return Number((state.min + steps * state.step).toPrecision(14));
+}
+
 export function BonusPhone({ code }: { code: string }) {
   const [state, setState] = useState<BonusGuestState | null>(null);
   const [guess, setGuess] = useState<number | null>(null);
+  const [typedGuess, setTypedGuess] = useState("");
   const [handoff, setHandoff] = useState(false);
   const [submittedName, setSubmittedName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const lastPlayer = useRef<number | null>(null);
   const lastStatus = useRef<BonusGuestState["status"] | null>(null);
+  const resetGuess = (round: BonusGuestState) => {
+    const next = midpoint(round);
+    setGuess(next);
+    setTypedGuess(String(next));
+  };
 
   useEffect(() => {
     let alive = true;
@@ -30,14 +57,14 @@ export function BonusPhone({ code }: { code: string }) {
         if (fresh.status === "collecting" && lastStatus.current !== "collecting") {
           setHandoff(false);
           setSubmittedName("");
-          setGuess(midpoint(fresh));
+          resetGuess(fresh);
         }
         lastStatus.current = fresh.status;
         setState(fresh);
         setError("");
         if (lastPlayer.current !== fresh.nextPlayer) {
           lastPlayer.current = fresh.nextPlayer;
-          setGuess(midpoint(fresh));
+          resetGuess(fresh);
         }
       } catch (e) {
         if (alive) setError(e instanceof Error ? e.message : "Verbindung fehlgeschlagen.");
@@ -52,8 +79,28 @@ export function BonusPhone({ code }: { code: string }) {
 
   const isFinished = state && (state.status === "ready" || state.status === "revealed");
   const player = state?.players[state.nextPlayer];
+  const typedValue = state ? validGuess(typedGuess, state) : null;
+  const guessValid = typedValue !== null && guess !== null &&
+    Math.abs(typedValue - guess) <= Math.max(1e-8, Math.abs(typedValue) * 1e-12);
+
+  const onSliderChange = (value: number) => {
+    setGuess(value);
+    setTypedGuess(String(value));
+  };
+
+  const onNumberChange = (raw: string) => {
+    setTypedGuess(raw);
+    if (!state) return;
+    const value = parseTypedGuess(raw);
+    if (value !== null && value >= state.min && value <= state.max) {
+      // Follow the typed value as closely as the configured slider allows.
+      // Submit is disabled until the text is a valid step-aligned value.
+      setGuess(nearestSliderGuess(value, state));
+    }
+  };
+
   const send = async () => {
-    if (!state || !player || guess === null || busy) return;
+    if (!state || !player || guess === null || !guessValid || busy) return;
     setBusy(true);
     setError("");
     try {
@@ -62,6 +109,7 @@ export function BonusPhone({ code }: { code: string }) {
       setHandoff(true);
       // Never put the previous value into the next player's UI.
       setGuess(null);
+      setTypedGuess("");
       lastPlayer.current = null;
       const fresh = await readBonusGuest(code);
       setState(fresh);
@@ -111,7 +159,7 @@ export function BonusPhone({ code }: { code: string }) {
                 <p className="font-semibold">Handy an {player?.name} weitergeben.</p>
                 <Button className="w-full rounded-xl py-6 font-display" onClick={() => {
                   setHandoff(false);
-                  setGuess(midpoint(state));
+                  resetGuess(state);
                   lastPlayer.current = state.nextPlayer;
                 }}>
                   Nächster Spieler
@@ -139,14 +187,38 @@ export function BonusPhone({ code }: { code: string }) {
                 className="h-8 w-full cursor-pointer accent-[#a894ff]"
                 type="range" min={state.min} max={state.max} step={state.step}
                 value={guess ?? midpoint(state)}
-                onChange={e => setGuess(e.target.valueAsNumber)}
+                onChange={e => onSliderChange(e.target.valueAsNumber)}
               />
               <div className="flex justify-between gap-2 text-xs tabular-nums text-[#afa3c6]">
                 <span>{formatted(state.min)} {state.unit}</span>
                 <span>{formatted(state.max)} {state.unit}</span>
               </div>
+              <div className="space-y-2 text-left">
+                <label htmlFor="bonus-guess-number" className="block text-sm font-medium text-[#ddd3f0]">
+                  Oder Zahl direkt eingeben
+                </label>
+                <Input
+                  id="bonus-guess-number"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={typedGuess}
+                  onChange={e => onNumberChange(e.target.value)}
+                  aria-invalid={!guessValid}
+                  placeholder="Zahl eingeben"
+                  className="h-12 border-white/20 bg-[#211c3c] text-center text-lg font-semibold tabular-nums text-white"
+                />
+                {!guessValid && (
+                  <p role="status" className="text-xs text-amber-200">
+                    Bitte einen Wert von {formatted(state.min)} bis {formatted(state.max)}
+                    {state.step !== 1 ? ` in Schritten von ${formatted(state.step)}` : ""} eingeben.
+                    {typedGuess.trim() && parseTypedGuess(typedGuess) !== null
+                      ? " Der Slider zeigt den nächstmöglichen Schritt." : ""}
+                  </p>
+                )}
+              </div>
             </div>
-            <Button className="w-full rounded-xl py-6 font-display text-base" disabled={busy || guess === null} onClick={() => void send()}>
+            <Button className="w-full rounded-xl py-6 font-display text-base" disabled={busy || !guessValid} onClick={() => void send()}>
               <LockKeyhole className="mr-2 h-4 w-4" />
               {busy ? "Wird sicher gespeichert …" : "Tipp bestätigen"}
             </Button>
