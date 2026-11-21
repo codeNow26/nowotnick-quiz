@@ -1,10 +1,11 @@
 import { AwardCeremony } from "./AwardCeremony";
 import { BonusHostRound } from "./BonusHostRound";
 import { BenniClipPlayer } from "./BenniClipControls";
+import { supabase } from "@/lib/supabase";
 import { unlockBenniAudio } from "@/lib/benni-audio";
 import { drawBenniClip, loadGlobalBenniClips, mergeBenniClipLists, readBenniClips, recordBenniClip, type BenniClip } from "@/lib/benni-clips";
 import {
-  acknowledgeTvCommand, configureTvRemote, prepareBonusSession,
+  acknowledgeTvCommand, configureTvRemote, heartbeatTvHost, prepareBonusSession,
   readBonusHost, readTvHost, type BonusSession,
 } from "@/lib/bonus-pass-api";
 import { readBonusSettings, bonusMilestone, bonusQuestionError } from "@/lib/bonus-rounds";
@@ -480,6 +481,19 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     const session = preparedBonus.session;
     let alive = true;
     let checking = false;
+
+    // The phone may be paired to an older session. Only this live host
+    // refreshes the current session's heartbeat, making stale QR codes visible.
+    const heartbeat = async () => {
+      if (!alive) return;
+      try {
+        const valid = await heartbeatTvHost(session);
+        if (alive && !valid) console.warn("Benni-TV: Verbindung abgelaufen. Bitte Handy neu koppeln.");
+      } catch (error) {
+        if (alive) console.error("Benni-TV Host-Heartbeat:", error);
+      }
+    };
+
     const poll = async () => {
       if (!alive || checking) return;
       checking = true;
@@ -515,16 +529,26 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
         checking = false;
       }
     };
+    // Realtime delivers a wake-up signal immediately after the phone's
+    // authenticated RPC. Polling remains the durable fallback on reconnect.
+    const channel = supabase.channel(`benni-tv:${session.code}`)
+      .on("broadcast", { event: "request" }, () => { void poll(); })
+      .subscribe();
+
+    void heartbeat();
     void poll();
-    const timer = window.setInterval(() => void poll(), 1250);
-    const onWake = () => void poll();
+    const heartbeatTimer = window.setInterval(() => void heartbeat(), 4500);
+    const pollTimer = window.setInterval(() => void poll(), 1250);
+    const onWake = () => { void heartbeat(); void poll(); };
     document.addEventListener("visibilitychange", onWake);
     window.addEventListener("focus", onWake);
     return () => {
       alive = false;
-      window.clearInterval(timer);
+      window.clearInterval(heartbeatTimer);
+      window.clearInterval(pollTimer);
       document.removeEventListener("visibilitychange", onWake);
       window.removeEventListener("focus", onWake);
+      void supabase.removeChannel(channel);
     };
   }, [preparedBonus?.session.id]);
 
