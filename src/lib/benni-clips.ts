@@ -1,3 +1,5 @@
+import { supabase } from "./supabase";
+
 /** Short, manually triggered video moments stored with the quiz payload. */
 export interface BenniClip {
   id: string;
@@ -51,4 +53,36 @@ export function drawBenniClip(
 
 export function recordBenniClip(playedIds: string[], clipId: string) {
   return [...playedIds.filter(id => id !== clipId), clipId];
+}
+
+/** A Benni-TV clip uploaded to *any* quiz is available in every quiz.
+ * Project only the small JSON clip lists, never the full question/image payloads.
+ * Existing uploads stay where they are; there is no data migration.
+ */
+export async function loadGlobalBenniClips(): Promise<BenniClip[]> {
+  const [legacy, custom] = await Promise.all([
+    supabase.from("quiz_data").select("clips:data->benniClips"),
+    supabase.from("custom_quizzes").select("clips:data->benniClips"),
+  ]);
+  if (legacy.error || custom.error) {
+    throw new Error("Benni-TV-Mediathek konnte nicht geladen werden: " +
+      (legacy.error?.message ?? custom.error?.message ?? "Unbekannter Fehler"));
+  }
+  const sources = [...(legacy.data ?? []), ...(custom.data ?? [])] as { clips?: unknown }[];
+  return mergeBenniClipLists(...sources.map(row => readBenniClips(row.clips)));
+}
+
+/** Preserve order and de-duplicate cloned quizzes. The TV session supports up to 12 clips. */
+export function mergeBenniClipLists(...lists: BenniClip[][]): BenniClip[] {
+  const seen = new Set<string>();
+  const result: BenniClip[] = [];
+  for (const list of lists) {
+    for (const clip of list) {
+      if (seen.has(clip.id)) continue;
+      seen.add(clip.id);
+      result.push(clip);
+      if (result.length >= MAX_BENNI_CLIPS) return result;
+    }
+  }
+  return result;
 }

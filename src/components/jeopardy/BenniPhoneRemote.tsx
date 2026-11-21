@@ -57,15 +57,20 @@ export function BenniPhoneRemote({ code }: { code: string }) {
       </div>
       {error && <p role="alert" className="rounded-xl bg-rose-400/10 p-2 text-sm text-rose-200">{error}</p>}
       {remote && remote.clips.length ? (
-        <div className="space-y-2">
-          {remote.clips.map(clip => (
-            <Button key={clip.id} type="button" variant="outline" disabled={sending || remote.busy}
-              onClick={() => void trigger(clip.id)}
-              className="flex h-auto min-h-12 w-full justify-start whitespace-normal rounded-xl border-white/15 py-3 text-left text-sm text-[#eee6ff] hover:bg-[#403267]">
-              <Play className="mr-3 h-4 w-4 shrink-0 text-[#b7a6ef]" />
-              {clip.title || "Benni-Moment"}
-            </Button>
-          ))}
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2.5">
+            {remote.clips.map(clip => (
+              <Button key={clip.id} type="button" variant="outline" disabled={sending || remote.busy}
+                aria-label={`${clip.title || "Benni-Moment"} auf dem Quizbildschirm abspielen`}
+                onClick={() => void trigger(clip.id)}
+                className="flex h-auto min-h-[94px] min-w-0 flex-col items-center justify-center gap-2 whitespace-normal rounded-2xl border-white/15 bg-white/[.04] px-2 py-3 text-center text-sm text-[#eee6ff] shadow-sm transition-colors hover:border-primary/50 hover:bg-[#403267] disabled:opacity-50">
+                <Play className="h-5 w-5 shrink-0 text-[#b7a6ef]" aria-hidden="true" />
+                <span className="line-clamp-2 w-full break-words text-center text-xs font-semibold leading-snug">
+                  {clip.title || "Benni-Moment"}
+                </span>
+              </Button>
+            ))}
+          </div>
           <Button type="button" disabled={sending || remote.busy}
             className="h-12 w-full rounded-xl font-display" onClick={() => void trigger("__random__")}>
             <Shuffle className="mr-2 h-4 w-4" /> Zufälliger Benni-Moment

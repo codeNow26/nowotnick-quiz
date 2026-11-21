@@ -1,7 +1,7 @@
 import { AwardCeremony } from "./AwardCeremony";
 import { BonusHostRound } from "./BonusHostRound";
 import { BenniClipControls, BenniClipPlayer } from "./BenniClipControls";
-import { drawBenniClip, readBenniClips, recordBenniClip, type BenniClip } from "@/lib/benni-clips";
+import { drawBenniClip, loadGlobalBenniClips, mergeBenniClipLists, readBenniClips, recordBenniClip, type BenniClip } from "@/lib/benni-clips";
 import {
   acknowledgeTvCommand, configureTvRemote, prepareBonusSession,
   readBonusHost, readTvHost, type BonusSession,
@@ -311,7 +311,23 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   );
   const questionRows: 5 | 6 = editorSource?.data.questionRows === 6 ? 6 : 5;
   const bonusConfig = readBonusSettings(editorSource?.data.bonus);
-  const benniClips = readBenniClips(editorSource?.data.benniClips);
+  // Benni-TV is a shared library: videos uploaded in Quiz 1 also work in Quiz 4.
+  // Refetch after editor saves and quiz switches; a late response cannot overwrite a newer quiz.
+  const libraryKey = editorSource ? `${editorSource.id}:${editorSource.updated_at ?? ""}` : "";
+  const [sharedBenniLibrary, setSharedBenniLibrary] = useState<{key:string;clips:BenniClip[]} | null>(null);
+  useEffect(() => {
+    if (!libraryKey) return;
+    let alive = true;
+    void loadGlobalBenniClips()
+      .then(clips => { if (alive) setSharedBenniLibrary({key:libraryKey,clips}); })
+      .catch(error => console.error("Globale Benni-TV-Mediathek:", error));
+    return () => { alive = false; };
+  }, [libraryKey]);
+  const globalLibraryReady = sharedBenniLibrary?.key === libraryKey;
+  const benniClips = mergeBenniClipLists(
+    readBenniClips(editorSource?.data.benniClips),
+    globalLibraryReady ? sharedBenniLibrary.clips : [],
+  );
   const tvClipSignature = JSON.stringify(benniClips.map(clip => ({id:clip.id,title:clip.title})));
   const categories = useMemo(
     () => ensureQuestionRows(ensureCategoryCount(allCategories,activeCategoryCount),questionRows).slice(0, activeCategoryCount),
@@ -340,10 +356,10 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const [phoneOnline, setPhoneOnline] = useState(false);
   // Keep the phone's buttons in sync with the editor's clip titles; no media URLs are exposed.
   useEffect(() => {
-    if (!preparedBonus || preparedBonus.quizId !== editorSource?.id) return;
+    if (!preparedBonus || preparedBonus.quizId !== editorSource?.id || !globalLibraryReady) return;
     void configureTvRemote(preparedBonus.session, JSON.parse(tvClipSignature))
       .catch(error => console.error("Benni-TV konnte nicht mit dem Handy synchronisiert werden:", error));
-  }, [preparedBonus?.session.id, editorSource?.id, tvClipSignature]);
+  }, [preparedBonus?.session.id, editorSource?.id, tvClipSignature, globalLibraryReady]);
   useEffect(() => {
     try {
       if (preparedBonus) window.sessionStorage.setItem("quiz-bonus-phone", JSON.stringify(preparedBonus));
