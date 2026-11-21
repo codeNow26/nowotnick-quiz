@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Clapperboard, Play, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 import { readTvGuest, requestTvClip, type TvGuestState } from "@/lib/bonus-pass-api";
 
 /** One linked phone controls short TV inserts, except while players estimate. */
@@ -11,6 +12,17 @@ export function BenniPhoneRemote({ code }: { code: string }) {
   const [connectionError, setConnectionError] = useState("");
   const [notice, setNotice] = useState("");
   const pendingSince = useRef<number | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  useEffect(() => {
+    // The broadcast is a wake-up only. The durable command stays in the database.
+    const channel = supabase.channel(`benni-tv:${code}`).subscribe();
+    channelRef.current = channel;
+    return () => {
+      if (channelRef.current === channel) channelRef.current = null;
+      void supabase.removeChannel(channel);
+    };
+  }, [code]);
 
   useEffect(() => {
     let alive = true;
@@ -28,9 +40,11 @@ export function BenniPhoneRemote({ code }: { code: string }) {
           setNotice("Der Quizbildschirm hat den Einspieler angenommen.");
         } else if (fresh.status === "pending") {
           pendingSince.current ??= Date.now();
-          setNotice(Date.now() - pendingSince.current > 8000
-            ? "Der Quizbildschirm reagiert noch nicht. Prüfe, ob die Quizseite auf dem Laptop geöffnet ist."
-            : "Anfrage gesendet. Warte auf den Quizbildschirm …");
+          setNotice(!fresh.hostOnline
+            ? "Verbindung zum Quizbildschirm unterbrochen. Öffne das Quiz auf dem Laptop und kopple bei Bedarf neu."
+            : Date.now() - pendingSince.current > 8000
+              ? "Die Anfrage wartet noch auf die Wiedergabe. Prüfe, ob auf dem Quizbildschirm ein anderes Fenster offen ist."
+              : "Anfrage gesendet. Warte auf den Quizbildschirm …");
         }
       } catch (cause) {
         if (alive) setConnectionError(cause instanceof Error ? cause.message : "Benni-TV nicht erreichbar.");
@@ -48,11 +62,15 @@ export function BenniPhoneRemote({ code }: { code: string }) {
   }, [code]);
 
   const trigger = async (id: string) => {
-    if (sending || remote?.busy) return;
+    if (sending || remote?.busy || !remote?.hostOnline) return;
     setSending(true);
     setError("");
     try {
       await requestTvClip(code, id);
+      // A failed Realtime signal is harmless: the host still polls the RPC.
+      void channelRef.current?.send({
+        type: "broadcast", event: "request", payload: {},
+      }).catch(error => console.warn("Benni-TV Realtime-Wake-up:", error));
       pendingSince.current = Date.now();
       setRemote(previous => previous ? {...previous, busy: true, status: "pending"} : previous);
       setNotice("Anfrage gesendet. Warte auf den Quizbildschirm …");
@@ -70,11 +88,20 @@ export function BenniPhoneRemote({ code }: { code: string }) {
         <h2 className="font-display text-lg">Benni-TV</h2>
       </div>
       {(error || connectionError) && <p role="alert" className="rounded-xl bg-rose-400/10 p-2 text-sm text-rose-200">{error || connectionError}</p>}
+      {remote && (
+        <p role="status" className={`rounded-xl border px-3 py-2 text-xs ${remote.hostOnline
+          ? "border-emerald-400/20 bg-emerald-400/[.07] text-emerald-200"
+          : "border-amber-400/20 bg-amber-400/[.07] text-amber-200"}`}>
+          {remote.hostOnline
+            ? "Quizbildschirm verbunden. Benni-TV ist bereit."
+            : "Quizbildschirm nicht erreichbar. Öffne das Quiz auf dem Laptop oder verbinde das Handy über den aktuellen QR-Code neu."}
+        </p>
+      )}
       {remote && remote.clips.length ? (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2.5">
             {remote.clips.map(clip => (
-              <Button key={clip.id} type="button" variant="outline" disabled={sending || remote.busy}
+              <Button key={clip.id} type="button" variant="outline" disabled={sending || remote.busy || !remote.hostOnline}
                 aria-label={`${clip.title || "Benni-Moment"} auf dem Quizbildschirm abspielen`}
                 onClick={() => void trigger(clip.id)}
                 className="flex h-auto min-h-[94px] min-w-0 flex-col items-center justify-center gap-2 whitespace-normal rounded-2xl border-white/15 bg-white/[.04] px-2 py-3 text-center text-sm text-[#eee6ff] shadow-sm transition-colors hover:border-primary/50 hover:bg-[#403267] disabled:opacity-50">
@@ -85,7 +112,7 @@ export function BenniPhoneRemote({ code }: { code: string }) {
               </Button>
             ))}
           </div>
-          <Button type="button" disabled={sending || remote.busy}
+          <Button type="button" disabled={sending || remote.busy || !remote.hostOnline}
             className="h-12 w-full rounded-xl font-display" onClick={() => void trigger("__random__")}>
             <Shuffle className="mr-2 h-4 w-4" /> Zufälliger Benni-Moment
           </Button>
