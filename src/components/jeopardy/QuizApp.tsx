@@ -398,6 +398,9 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     const timer = window.setInterval(poll, 3000);
     return () => { active = false; window.clearInterval(timer); };
   }, [preparedBonus]);
+  // Force a fresh TV subscription after every question closes.
+  // It recovers a suspended or prematurely closed browser connection.
+  const [tvHostRecoveryTick, setTvHostRecoveryTick] = useState(0);
   const [activeBonus, setActiveBonus] = useState<number | null>(null);
   const [active, setActive] =
     useState<Active | null>(null);
@@ -540,17 +543,23 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     const heartbeatTimer = window.setInterval(() => void heartbeat(), 4500);
     const pollTimer = window.setInterval(() => void poll(), 1250);
     const onWake = () => { void heartbeat(); void poll(); };
+    // Browser timer throttling must not make a live quiz look offline.
+    // Every local host interaction gives the TV connection an immediate kick.
     document.addEventListener("visibilitychange", onWake);
     window.addEventListener("focus", onWake);
+    window.addEventListener("pointerdown", onWake);
+    window.addEventListener("keydown", onWake);
     return () => {
       alive = false;
       window.clearInterval(heartbeatTimer);
       window.clearInterval(pollTimer);
       document.removeEventListener("visibilitychange", onWake);
       window.removeEventListener("focus", onWake);
+      window.removeEventListener("pointerdown", onWake);
+      window.removeEventListener("keydown", onWake);
       void supabase.removeChannel(channel);
     };
-  }, [preparedBonus?.session.id]);
+  }, [preparedBonus?.session.id, tvHostRecoveryTick]);
 
   useEffect(() => {
     if (screen !== "game" || !allAnswered || active || showStats || ceremonyPlayed.current) return;
@@ -848,6 +857,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const closeQuestion = () => {
     stopFinalQuestionAudio();
     setActive(null);
+    setTvHostRecoveryTick(tick => tick + 1);
   };
   const selectRandomQuestion = () => {
     if (isRandomizing) return;
@@ -1252,6 +1262,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
       sealTimerRef.current = null;
     }, 850);
     setActive(null);
+    setTvHostRecoveryTick(tick => tick + 1);
   };
   const handleManualScoreChange = (
   playerIndex: number,
