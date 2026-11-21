@@ -1,6 +1,6 @@
 import { AwardCeremony } from "./AwardCeremony";
 import { BonusHostRound } from "./BonusHostRound";
-import { BenniClipControls, BenniClipPlayer } from "./BenniClipControls";
+import { BenniClipPlayer } from "./BenniClipControls";
 import { drawBenniClip, loadGlobalBenniClips, mergeBenniClipLists, readBenniClips, recordBenniClip, type BenniClip } from "@/lib/benni-clips";
 import {
   acknowledgeTvCommand, configureTvRemote, prepareBonusSession,
@@ -356,7 +356,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
   const [phoneOnline, setPhoneOnline] = useState(false);
   // Keep the phone's buttons in sync with the editor's clip titles; no media URLs are exposed.
   useEffect(() => {
-    if (!preparedBonus || preparedBonus.quizId !== editorSource?.id || !globalLibraryReady) return;
+    if (!preparedBonus || !globalLibraryReady) return;
     void configureTvRemote(preparedBonus.session, JSON.parse(tvClipSignature))
       .catch(error => console.error("Benni-TV konnte nicht mit dem Handy synchronisiert werden:", error));
   }, [preparedBonus?.session.id, editorSource?.id, tvClipSignature, globalLibraryReady]);
@@ -440,12 +440,6 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     benniHistory.current = recordBenniClip(benniHistory.current, clip.id);
     setActiveBenniClip(clip);
   };
-  const playRandomBenniClip = () => {
-    const drawn = drawBenniClip(benniClips, benniHistory.current);
-    if (!drawn) return;
-    benniHistory.current = drawn.playedIds;
-    playBenniClip(drawn.clip);
-  };
   const screenStateRef = useRef(screen);
   const activeBonusRef = useRef(false);
   const playbackBusyRef = useRef(false);
@@ -471,17 +465,24 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
 
   // The paired laptop polls lightweight commands; the phone never loads the video itself.
   useEffect(() => {
-    if (!preparedBonus || preparedBonus.quizId !== editorSource?.id) return;
+    if (!preparedBonus) return;
     const session = preparedBonus.session;
     let alive = true;
     let checking = false;
     const poll = async () => {
-      if (!alive || checking || document.hidden) return;
+      if (!alive || checking) return;
       checking = true;
       try {
         const command = await readTvHost(session);
         if (!alive || command.status !== "pending" || !command.clipId) return;
-        // Keep pending commands queued until the quiz can safely show the video.
+        // Discard stale clicks rather than playing them unexpectedly on reconnect.
+        if (command.requestedAt && Date.now() - Date.parse(command.requestedAt) > 45_000) {
+          if (await acknowledgeTvCommand(session, command.seq, "start")) {
+            await acknowledgeTvCommand(session, command.seq, "done");
+          }
+          return;
+        }
+        // Keep fresh requests queued until the quiz can safely show the video.
         const playbackAllowed = playRemoteRef.current;
         // Attempt to play only after the host successfully claims this command.
         if (screenStateRef.current === "editor" || activeBonusRef.current ||
@@ -505,8 +506,16 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     };
     void poll();
     const timer = window.setInterval(() => void poll(), 1250);
-    return () => {alive=false;window.clearInterval(timer);};
-  }, [preparedBonus?.session.id, editorSource?.id]);
+    const onWake = () => void poll();
+    document.addEventListener("visibilitychange", onWake);
+    window.addEventListener("focus", onWake);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onWake);
+      window.removeEventListener("focus", onWake);
+    };
+  }, [preparedBonus?.session.id]);
 
   useEffect(() => {
     if (screen !== "game" || !allAnswered || active || showStats || ceremonyPlayed.current) return;
@@ -1293,12 +1302,6 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
               Zurück zum Editor
             </Button>
           )}
-          <BenniClipControls
-            clips={benniClips}
-            disabled={active !== null || activeBonus !== null || isRandomizing || showStats || ceremonyOpen || gameEntering}
-            onPlay={playBenniClip}
-            onRandom={playRandomBenniClip}
-          />
           <Button
             onClick={
               selectRandomQuestion
