@@ -654,11 +654,9 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
     fromEditor = false,
   ) => {
     setTestSession(fromEditor);
-    // Only keep a prepared phone if its quiz and player order still match.
-    setPreparedBonus(existing => existing &&
-      existing.quizId === editorSource?.id &&
-      existing.roster === JSON.stringify(names.map((name, i) => ({name, color: colors[i]})))
-        ? existing : null);
+    // Benni-TV belongs to the host screen, not to a particular quiz.
+    // Keep the same phone session through quiz switches and new games.
+    // Bonus rounds separately verify that the paired player roster matches.
             stopFinalQuestionAudio(false);
             setPlayers(
               names.map((name, index) => ({
@@ -767,7 +765,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           activeQuiz={customId ? undefined : quizSlot}
           footer={<div className="mt-5 flex flex-wrap justify-center gap-3 text-sm">{!customId && <CreateQuiz />}{customId && <Link to="/" className="rounded-xl border border-white/15 px-4 py-2">Zur Startseite</Link>}<Link to="/verwaltung" className="rounded-xl border border-white/15 px-4 py-2">Quiz-Verwaltung</Link></div>}
           onQuizChange={loadQuiz}
-          preparedBonus={preparedBonus?.quizId === editorSource?.id ? preparedBonus : null}
+          preparedBonus={preparedBonus}
           phoneOnline={phoneOnline}
           onPrepareBonus={((bonusConfig.enabled && bonusConfig.rounds.length > 0) || benniClips.length > 0) && editorSource
             ? async phonePlayers => {
@@ -1469,7 +1467,7 @@ export function QuizApp({ customId, editInitially = false }: { customId?: string
           totalRounds={bonusConfig.rounds.length}
           question={bonusConfig.rounds[activeBonus]}
           players={players}
-          preparedSession={preparedBonus && preparedBonus.quizId === editorSource?.id &&
+          preparedSession={preparedBonus &&
             preparedBonus.roster === JSON.stringify(players.map(p => ({name: p.name, color: p.color})))
               ? preparedBonus.session : null}
           onClose={() => setActiveBonus(null)}
