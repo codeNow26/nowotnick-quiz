@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Clapperboard, Play, Shuffle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { BenniClip } from "@/lib/benni-clips";
+import { connectBenniAudio, disconnectBenniAudio } from "@/lib/benni-audio";
 
 interface ControlsProps {
   clips: BenniClip[];
@@ -72,6 +73,7 @@ interface PlayerProps {
 /** A short show interlude; the parent restores music after the exit fade. */
 export function BenniClipPlayer({ clip, onClose }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const [open, setOpen] = useState(true);
@@ -93,15 +95,47 @@ export function BenniClipPlayer({ clip, onClose }: PlayerProps) {
     return () => window.clearTimeout(timeout);
   }, [open, onClose]);
 
-  // The portal mounts its content after the player, so start once the video exists.
+  // Set up the gain stage before starting the media. A phone click cannot
+  // grant autoplay permission on another device, so offer a local play fallback.
   const attachVideo = useCallback((video: HTMLVideoElement | null) => {
-    videoRef.current?.pause();
+    if (videoRef.current) {
+      videoRef.current.pause();
+      disconnectBenniAudio(videoRef.current);
+    }
     videoRef.current = video;
-    // Phone-triggered playback may need a local gesture to allow sound.
-    void video?.play().catch(() => {
+    audioContextRef.current = video ? connectBenniAudio(video) : null;
+    if (!video) return;
+    if (audioContextRef.current?.state === "suspended") {
+      setNeedsTap(true);
+      return;
+    }
+    void video.play().catch(() => {
       if (videoRef.current === video) setNeedsTap(true);
     });
   }, []);
+
+  const startWithTap = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    const context = audioContextRef.current;
+    // Both calls happen directly inside the local click gesture.
+    const resume = context?.state === "suspended" ? context.resume() : Promise.resolve();
+    const start = video.play();
+    void Promise.all([resume, start]).then(() => {
+      if (videoRef.current !== video) return;
+      if (context && context.state !== "running") {
+        video.pause();
+        setNeedsTap(true);
+        return;
+      }
+      setNeedsTap(false);
+    }).catch(() => {
+      if (videoRef.current === video) {
+        video.pause();
+        setNeedsTap(true);
+      }
+    });
+  };
 
   return (
     <Dialog.Root open={open} onOpenChange={next => { if (!next) close(); }}>
@@ -132,6 +166,7 @@ export function BenniClipPlayer({ clip, onClose }: PlayerProps) {
             <video
               ref={attachVideo}
               key={clip.url}
+              crossOrigin="anonymous"
               src={clip.url}
               playsInline
               preload="auto"
@@ -142,7 +177,10 @@ export function BenniClipPlayer({ clip, onClose }: PlayerProps) {
                 const video = event.currentTarget;
                 if (video.videoWidth && video.videoHeight) setAspect(video.videoWidth / video.videoHeight);
               }}
-              onPlaying={() => { setNeedsTap(false); setStarted(true); }}
+              onPlaying={() => {
+                setStarted(true);
+                setNeedsTap(audioContextRef.current?.state === "suspended");
+              }}
               onEnded={close}
               onError={() => { setFailed(true); setNeedsTap(false); }}
             />
@@ -157,7 +195,7 @@ export function BenniClipPlayer({ clip, onClose }: PlayerProps) {
                 type="button"
                 className="benni-show-play"
                 aria-label="Benni-Moment abspielen"
-                onClick={() => void videoRef.current?.play().catch(() => setNeedsTap(true))}
+                onClick={startWithTap}
               >
                 <Play className="h-6 w-6" fill="currentColor" aria-hidden="true" />
               </button>

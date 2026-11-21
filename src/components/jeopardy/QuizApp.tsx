@@ -1,6 +1,7 @@
 import { AwardCeremony } from "./AwardCeremony";
 import { BonusHostRound } from "./BonusHostRound";
 import { BenniClipPlayer } from "./BenniClipControls";
+import { unlockBenniAudio } from "@/lib/benni-audio";
 import { drawBenniClip, loadGlobalBenniClips, mergeBenniClipLists, readBenniClips, recordBenniClip, type BenniClip } from "@/lib/benni-clips";
 import {
   acknowledgeTvCommand, configureTvRemote, prepareBonusSession,
@@ -90,6 +91,16 @@ function getSoleLeaderIndex(
 }
 export function QuizApp({ customId, editInitially = false }: { customId?: string; editInitially?: boolean }) {
   const [gameEntering, setGameEntering] = useState(false);
+  // Browsers require a local gesture before amplified Web Audio can play.
+  // The host's first interaction (e.g. starting a quiz) unlocks it for phone triggers.
+  useEffect(() => {
+    window.addEventListener("pointerdown", unlockBenniAudio, { once: true });
+    window.addEventListener("keydown", unlockBenniAudio, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlockBenniAudio);
+      window.removeEventListener("keydown", unlockBenniAudio);
+    };
+  }, []);
   const gameStageRef = useGameStartAnimation(gameEntering, setGameEntering);
   const ambientEventRef = useRef<HTMLDivElement>(null);
 
